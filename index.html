@@ -1,0 +1,1302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CLASP Studio — a climbing construction robot, simulated</title>
+<meta name="description" content="Draw a timber or bamboo frame, get a real structural analysis, and watch a climbing robot build it. If the design breaks the laws of physics, the structure collapses.">
+<style>
+:root{
+  --ground:#ECEEF1; --panel:#FAFBFC; --sunk:#F2F4F6;
+  --ink:#1A1F26; --muted:#646B75; --faint:#8C949E;
+  --line:#D3D8DE; --line-strong:#B9C1CA;
+  --accent:#C2621A; --accent-soft:#F3E3D5;
+  --ok:#2F7D46; --ok-bg:#E7F2EA;
+  --warn:#9A6C0B; --warn-bg:#F7EEDA;
+  --bad:#C0392B; --bad-bg:#FAE7E4;
+  --tension:#2F6FB3; --compression:#B3372C;
+  --view-a:#E6E9EC; --view-b:#D0D5DA;
+  --font-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --font-sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --ground:#15181C; --panel:#1C2025; --sunk:#22272D;
+    --ink:#E7EAEE; --muted:#98A0AA; --faint:#79828D;
+    --line:#2E343B; --line-strong:#414951;
+    --accent:#E08A3C; --accent-soft:#3A2A19;
+    --ok:#6BBE85; --ok-bg:#1B2E22;
+    --warn:#D9A63A; --warn-bg:#332916;
+    --bad:#E8695B; --bad-bg:#37201D;
+    --tension:#6BA3DC; --compression:#DF6B5C;
+    --view-a:#1F242A; --view-b:#14181C;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--ground);color:var(--ink);font-family:var(--font-sans);font-size:15px;line-height:1.6;
+     -webkit-font-smoothing:antialiased}
+h1,h2,h3{text-wrap:balance}
+
+/* ---------- masthead ---------- */
+.top{border-bottom:1px solid var(--line);background:var(--panel)}
+.top-in{max-width:1500px;margin:0 auto;padding:14px 22px;display:flex;align-items:baseline;
+        gap:16px;flex-wrap:wrap}
+.brand{font-family:var(--font-mono);font-size:16px;font-weight:600;letter-spacing:.02em;margin:0}
+.brand .dot{color:var(--accent)}
+.tag{font-size:13px;color:var(--muted);margin:0;flex:1;min-width:220px}
+.top a{font-size:13px;color:var(--muted);text-decoration:none;border-bottom:1px solid transparent}
+.top a:hover{color:var(--ink);border-bottom-color:var(--accent)}
+
+/* ---------- app ---------- */
+#app{display:flex;height:calc(100dvh - 56px);min-height:560px;overflow:hidden;
+     max-width:1500px;margin:0 auto;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+#console{width:392px;flex:none;background:var(--panel);border-right:1px solid var(--line);
+         overflow-y:auto;overscroll-behavior:contain}
+.sect{border-bottom:1px solid var(--line);padding:15px 18px}
+.hd{display:flex;align-items:baseline;gap:8px;margin:0 0 10px;font-family:var(--font-mono);
+    font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.11em;color:var(--faint)}
+.hd .n{color:var(--accent)}
+
+button{font-family:var(--font-sans);font-size:12.5px;padding:6px 10px;border:1px solid var(--line-strong);
+       background:var(--panel);border-radius:6px;cursor:pointer;color:var(--ink)}
+button:hover{background:var(--sunk)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.seg{display:flex;border:1px solid var(--line-strong);border-radius:7px;overflow:hidden;width:100%}
+.seg button{flex:1;border:none;border-radius:0;background:var(--panel);padding:7px 4px;
+            font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.seg button + button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
+.tools{display:flex;gap:6px;margin-top:10px}
+.tools button{flex:1}
+.presets{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px}
+.presets button{font-family:var(--font-mono);font-size:11.5px;padding:6px 2px}
+#grid{border:1px solid var(--line);border-radius:8px;background:var(--sunk);display:block;
+      width:100%;cursor:crosshair;touch-action:none}
+.hint{font-size:11.5px;color:var(--faint);margin-top:8px}
+.ctl{margin-top:12px}
+.ctl:first-of-type{margin-top:0}
+.ctl label{display:flex;justify-content:space-between;align-items:baseline;gap:8px;
+           font-size:12px;color:var(--muted);margin-bottom:3px}
+.ctl label b{font-family:var(--font-mono);font-variant-numeric:tabular-nums;color:var(--ink);font-weight:600}
+input[type=range]{width:100%;accent-color:var(--accent);margin:0}
+
+.verdict{display:grid;gap:8px;margin-bottom:12px}
+.vchip{display:flex;border:1px solid var(--line);border-radius:8px;background:var(--sunk);overflow:hidden}
+.vstripe{width:4px;flex:none;background:var(--muted)}
+.vbody{padding:8px 10px;display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.vtop{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.vlabel{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint)}
+.vpill{font-family:var(--font-mono);font-size:9.5px;font-weight:700;text-transform:uppercase;
+       letter-spacing:.08em;padding:2px 6px;border-radius:99px;white-space:nowrap}
+.vval{font-family:var(--font-mono);font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.15}
+.vnote{font-size:11.5px;color:var(--muted)}
+.sev-ok .vstripe{background:var(--ok)} .sev-ok .vpill{background:var(--ok-bg);color:var(--ok)}
+.sev-warn .vstripe{background:var(--warn)} .sev-warn .vpill{background:var(--warn-bg);color:var(--warn)}
+.sev-bad .vstripe{background:var(--bad)} .sev-bad .vpill{background:var(--bad-bg);color:var(--bad)}
+
+.rows{display:flex;flex-direction:column}
+.rw{display:flex;justify-content:space-between;gap:10px;padding:4px 0;font-size:12.5px;
+    border-bottom:1px dotted var(--line)}
+.rw:last-child{border-bottom:none}
+.rw span{color:var(--muted)}
+.rw b{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;text-align:right}
+.ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+.msg{font-size:12.5px;padding:8px 10px;border-radius:7px;margin-top:8px;border:1px solid;text-wrap:pretty}
+.m-ok{background:var(--ok-bg);border-color:color-mix(in srgb,var(--ok) 32%,transparent);color:var(--ok)}
+.m-warn{background:var(--warn-bg);border-color:color-mix(in srgb,var(--warn) 32%,transparent);color:var(--warn)}
+.m-bad{background:var(--bad-bg);border-color:color-mix(in srgb,var(--bad) 32%,transparent);color:var(--bad)}
+.legend{display:flex;flex-wrap:wrap;gap:5px 13px;font-size:11.5px;color:var(--muted);margin-top:10px}
+.legend i{width:18px;height:8px;border-radius:2px;display:inline-block;margin-right:5px}
+.fine{font-size:11.5px;color:var(--faint);text-wrap:pretty}
+.meas{display:flex;align-items:center;gap:8px}
+.meas input{font-family:var(--font-mono);width:90px;padding:5px 8px;border:1px solid var(--line-strong);
+            border-radius:6px;background:var(--panel);color:var(--ink);font-size:12.5px}
+
+#stage{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--ground)}
+#wrap{position:relative;flex:1;min-height:0;display:flex}
+#view{flex:1;display:block;width:100%;background:linear-gradient(var(--view-a),var(--view-b));
+      cursor:grab;touch-action:none}
+#view:active{cursor:grabbing}
+#hud{position:absolute;top:12px;left:14px;font-family:var(--font-mono);font-size:11px;color:var(--muted);
+     background:color-mix(in srgb,var(--panel) 82%,transparent);border:1px solid var(--line);
+     border-radius:6px;padding:5px 9px;pointer-events:none}
+#phase{position:absolute;top:12px;right:14px;font-family:var(--font-mono);font-size:11px;
+       background:color-mix(in srgb,var(--panel) 82%,transparent);border:1px solid var(--line);
+       border-radius:6px;padding:5px 9px;pointer-events:none;color:var(--accent);min-width:150px;text-align:right}
+#transport{flex:none;border-top:1px solid var(--line);background:var(--panel);padding:9px 14px;
+           display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#transport .grow{flex:1;min-width:100px}
+#play{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;
+      font-family:var(--font-mono);font-size:12px;padding:7px 13px;white-space:nowrap}
+#play:hover{filter:brightness(1.08)}
+#breakBtn{font-family:var(--font-mono);font-size:12px;padding:7px 12px;white-space:nowrap;
+          border-color:var(--bad);color:var(--bad)}
+#breakBtn:hover{background:var(--bad-bg)}
+#statusLbl{font-family:var(--font-mono);font-size:11.5px;color:var(--muted);
+           display:flex;align-items:center;gap:7px;min-width:0;flex-basis:100%}
+#statusLbl .dot{width:7px;height:7px;border-radius:99px;flex:none;background:var(--muted)}
+#statusLbl .txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spd{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.spd select{font-family:var(--font-mono);font-size:12px;padding:4px 6px;border:1px solid var(--line-strong);
+            border-radius:6px;background:var(--panel);color:var(--ink)}
+
+/* ---------- prose below ---------- */
+.prose{max-width:1500px;margin:0 auto;border-left:1px solid var(--line);border-right:1px solid var(--line);
+       background:var(--panel);border-top:1px solid var(--line)}
+.prose-in{max-width:760px;margin:0 auto;padding:44px 22px 60px}
+.prose h2{font-family:var(--font-mono);font-size:13px;text-transform:uppercase;letter-spacing:.11em;
+          color:var(--accent);margin:38px 0 10px;font-weight:600}
+.prose h2:first-child{margin-top:0}
+.prose h3{font-size:16px;margin:22px 0 6px}
+.prose p{margin:0 0 12px;color:var(--ink)}
+.prose ul{margin:0 0 12px;padding-left:20px;color:var(--ink)}
+.prose li{margin-bottom:5px}
+.prose code{font-family:var(--font-mono);font-size:12.5px;background:var(--sunk);
+            padding:1px 5px;border-radius:4px}
+.prose .lead{font-size:17px;color:var(--muted)}
+.tbl{overflow-x:auto;margin:0 0 14px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:440px}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint)}
+td.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.caution{border-left:3px solid var(--warn);background:var(--warn-bg);padding:11px 14px;
+         border-radius:0 7px 7px 0;margin:0 0 14px;font-size:14px;color:var(--warn)}
+footer{border-top:1px solid var(--line);padding:20px 22px;text-align:center;font-size:12px;color:var(--faint)}
+
+@media (max-width:960px){
+  #app{flex-direction:column;height:auto;overflow:visible;min-height:0}
+  #console{width:100%;border-right:none;border-bottom:1px solid var(--line);order:2}
+  #stage{order:1;height:62dvh;min-height:400px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <h1 class="brand">CLASP Studio<span class="dot">.</span></h1>
+    <p class="tag">A climbing construction robot, simulated — with real structural physics.</p>
+    <a href="#how">How it works</a>
+  </div>
+</header>
+
+<div id="app">
+  <div id="console">
+    <div class="sect">
+      <h2 class="hd"><span class="n">01</span> Material</h2>
+      <div class="seg" role="group" aria-label="Material">
+        <button id="mPine" aria-pressed="true">Pine 20×20</button>
+        <button id="mBamboo" aria-pressed="false">Bamboo Ø20</button>
+      </div>
+      <p class="fine" id="matNote" style="margin:8px 0 0"></p>
+    </div>
+
+    <div class="sect">
+      <h2 class="hd"><span class="n">02</span> Draw the frame</h2>
+      <canvas id="grid" width="720" height="520" aria-label="Sketch grid"></canvas>
+      <div class="tools">
+        <button id="tDraw" aria-pressed="true">Draw</button>
+        <button id="tErase" aria-pressed="false">Erase</button>
+        <button id="clear">Clear</button>
+      </div>
+      <div class="presets">
+        <button data-preset="tower">Tower</button>
+        <button data-preset="bridge">Bridge</button>
+        <button data-preset="wall">Wall</button>
+        <button data-preset="arch">Arch</button>
+      </div>
+      <p class="hint">Drag between dots to add a stick. The bottom row is bolted to the ground.
+        Leave a square un-braced, then hit <b>Test to failure</b> and watch it fold.</p>
+    </div>
+
+    <div class="sect">
+      <h2 class="hd"><span class="n">03</span> Dimensions</h2>
+      <div class="ctl"><label>Bay size <b><span id="bayV">150</span> mm</b></label>
+        <input type="range" id="bay" min="40" max="250" step="10" value="150"></div>
+      <div class="ctl"><label>Depth <b><span id="depthV">1</span> frame</b></label>
+        <input type="range" id="depth" min="1" max="3" step="1" value="1"></div>
+      <div class="ctl"><label>Scale factor <b><span id="scaleV">1.0</span>×</b></label>
+        <input type="range" id="scale" min="1" max="6" step="0.5" value="1"></div>
+      <div class="ctl"><label>Load on top nodes <b><span id="loadV">0</span> N</b></label>
+        <input type="range" id="load" min="0" max="200" step="5" value="0"></div>
+      <p class="hint">Scale grows the structure but not the robot. That is where things start to break.</p>
+    </div>
+
+    <div class="sect">
+      <h2 class="hd"><span class="n">04</span> Structure</h2>
+      <div class="verdict" id="verdict"></div>
+      <div class="rows" id="stats"></div>
+      <div id="msgs"></div>
+      <div class="legend">
+        <span><i id="lgMat" style="background:#C9A24A"></i>barely stressed</span>
+        <span><i style="background:var(--tension)"></i>tension</span>
+        <span><i style="background:var(--compression)"></i>compression</span>
+        <span><i style="background:var(--accent)"></i>in the claw</span>
+      </div>
+    </div>
+
+    <div class="sect">
+      <h2 class="hd"><span class="n">05</span> Robot build check</h2>
+      <div class="rows" id="botStats"></div>
+      <div id="botMsgs"></div>
+    </div>
+
+    <div class="sect">
+      <h2 class="hd"><span class="n">06</span> Predicted vs measured</h2>
+      <div class="meas">
+        <span style="font-size:12.5px;color:var(--muted)">Measured failure load</span>
+        <input type="number" id="meas" placeholder="N" step="1" aria-label="Measured failure load, newtons">
+      </div>
+      <p class="fine" id="valid" style="margin-top:8px"></p>
+    </div>
+
+    <div class="sect">
+      <p class="fine">Material and joint values are literature estimates for model-scale stock, not
+        measurements. Every joint is modelled as a frictionless pin, so real screwed and tied joints
+        are stiffer than this. Test before you quote any number here.</p>
+    </div>
+  </div>
+
+  <div id="stage">
+    <div id="wrap">
+      <canvas id="view"></canvas>
+      <div id="hud">drag to orbit · scroll to zoom</div>
+      <div id="phase">idle</div>
+    </div>
+    <div id="transport">
+      <button id="play">▶ Build it</button>
+      <button id="breakBtn">⚡ Test to failure</button>
+      <input type="range" id="step" class="grow" min="0" max="0" value="0" aria-label="Build progress">
+      <span class="spd"><label for="speed">Speed</label>
+        <select id="speed">
+          <option value="0.5">0.5×</option>
+          <option value="1" selected>1×</option>
+          <option value="2">2×</option>
+          <option value="4">4×</option>
+        </select></span>
+      <span id="statusLbl"><span class="dot"></span><span class="txt">ready</span></span>
+    </div>
+  </div>
+</div>
+
+<section class="prose" id="how">
+  <div class="prose-in">
+    <h2>What this is</h2>
+    <p class="lead">CLASP is a robot that climbs the frame it is building. It grips a stick, pulls itself
+      up, picks up the next one, and holds it in place while it is fastened — so nobody has to stand on a
+      scaffold. This page simulates it.</p>
+
+    <h2>The simulation is allowed to fail</h2>
+    <p>Most project demos are animations: they show the thing working because that is what was drawn.
+      This one runs the structural mathematics first and animates the answer, whatever it is. If you draw
+      a frame that cannot stand, it will not stand — it folds, snaps, and lands on the ground.</p>
+    <p>Two separate engines are doing that work:</p>
+    <h3>1. The analysis — direct stiffness method</h3>
+    <p>Every stick is a bar element with a real cross-section, a real Young's modulus, and real self-weight.
+      The solver assembles a global stiffness matrix, applies the supports, and solves for the movement of
+      every joint. From that it recovers the axial force in every stick, then checks each one three ways:
+      crushing, Euler buckling, and whether the joint itself will pull apart.</p>
+    <p>If the frame is not braced enough, that matrix becomes singular — mathematically, the structure has a
+      way to move without stretching anything. The solver detects it and names the joint that can swing free.
+      That is not a bug being caught. That is the definition of a mechanism.</p>
+    <h3>2. The collapse — progressive failure plus position-based dynamics</h3>
+    <p>Press <b>Test to failure</b> and the load ramps up. At each level the analysis re-runs, finds the most
+      overloaded stick, breaks it, and then <em>solves the structure again without it</em>. Removing one member
+      pushes its load onto its neighbours, which is often enough to overload the next one. That cascade is the
+      failure sequence, and it is computed, not choreographed.</p>
+    <p>The falling is done by a position-based dynamics solver: joints become particles, sticks become distance
+      constraints, and gravity does the rest. Broken sticks detach and tumble as loose debris. Nothing is
+      keyframed — if it lands in a heap, that is where the mathematics put it.</p>
+
+    <h2>How the robot actually moves</h2>
+    <p>The arm is a real two-link mechanism solved with inverse kinematics: give it a point in space and it
+      computes the shoulder and elbow angles needed to reach it, using the cosine rule. It cannot reach past
+      its own arm length, and when it cannot, the app says so instead of quietly stretching.</p>
+    <p>Each stick goes through the same cycle a real machine would:</p>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>Phase</th><th>What happens</th></tr></thead>
+        <tbody>
+          <tr><td>Traverse</td><td>The body slides along the frame to the joint it is working on, gripping with one clamp at a time.</td></tr>
+          <tr><td>Reach</td><td>The arm extends to the stock pile and the claw opens.</td></tr>
+          <tr><td>Grip</td><td>The claw closes on the stick.</td></tr>
+          <tr><td>Carry</td><td>The stick is lifted and swung toward its place in the frame, rotating as it goes.</td></tr>
+          <tr><td>Align</td><td>The claw eases the stick into position within fastening tolerance.</td></tr>
+          <tr><td>Release</td><td>The claw opens, the stick becomes part of the structure, and the arm retracts.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Why the joints are the weak point</h2>
+    <p>Switch between pine and bamboo with a load applied and watch the governing failure mode. Bamboo is the
+      stiffer material, but a wire twist-tie lashing holds roughly half what a screwed joint does — so the
+      bamboo frame fails first, at the tie, not in the wood. That result is the argument for testing tie
+      strength on a bench, and it falls straight out of the model.</p>
+
+    <h2>What the model does not know</h2>
+    <div class="caution">Every joint here is a frictionless pin. Real screwed and lashed joints carry bending
+      moment, so a real half-built frame is stiffer than this simulation says. That is why a part-built frame
+      often shows as "not yet self-stable" — under pin assumptions it genuinely is not, and something has to
+      brace it until the triangle closes. On the real machine, that something is the robot's own clamp.</div>
+    <ul>
+      <li>Material and joint strengths are literature values for model-scale stock, not measured ones.</li>
+      <li>Sticks are straight and identical. Real timber is bowed and real bamboo is tapered — handling that
+        variation is the whole point of the vision system, and it is not modelled here.</li>
+      <li>The collapse animation is a computed failure sequence played back, not a moment-by-moment dynamic
+        buckling analysis.</li>
+      <li>Wind, temperature, moisture, and fatigue are all absent.</li>
+    </ul>
+
+    <h2>Project CLASP</h2>
+    <p>A climbing assembly robot for timber and bamboo structures, built for Regeneron ISEF 2027. Falls are
+      the leading cause of construction deaths, and the most exposed task on any frame is holding a member
+      steady at height while somebody fastens it. This machine goes after that one task.</p>
+  </div>
+</section>
+
+<footer>CLASP Studio · simulation runs entirely in your browser · no data leaves this page</footer>
+
+<script>
+"use strict";
+const G=9.81, $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+const easeOut=t=>1-Math.pow(1-t,3);
+const V=(x,y,z)=>({x,y,z});
+const vadd=(a,b)=>({x:a.x+b.x,y:a.y+b.y,z:a.z+b.z});
+const vsub=(a,b)=>({x:a.x-b.x,y:a.y-b.y,z:a.z-b.z});
+const vmul=(a,s)=>({x:a.x*s,y:a.y*s,z:a.z*s});
+const vlen=a=>Math.hypot(a.x,a.y,a.z);
+const vnorm=a=>{const L=vlen(a)||1;return{x:a.x/L,y:a.y/L,z:a.z/L}};
+const vlerp=(a,b,t)=>({x:lerp(a.x,b.x,t),y:lerp(a.y,b.y,t),z:lerp(a.z,b.z,t)});
+const vcross=(a,b)=>({x:a.y*b.z-a.z*b.y,y:a.z*b.x-a.x*b.z,z:a.x*b.y-a.y*b.x});
+
+const MATS={
+  pine:{key:'pine',shape:'square',D:20,wall:null,E:9500,sig_t:40,sig_c:30,rho:5.0e-7,
+    joint:1200,jointName:'screwed joint',rgb:[201,162,74],
+    note:'Sawn pine strut, screwed joints. E 9500 MPa, bending strength 40 MPa, screw joint ≈1200 N.'},
+  bamboo:{key:'bamboo',shape:'round',D:20,wall:3,E:18000,sig_t:60,sig_c:40,rho:7.0e-7,
+    joint:600,jointName:'twist-tie lashing',rgb:[183,196,106],
+    note:'Hollow bamboo cane, wire twist-tie lashings. Stiffer than pine, but the tie is the weak link (≈600 N).'}
+};
+const ROBOT={mass:0.9,cg:80,reach:250,clampM:2.4,L1:135,L2:115,bodyH:96};
+let mat=MATS.pine;
+
+const isDark=()=>matchMedia('(prefers-color-scheme: dark)').matches;
+const PAL={light:{dot:'#C3CAD2',dotBase:'#7C8894',rule:'#AFB8C2',ground:[178,184,192],shadow:0.13},
+           dark:{dot:'#3A424B',dotBase:'#6E7A86',rule:'#4A535D',ground:[46,52,59],shadow:0.30}};
+const pal=()=>isDark()?PAL.dark:PAL.light;
+
+function sectionA(m,s){const D=m.D*s;
+  if(m.shape==='square')return D*D;
+  const d=(m.D-2*m.wall)*s;return Math.PI/4*(D*D-d*d);}
+function sectionI(m,s){const D=m.D*s;
+  if(m.shape==='square')return Math.pow(D,4)/12;
+  const d=(m.D-2*m.wall)*s;return Math.PI*(Math.pow(D,4)-Math.pow(d,4))/64;}
+
+/* ================= sketch ================= */
+const GW=11,GH=9;
+let edges=[],tool='draw',dragFrom=null,dragTo=null;
+const gc=$('grid'),gx=gc.getContext('2d');
+function gridGeom(){const w=gc.width,h=gc.height,pad=34;
+  const s=Math.min((w-pad*2)/(GW-1),(h-pad*2)/(GH-1));
+  return{s,ox:(w-s*(GW-1))/2,oy:h-(h-s*(GH-1))/2};}
+function g2p(i,j){const{s,ox,oy}=gridGeom();return[ox+i*s,oy-j*s];}
+function p2g(px,py){const{s,ox,oy}=gridGeom();return{x:Math.round((px-ox)/s),y:Math.round((oy-py)/s)};}
+const sameN=(a,b)=>a.x===b.x&&a.y===b.y;
+const edgeEq=(e,a,b)=>(sameN(e.a,a)&&sameN(e.b,b))||(sameN(e.a,b)&&sameN(e.b,a));
+function drawGrid(){
+  const P=pal(),w=gc.width,h=gc.height;gx.clearRect(0,0,w,h);
+  const{s,oy}=gridGeom(),[x0]=g2p(0,0),[x1]=g2p(GW-1,0);
+  gx.strokeStyle=P.rule;gx.lineWidth=1.6;
+  gx.beginPath();gx.moveTo(x0-16,oy+.5);gx.lineTo(x1+16,oy+.5);gx.stroke();
+  gx.lineWidth=1;
+  for(let i=0;i<=(GW-1)*2;i++){const x=x0+i*s*.5;
+    gx.beginPath();gx.moveTo(x,oy+2);gx.lineTo(x-7,oy+11);gx.stroke();}
+  for(let i=0;i<GW;i++)for(let j=0;j<GH;j++){const[px,py]=g2p(i,j);
+    gx.beginPath();gx.arc(px,py,j===0?3.2:2,0,7);
+    gx.fillStyle=j===0?P.dotBase:P.dot;gx.fill();}
+  gx.lineCap='round';
+  for(const e of edges){const[ax,ay]=g2p(e.a.x,e.a.y),[bx,by]=g2p(e.b.x,e.b.y);
+    gx.strokeStyle=`rgb(${mat.rgb.join(',')})`;gx.lineWidth=7;
+    gx.beginPath();gx.moveTo(ax,ay);gx.lineTo(bx,by);gx.stroke();
+    gx.strokeStyle='rgba(0,0,0,.16)';gx.lineWidth=1;
+    gx.beginPath();gx.moveTo(ax,ay);gx.lineTo(bx,by);gx.stroke();}
+  if(dragFrom&&dragTo){const[ax,ay]=g2p(dragFrom.x,dragFrom.y),[bx,by]=g2p(dragTo.x,dragTo.y);
+    gx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#C2621A';
+    gx.lineWidth=3;gx.setLineDash([5,4]);
+    gx.beginPath();gx.moveTo(ax,ay);gx.lineTo(bx,by);gx.stroke();gx.setLineDash([]);}
+}
+function evtG(ev){const r=gc.getBoundingClientRect();
+  const g=p2g((ev.clientX-r.left)*(gc.width/r.width),(ev.clientY-r.top)*(gc.height/r.height));
+  g.x=clamp(g.x,0,GW-1);g.y=clamp(g.y,0,GH-1);return g;}
+gc.addEventListener('pointerdown',ev=>{gc.setPointerCapture(ev.pointerId);const g=evtG(ev);
+  if(tool==='erase'){eraseNear(g);rebuild();return;}
+  dragFrom=g;dragTo=g;drawGrid();});
+gc.addEventListener('pointermove',ev=>{if(!dragFrom)return;dragTo=evtG(ev);drawGrid();});
+gc.addEventListener('pointerup',()=>{
+  if(dragFrom&&dragTo&&!sameN(dragFrom,dragTo)){
+    if(!edges.some(e=>edgeEq(e,dragFrom,dragTo)))edges.push({a:dragFrom,b:dragTo});
+    rebuild();}
+  dragFrom=dragTo=null;drawGrid();});
+function ptSeg(p,a,b){const vx=b.x-a.x,vy=b.y-a.y,wx=p.x-a.x,wy=p.y-a.y,L2=vx*vx+vy*vy;
+  if(!L2)return Math.hypot(wx,wy);
+  const t=clamp((wx*vx+wy*vy)/L2,0,1);return Math.hypot(wx-t*vx,wy-t*vy);}
+function eraseNear(g){let best=-1,bd=.6;
+  edges.forEach((e,i)=>{const d=ptSeg(g,e.a,e.b);if(d<bd){bd=d;best=i;}});
+  if(best>=0)edges.splice(best,1);}
+
+const PRESETS={
+  tower(){const e=[],w=3;
+    for(let j=0;j<6;j++){e.push({a:{x:4,y:j},b:{x:4,y:j+1}});e.push({a:{x:4+w,y:j},b:{x:4+w,y:j+1}});
+      e.push({a:{x:4,y:j+1},b:{x:4+w,y:j+1}});
+      e.push(j%2?{a:{x:4,y:j},b:{x:4+w,y:j+1}}:{a:{x:4+w,y:j},b:{x:4,y:j+1}});}
+    e.push({a:{x:4,y:0},b:{x:4+w,y:0}});return e;},
+  bridge(){const e=[],y0=2,y1=4;
+    for(let i=0;i<8;i++){e.push({a:{x:i+1,y:y0},b:{x:i+2,y:y0}});
+      if(i>0&&i<7)e.push({a:{x:i+1,y:y1},b:{x:i+2,y:y1}});}
+    for(let i=1;i<8;i++)e.push({a:{x:i+1,y:y0},b:{x:i+1,y:y1}});
+    for(let i=0;i<8;i++)e.push(i<4?{a:{x:i+1,y:y0},b:{x:i+2,y:y1}}:{a:{x:i+1,y:y1},b:{x:i+2,y:y0}});
+    e.push({a:{x:1,y:0},b:{x:1,y:y0}});e.push({a:{x:9,y:0},b:{x:9,y:y0}});
+    e.push({a:{x:1,y:0},b:{x:2,y:y0}});e.push({a:{x:9,y:0},b:{x:8,y:y0}});return e;},
+  wall(){const e=[],x0=3,x1=8,top=4;
+    for(let i=x0;i<x1;i++)for(let j=0;j<top;j++){
+      e.push({a:{x:i,y:j},b:{x:i+1,y:j}});e.push({a:{x:i,y:j},b:{x:i,y:j+1}});
+      e.push({a:{x:i,y:j},b:{x:i+1,y:j+1}});}
+    for(let i=x0;i<x1;i++)e.push({a:{x:i,y:top},b:{x:i+1,y:top}});
+    for(let j=0;j<top;j++)e.push({a:{x:x1,y:j},b:{x:x1,y:j+1}});return e;},
+  arch(){const e=[],pts=[];
+    for(let i=0;i<=8;i++)pts.push({x:1+i,y:Math.round(Math.sin(i/8*Math.PI)*5)});
+    for(let i=0;i<pts.length-1;i++)e.push({a:pts[i],b:pts[i+1]});
+    for(const p of pts)if(p.y>0)e.push({a:{x:p.x,y:0},b:{x:p.x,y:p.y}});
+    for(let i=0;i<pts.length-1;i++)if(pts[i].y>0&&pts[i+1].y>0)
+      e.push({a:{x:pts[i].x,y:0},b:{x:pts[i+1].x,y:pts[i+1].y}});
+    for(let i=1;i<9;i++)e.push({a:{x:i,y:0},b:{x:i+1,y:0}});return e;}
+};
+
+/* ================= model ================= */
+let model={nodes:[],members:[]};
+function buildModel(){
+  const step=(+$('bay').value)*(+$('scale').value),planes=+$('depth').value;
+  const map=new Map(),nodes=[],members=[];
+  const key=(i,j,k)=>i+'|'+j+'|'+k;
+  function node(i,j,k){const kk=key(i,j,k);
+    if(map.has(kk))return map.get(kk);
+    const id=nodes.length;
+    nodes.push({x:i*step,y:j*step,z:k*step,support:(j===0)});
+    map.set(kk,id);return id;}
+  for(let k=0;k<planes;k++)for(const e of edges)
+    members.push({a:node(e.a.x,e.a.y,k),b:node(e.b.x,e.b.y,k)});
+  if(planes>1){
+    const used=new Set();
+    for(const e of edges){used.add(key(e.a.x,e.a.y,0));used.add(key(e.b.x,e.b.y,0));}
+    const pts=[...used].map(t=>t.split('|').map(Number));
+    for(let k=0;k<planes-1;k++){
+      for(const[i,j]of pts)members.push({a:node(i,j,k),b:node(i,j,k+1)});
+      for(const e of edges)members.push({a:node(e.a.x,e.a.y,k),b:node(e.b.x,e.b.y,k+1)});}
+  }
+  model={nodes,members,step,scale:+$('scale').value};
+  return model;
+}
+
+/* ================= solver: direct stiffness, 3D bars ================= */
+function solve(md,extra,activeSet){
+  const{nodes,members}=md,n=nodes.length;
+  const act=members.map((m,i)=>!activeSet||activeSet.has(i));
+  if(!n||!act.some(Boolean))return{ok:false,reason:'empty'};
+  const s=md.scale,A=sectionA(mat,s),E=mat.E,ndof=3*n;
+  const K=Array.from({length:ndof},()=>new Float64Array(ndof));
+  const F=new Float64Array(ndof);
+  const geo=members.map(m=>{const a=nodes[m.a],b=nodes[m.b];
+    const dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z,L=Math.hypot(dx,dy,dz)||1e-9;
+    return{L,c:[dx/L,dy/L,dz/L]};});
+  members.forEach((m,idx)=>{
+    if(!act[idx])return;
+    const{L,c}=geo[idx],k=E*A/L,ia=3*m.a,ib=3*m.b;
+    for(let r=0;r<3;r++)for(let q=0;q<3;q++){const v=k*c[r]*c[q];
+      K[ia+r][ia+q]+=v;K[ib+r][ib+q]+=v;K[ia+r][ib+q]-=v;K[ib+r][ia+q]-=v;}
+    const wt=A*L*mat.rho*G;F[3*m.a+1]-=wt/2;F[3*m.b+1]-=wt/2;});
+  if(extra)for(const[id,fx,fy,fz]of extra){F[3*id]+=fx;F[3*id+1]+=fy;F[3*id+2]+=fz;}
+
+  // nodes with no active member attached are not part of this structure
+  const touched=new Array(n).fill(false);
+  members.forEach((m,i)=>{if(act[i]){touched[m.a]=true;touched[m.b]=true;}});
+
+  let planar=true;const z0=nodes[0].z;
+  for(const nd of nodes)if(Math.abs(nd.z-z0)>1e-6){planar=false;break;}
+
+  const free=[];
+  for(let i=0;i<n;i++)if(!nodes[i].support&&touched[i])for(let d=0;d<3;d++){
+    if(planar&&d===2)continue;free.push(3*i+d);}
+  if(!free.length)return{ok:true,planar,forces:members.map(()=>0),u:new Float64Array(ndof),maxDisp:0,geo,act};
+
+  const nf=free.length;
+  const Kr=Array.from({length:nf},(_,r)=>{const row=new Float64Array(nf);
+    for(let q=0;q<nf;q++)row[q]=K[free[r]][free[q]];return row;});
+  const Fr=new Float64Array(nf);
+  for(let r=0;r<nf;r++)Fr[r]=F[free[r]];
+  let ref=0;for(let r=0;r<nf;r++)ref=Math.max(ref,Math.abs(Kr[r][r]));
+  const tol=Math.max(ref*1e-11,1e-9);
+  for(let i=0;i<nf;i++){
+    let piv=i,pv=Math.abs(Kr[i][i]);
+    for(let r=i+1;r<nf;r++){const v=Math.abs(Kr[r][i]);if(v>pv){pv=v;piv=r;}}
+    if(pv<tol){const dof=free[i];return{ok:false,reason:'mechanism',node:Math.floor(dof/3),axis:'XYZ'[dof%3]};}
+    if(piv!==i){const t=Kr[i];Kr[i]=Kr[piv];Kr[piv]=t;const tb=Fr[i];Fr[i]=Fr[piv];Fr[piv]=tb;}
+    const kii=Kr[i][i];
+    for(let r=i+1;r<nf;r++){const f=Kr[r][i]/kii;if(!f)continue;
+      for(let c=i;c<nf;c++)Kr[r][c]-=f*Kr[i][c];Fr[r]-=f*Fr[i];}}
+  const ur=new Float64Array(nf);
+  for(let i=nf-1;i>=0;i--){let sum=Fr[i];
+    for(let c=i+1;c<nf;c++)sum-=Kr[i][c]*ur[c];ur[i]=sum/Kr[i][i];}
+  const u=new Float64Array(ndof);
+  for(let i=0;i<nf;i++)u[free[i]]=ur[i];
+  const forces=members.map((m,idx)=>{
+    if(!act[idx])return 0;
+    const{L,c}=geo[idx];
+    const d=[u[3*m.b]-u[3*m.a],u[3*m.b+1]-u[3*m.a+1],u[3*m.b+2]-u[3*m.a+2]];
+    return E*A/L*(c[0]*d[0]+c[1]*d[1]+c[2]*d[2]);});
+  let maxDisp=0;
+  for(let i=0;i<n;i++)maxDisp=Math.max(maxDisp,Math.hypot(u[3*i],u[3*i+1],u[3*i+2]));
+  return{ok:true,planar,forces,u,maxDisp,geo,act};
+}
+
+function checkMembers(md,res){
+  const s=md.scale,A=sectionA(mat,s),I=sectionI(mat,s),E=mat.E,out=[];
+  md.members.forEach((m,i)=>{
+    const F=res.forces[i],L=res.geo[i].L,stress=Math.abs(F)/A;
+    let util,mode;
+    if(F>=0){util=stress/mat.sig_t;mode='tension';}
+    else{const uC=stress/mat.sig_c,Pcr=Math.PI*Math.PI*E*I/(L*L),uB=Math.abs(F)/Pcr;
+      util=Math.max(uC,uB);mode=uB>uC?'buckling':'crushing';}
+    const uJoint=Math.abs(F)/mat.joint;
+    out.push({i,F,L,stress,util,mode,govMode:uJoint>util?mat.jointName:mode,uJoint,
+      worst:res.act&&!res.act[i]?0:Math.max(util,uJoint)});});
+  return out;
+}
+
+/* ---- progressive collapse: break the worst member, re-solve, repeat ---- */
+function progressiveCollapse(md,baseLoadNodes,baseLoadN,ramp){
+  const active=new Set(md.members.map((_,i)=>i));
+  const events=[];
+  const synthetic=baseLoadN<=0;
+  let mult=1, guard=0;
+  const maxMult=synthetic?400:40;
+  while(guard++<200){
+    // ramp = hunt for the breaking point. no ramp = judge it as it stands right now.
+    const load=synthetic?(ramp?12*mult:0):baseLoadN*mult;
+    const extra=load>0?baseLoadNodes.map(i=>[i,0,-load,0]):null;
+    const res=solve(md,extra,active);
+    if(!res.ok){
+      events.push({type:'mechanism',load,node:res.node,axis:res.axis});
+      return{events,collapsed:true,active};
+    }
+    const ch=checkMembers(md,res);
+    let worst=null;
+    for(const c of ch) if(active.has(c.i)&&(!worst||c.worst>worst.worst)) worst=c;
+    if(worst&&worst.worst>1){
+      active.delete(worst.i);
+      events.push({type:'break',member:worst.i,load,mode:worst.govMode,
+                   force:worst.F,util:worst.worst});
+      if(active.size===0){events.push({type:'mechanism',load});return{events,collapsed:true,active};}
+      continue;                       // re-solve without it before raising load
+    }
+    if(!ramp) return{events,collapsed:events.length>0,active,survived:events.length===0};
+    mult*=1.18;
+    if(mult>maxMult) return{events,collapsed:events.length>0,active,survived:true,peak:load};
+  }
+  return{events,collapsed:events.length>0,active};
+}
+
+/* ================= physics: position-based dynamics ================= */
+const PHYS={sub:3,iter:10,damp:0.992,g:-9810};   // mm/s^2
+function makePhysics(md,activeSet,imperfection){
+  // A perfectly symmetric frame sits in unstable equilibrium forever — a pencil
+  // balanced on its tip. Real members are never perfectly straight or plumb, so we
+  // seed a tiny geometric imperfection, exactly as a buckling analysis does. It is
+  // offset into the previous position, which gives each joint a small initial velocity.
+  const e=imperfection||0;
+  const rnd=()=>(Math.random()-0.5)*2*e;
+  const parts=md.nodes.map(n=>({p:V(n.x,n.y,n.z),
+    q:V(n.x-rnd(),n.y-rnd()*0.2,n.z-rnd()),
+    w:n.support?0:1,pinned:n.support}));
+  const cons=[];
+  md.members.forEach((m,i)=>{
+    if(activeSet&&!activeSet.has(i))return;
+    const a=md.nodes[m.a],b=md.nodes[m.b];
+    cons.push({a:m.a,b:m.b,rest:Math.hypot(b.x-a.x,b.y-a.y,b.z-a.z),mi:i});});
+  return{parts,cons,debris:[],t:0};
+}
+function physStep(ph,dt){
+  dt=Math.min(dt,0.024);
+  const h=dt/PHYS.sub;
+  for(let s=0;s<PHYS.sub;s++){
+    for(const p of ph.parts){
+      if(p.pinned){p.q=V(p.p.x,p.p.y,p.p.z);continue;}
+      const vx=(p.p.x-p.q.x)*PHYS.damp, vy=(p.p.y-p.q.y)*PHYS.damp, vz=(p.p.z-p.q.z)*PHYS.damp;
+      p.q=V(p.p.x,p.p.y,p.p.z);
+      p.p={x:p.p.x+vx, y:p.p.y+vy+PHYS.g*h*h, z:p.p.z+vz};
+    }
+    // Ground contact is solved inside the iteration loop alongside the distance
+    // constraints. Clamping y only at the end would corrupt lengths that were
+    // satisfied while a joint was still below ground, leaving members visibly short.
+    for(let it=0;it<PHYS.iter;it++){
+      for(const c of ph.cons){
+        const A=ph.parts[c.a],B=ph.parts[c.b];
+        const wsum=A.w+B.w; if(wsum===0)continue;
+        const dx=B.p.x-A.p.x,dy=B.p.y-A.p.y,dz=B.p.z-A.p.z;
+        const L=Math.hypot(dx,dy,dz)||1e-6;
+        const diff=(L-c.rest)/L*0.92;
+        const cx=dx*diff,cy=dy*diff,cz=dz*diff;
+        const fa=A.w/wsum, fb=B.w/wsum;
+        A.p.x+=cx*fa;A.p.y+=cy*fa;A.p.z+=cz*fa;
+        B.p.x-=cx*fb;B.p.y-=cy*fb;B.p.z-=cz*fb;
+      }
+      for(const p of ph.parts){ if(!p.pinned && p.p.y<0) p.p.y=0; }
+    }
+    for(const p of ph.parts){
+      if(p.pinned)continue;
+      if(p.p.y<=0){p.p.y=0;p.q.x=lerp(p.q.x,p.p.x,0.4);p.q.z=lerp(p.q.z,p.p.z,0.4);p.q.y=p.p.y;}
+    }
+    for(const d of ph.debris) debrisStep(d,h);
+  }
+  ph.t+=dt;
+}
+function spawnDebris(ph,md,mi){
+  const m=md.members[mi],A=ph.parts[m.a],B=ph.parts[m.b];
+  const jit=()=>(Math.random()-0.5)*14;
+  ph.debris.push({
+    a:{p:V(A.p.x,A.p.y,A.p.z),q:V(A.q.x+jit(),A.q.y,A.q.z+jit())},
+    b:{p:V(B.p.x,B.p.y,B.p.z),q:V(B.q.x+jit(),B.q.y,B.q.z+jit())},
+    rest:Math.hypot(B.p.x-A.p.x,B.p.y-A.p.y,B.p.z-A.p.z), mi});
+}
+function debrisStep(d,h){
+  for(const p of[d.a,d.b]){
+    const vx=(p.p.x-p.q.x)*PHYS.damp,vy=(p.p.y-p.q.y)*PHYS.damp,vz=(p.p.z-p.q.z)*PHYS.damp;
+    p.q=V(p.p.x,p.p.y,p.p.z);
+    p.p={x:p.p.x+vx,y:p.p.y+vy+PHYS.g*h*h,z:p.p.z+vz};
+  }
+  for(let it=0;it<4;it++){
+    const dx=d.b.p.x-d.a.p.x,dy=d.b.p.y-d.a.p.y,dz=d.b.p.z-d.a.p.z;
+    const L=Math.hypot(dx,dy,dz)||1e-6,diff=(L-d.rest)/L*0.5;
+    d.a.p.x+=dx*diff;d.a.p.y+=dy*diff;d.a.p.z+=dz*diff;
+    d.b.p.x-=dx*diff;d.b.p.y-=dy*diff;d.b.p.z-=dz*diff;
+  }
+  const r=mat.D*0.5;
+  for(const p of[d.a,d.b]) if(p.p.y<r){p.p.y=r;p.q.x=lerp(p.q.x,p.p.x,0.5);p.q.z=lerp(p.q.z,p.p.z,0.5);}
+}
+
+/* ================= robot: 2-link IK arm on a climbing carriage ================= */
+// Solves shoulder + elbow angles that put the claw at a target, using the cosine rule.
+function ik2(reach,rise,L1,L2){
+  const d=Math.hypot(reach,rise), reachable=d<=L1+L2-1;
+  const dc=Math.min(d,L1+L2-1);
+  const a=Math.atan2(rise,reach);
+  const b=Math.acos(clamp((L1*L1+dc*dc-L2*L2)/(2*L1*dc),-1,1));
+  const c=Math.acos(clamp((L1*L1+L2*L2-dc*dc)/(2*L1*L2),-1,1));
+  return{shoulder:a+b, elbow:Math.PI-c, reachable};
+}
+const bot={
+  mount:V(0,0,0), yaw:0, shoulder:0.6, elbow:1.2, claw:1,   // claw 0 shut .. 1 open
+  clampA:0, clampB:0, held:null, target:null
+};
+function botFK(b){
+  const out={x:Math.cos(b.yaw),y:0,z:Math.sin(b.yaw)};
+  const base=V(b.mount.x,b.mount.y,b.mount.z);
+  // the shoulder sits on the carriage, which hangs off the side of the stick
+  const off=ROBOT.side||0;
+  const sh=V(base.x+out.x*off, base.y+ROBOT.bodyH, base.z+out.z*off);
+  const d1={x:out.x*Math.cos(b.shoulder),y:Math.sin(b.shoulder),z:out.z*Math.cos(b.shoulder)};
+  const el=vadd(sh,vmul(d1,ROBOT.L1));
+  const a2=b.shoulder-b.elbow;
+  const d2={x:out.x*Math.cos(a2),y:Math.sin(a2),z:out.z*Math.cos(a2)};
+  const wr=vadd(el,vmul(d2,ROBOT.L2));
+  return{base,sh,el,wr,out,d1,d2};
+}
+function aimAt(b,target){
+  const dx=target.x-b.mount.x, dz=target.z-b.mount.z;
+  const yaw=(Math.abs(dx)<1e-6&&Math.abs(dz)<1e-6)?b.yaw:Math.atan2(dz,dx);
+  const reach=Math.max(1,Math.hypot(dx,dz)-(ROBOT.side||0));
+  const rise=target.y-(b.mount.y+ROBOT.bodyH);
+  const s=ik2(reach,rise,ROBOT.L1,ROBOT.L2);
+  return{yaw,shoulder:s.shoulder,elbow:s.elbow,reachable:s.reachable};
+}
+function applyPose(b,pose,t){
+  let dy=pose.yaw-b.yaw;
+  while(dy>Math.PI)dy-=2*Math.PI; while(dy<-Math.PI)dy+=2*Math.PI;
+  b.yaw+=dy*t; b.shoulder=lerp(b.shoulder,pose.shoulder,t); b.elbow=lerp(b.elbow,pose.elbow,t);
+}
+
+/* ================= renderer ================= */
+const vc=$('view'),vx=vc.getContext('2d');
+let cam={yaw:0.72,pitch:0.26,zoom:1,auto:true};
+const DPR=()=>Math.min(devicePixelRatio||1,2);
+function sizeView(){const r=vc.getBoundingClientRect(),d=DPR();
+  vc.width=Math.max(320,r.width*d);vc.height=Math.max(240,r.height*d);
+  vx.setTransform(d,0,0,d,0,0);}
+addEventListener('resize',sizeView);
+
+function prism(p1,p2,rad,sides,rgb,out,rot45){
+  const d=vnorm(vsub(p2,p1));
+  const ref=Math.abs(d.y)<0.9?V(0,1,0):V(1,0,0);
+  const u=vnorm(vcross(d,ref)),v=vcross(d,u),off=rot45?Math.PI/4:0;
+  const ring=t=>{const a=off+t/sides*Math.PI*2,ca=Math.cos(a),sa=Math.sin(a);
+    return{x:ca*u.x+sa*v.x,y:ca*u.y+sa*v.y,z:ca*u.z+sa*v.z};};
+  for(let t=0;t<sides;t++){
+    const n1=ring(t),n2=ring(t+1);
+    out.push({p:[vadd(p1,vmul(n1,rad)),vadd(p2,vmul(n1,rad)),
+                 vadd(p2,vmul(n2,rad)),vadd(p1,vmul(n2,rad))],
+              n:vnorm({x:(n1.x+n2.x)/2,y:(n1.y+n2.y)/2,z:(n1.z+n2.z)/2}),rgb});
+  }
+}
+function boxAt(c,w,h,dp,rgb,out,yaw){
+  const cy=Math.cos(yaw||0),sy=Math.sin(yaw||0);
+  const R=p=>({x:c.x+p.x*cy-p.z*sy, y:c.y+p.y, z:c.z+p.x*sy+p.z*cy});
+  const s=[w/2,h/2,dp/2],v=[];
+  for(let i=0;i<8;i++)v.push(R({x:(i&1)?s[0]:-s[0],y:(i&2)?s[1]:-s[1],z:(i&4)?s[2]:-s[2]}));
+  const F=[[0,1,3,2],[5,4,6,7],[4,0,2,6],[1,5,7,3],[4,5,1,0],[2,3,7,6]];
+  const N=[{x:0,y:0,z:-1},{x:0,y:0,z:1},{x:-1,y:0,z:0},{x:1,y:0,z:0},{x:0,y:-1,z:0},{x:0,y:1,z:0}];
+  F.forEach((f,i)=>{const nn=N[i];
+    out.push({p:f.map(k=>v[k]),n:{x:nn.x*cy-nn.z*sy,y:nn.y,z:nn.x*sy+nn.z*cy},rgb});});
+}
+function shadowQuad(p1,p2,rad,out){
+  const d=vnorm(vsub(p2,p1));
+  const per=vnorm(vcross(d,V(0,1,0)));
+  const w=vmul(per,rad*1.15);
+  out.push({p:[{x:p1.x+w.x,y:1,z:p1.z+w.z},{x:p2.x+w.x,y:1,z:p2.z+w.z},
+               {x:p2.x-w.x,y:1,z:p2.z-w.z},{x:p1.x-w.x,y:1,z:p1.z-w.z}],
+            n:V(0,1,0),rgb:[0,0,0],shadow:true});
+}
+function utilColor(u,F){
+  if(u>1)return[228,66,50];
+  const base=F>=0?[47,111,179]:[179,55,44],rest=mat.rgb,t=clamp(u,0,1);
+  return[0,1,2].map(i=>Math.round(rest[i]+(base[i]-rest[i])*Math.pow(t,0.55)));
+}
+let view={quads:[],center:V(0,0,0),radius:300};
+
+function buildScene(){
+  const out=[],md=model;
+  if(!md.members.length){view.quads=[];return;}
+  const s=md.scale;
+  const rad=(mat.shape==='square'?mat.D*s/2*Math.SQRT2:mat.D*s/2);
+  const sides=mat.shape==='square'?4:9;
+  ROBOT.side=rad+26;
+  const P=pal();
+  const ph=sim.phys;
+  const pos=i=>ph?ph.parts[i].p:md.nodes[i];
+
+  // members
+  for(let i=0;i<md.members.length;i++){
+    if(!sim.visible.has(i))continue;
+    const m=md.members[i];
+    const a=pos(m.a),b=pos(m.b);
+    let rgb=mat.rgb;
+    if(state.checks){const c=state.checks[i];if(c)rgb=utilColor(c.worst,c.F);}
+    prism(a,b,rad,sides,rgb,out,mat.shape==='square');
+    shadowQuad(a,b,rad,out);
+  }
+  // debris
+  if(ph)for(const d of ph.debris){
+    prism(d.a.p,d.b.p,rad,sides,[132,116,88],out,mat.shape==='square');
+    shadowQuad(d.a.p,d.b.p,rad,out);
+  }
+  // stick in the claw
+  if(bot.held){
+    prism(bot.held.a,bot.held.b,rad,sides,[226,138,44],out,mat.shape==='square');
+    shadowQuad(bot.held.a,bot.held.b,rad,out);
+  }
+  // stock pile
+  for(const st of sim.stock){
+    prism(st.a,st.b,rad,sides,[168,146,104],out,mat.shape==='square');
+    shadowQuad(st.a,st.b,rad,out);
+  }
+  if(sim.showBot) drawRobot(out,rad);
+
+  // Frame on everything the viewer can actually see — frame, stock pile and robot —
+  // so the shot stays put instead of drifting as sticks get consumed.
+  let minx=1e9,maxx=-1e9,minz=1e9,maxz=-1e9,maxy=0;
+  const note=p=>{minx=Math.min(minx,p.x);maxx=Math.max(maxx,p.x);
+    minz=Math.min(minz,p.z);maxz=Math.max(maxz,p.z);maxy=Math.max(maxy,p.y);};
+  md.nodes.forEach(note);
+  for(const st of sim.stock){note(st.a);note(st.b);}
+  const pad=md.step*0.9;
+  out.push({p:[{x:minx-pad,y:0,z:minz-pad*1.6},{x:maxx+pad,y:0,z:minz-pad*1.6},
+               {x:maxx+pad,y:0,z:maxz+pad*1.6},{x:minx-pad,y:0,z:maxz+pad*1.6}],
+            n:V(0,1,0),rgb:P.ground,flat:true});
+  view.quads=out;
+  view.center=V((minx+maxx)/2,maxy*0.5,(minz+maxz)/2);
+  let R=1;
+  const bump=p=>R=Math.max(R,Math.hypot(p.x-view.center.x,p.y-view.center.y,p.z-view.center.z));
+  md.nodes.forEach(bump);
+  for(const st of sim.stock)bump(st.a);
+  view.radius=Math.max(R,ROBOT.L1+ROBOT.L2);
+}
+function drawRobot(out,rad){
+  const k=botFK(bot);
+  const GREY=[104,110,118],DARK=[62,68,75],OR=[226,138,44];
+  // The carriage hangs off the side of the stick it is gripping rather than sitting
+  // on the centreline, so it reads as clamped to the frame instead of floating.
+  const off=rad+26;
+  const body=V(k.base.x+k.out.x*off, k.base.y+ROBOT.bodyH*0.5, k.base.z+k.out.z*off);
+  boxAt(body,58,ROBOT.bodyH,40,GREY,out,bot.yaw);
+  // two self-locking clamps, each wrapping the stick from the carriage side
+  for(const[h,amt]of[[14,bot.clampA],[ROBOT.bodyH-14,bot.clampB]]){
+    const cy=k.base.y+h, jaw=rad+3+amt*rad*1.3;
+    // arm reaching from carriage back onto the stick
+    boxAt(V(k.base.x+k.out.x*off*0.5,cy,k.base.z+k.out.z*off*0.5),off,15,15,OR,out,bot.yaw);
+    // the two jaw halves closing on it
+    for(const sgn of[1,-1]){
+      const side=vnorm(vcross(k.out,V(0,1,0)));
+      boxAt(V(k.base.x+side.x*sgn*jaw, cy, k.base.z+side.z*sgn*jaw),
+            rad*2.1,19,10,DARK,out,bot.yaw);
+    }
+  }
+  // upper arm + forearm
+  prism(k.sh,k.el,15,6,GREY,out,false);
+  prism(k.el,k.wr,12,6,[126,132,140],out,false);
+  boxAt(k.sh,26,26,26,DARK,out,bot.yaw);
+  boxAt(k.el,21,21,21,DARK,out,bot.yaw);
+  // claw: two jaws that open and close
+  const side=vnorm(vcross(k.d2,V(0,1,0)));
+  const spread=(6+bot.claw*22);
+  for(const sgn of[1,-1]){
+    const root=vadd(k.wr,vmul(side,sgn*spread*0.45));
+    const tip=vadd(vadd(k.wr,vmul(k.d2,34)),vmul(side,sgn*spread));
+    prism(root,tip,6,4,OR,out,true);
+  }
+  boxAt(k.wr,20,20,20,OR,out,bot.yaw);
+}
+function render(){
+  const d=DPR(),W=vc.width/d,H=vc.height/d;
+  vx.clearRect(0,0,W,H);
+  if(!view.quads.length){
+    vx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--faint').trim()||'#888';
+    vx.font='13px '+getComputedStyle(document.body).fontFamily;vx.textAlign='center';
+    vx.fillText('Draw a frame on the left, or pick a preset.',W/2,H/2);return;}
+  const sy=Math.sin(cam.yaw),cy=Math.cos(cam.yaw),sp=Math.sin(cam.pitch),cp=Math.cos(cam.pitch);
+  const R=view.radius||300,dist=R*3.1,f=Math.min(W,H)*1.28*cam.zoom,C=view.center;
+  const L=vnorm(V(0.42,0.8,-0.44)),out=[],shp=pal().shadow;
+  for(const q of view.quads){
+    const pts=[];let zs=0;
+    for(const p of q.p){
+      const x=p.x-C.x,y=p.y-C.y,z=p.z-C.z;
+      const x1=x*cy+z*sy,z1=-x*sy+z*cy;
+      const y2=y*cp-z1*sp,z2=y*sp+z1*cp;
+      const sc=f/(dist+z2);
+      pts.push([W/2+x1*sc,H*0.58-y2*sc]);zs+=z2;}
+    const ax=pts[1][0]-pts[0][0],ay=pts[1][1]-pts[0][1];
+    const bx=pts[2][0]-pts[0][0],by=pts[2][1]-pts[0][1];
+    if(!q.flat&&!q.shadow&&ax*by-ay*bx<=0)continue;
+    if(q.shadow){out.push({z:zs/q.p.length+1e5,pts,c:`rgba(0,0,0,${shp})`});continue;}
+    const n=q.n;
+    const nx=n.x*cy+n.z*sy,nz1=-n.x*sy+n.z*cy;
+    const ny=n.y*cp-nz1*sp,nz=n.y*sp+nz1*cp;
+    const kk=q.flat?1:0.54+0.46*Math.max(0,nx*L.x+ny*L.y-nz*L.z);
+    out.push({z:zs/q.p.length,pts,c:`rgb(${q.rgb.map(v=>Math.round(v*kk)).join(',')})`,
+              alpha:q.flat?0.5:1});}
+  out.sort((a,b)=>b.z-a.z);
+  for(const o of out){
+    vx.beginPath();vx.moveTo(o.pts[0][0],o.pts[0][1]);
+    for(let i=1;i<o.pts.length;i++)vx.lineTo(o.pts[i][0],o.pts[i][1]);
+    vx.closePath();vx.fillStyle=o.c;
+    if(o.alpha!==undefined&&o.alpha<1){vx.globalAlpha=o.alpha;vx.fill();vx.globalAlpha=1;}
+    else vx.fill();}
+}
+let vdrag=false,lx=0,ly=0;
+vc.addEventListener('pointerdown',e=>{vdrag=true;cam.auto=false;lx=e.clientX;ly=e.clientY;
+  vc.setPointerCapture(e.pointerId);});
+vc.addEventListener('pointermove',e=>{if(!vdrag)return;
+  cam.yaw+=(e.clientX-lx)*0.008;cam.pitch=clamp(cam.pitch+(e.clientY-ly)*0.006,-0.15,1.2);
+  lx=e.clientX;ly=e.clientY;});
+vc.addEventListener('pointerup',()=>vdrag=false);
+vc.addEventListener('wheel',e=>{e.preventDefault();
+  cam.zoom=clamp(cam.zoom*(e.deltaY>0?0.92:1.08),0.35,3.2);},{passive:false});
+
+/* ================= build plan + robot feasibility ================= */
+function planBuild(md){
+  const conn=new Set();
+  md.nodes.forEach((n,i)=>{if(n.support)conn.add(i);});
+  const rem=md.members.map((_,i)=>i),order=[];
+  while(rem.length){
+    let best=-1,bs=Infinity;
+    for(const mi of rem){const m=md.members[mi],ca=conn.has(m.a),cb=conn.has(m.b);
+      if(!ca&&!cb)continue;
+      const sc=(md.nodes[m.a].y+md.nodes[m.b].y)/2+((ca&&cb)?-1e5:0);
+      if(sc<bs){bs=sc;best=mi;}}
+    if(best<0)best=rem[0];
+    const m=md.members[best];conn.add(m.a);conn.add(m.b);order.push(best);
+    rem.splice(rem.indexOf(best),1);}
+  return order;
+}
+function subModel(md,idxs){
+  const remap=new Map(),nodes=[],members=[];
+  for(const mi of idxs){const m=md.members[mi];
+    for(const nd of[m.a,m.b])if(!remap.has(nd)){remap.set(nd,nodes.length);nodes.push(md.nodes[nd]);}
+    members.push({a:remap.get(m.a),b:remap.get(m.b)});}
+  return{nodes,members,scale:md.scale,step:md.step,remap};
+}
+function analyseBuild(md,order){
+  const A=sectionA(mat,md.scale),steps=[],wR=ROBOT.mass*G;
+  for(let k=0;k<order.length;k++){
+    const mi=order[k],m=md.members[mi],a=md.nodes[m.a],b=md.nodes[m.b];
+    const L=Math.hypot(b.x-a.x,b.y-a.y,b.z-a.z),mass=A*L*mat.rho,issues=[];
+    if(L>2*ROBOT.reach)issues.push({lvl:'bad',t:`stick ${Math.round(L)} mm exceeds 2× arm reach (${2*ROBOT.reach} mm)`});
+    const demand=ROBOT.mass*G*(ROBOT.cg/1000)+mass*G*(Math.min(L/2,ROBOT.reach)/1000);
+    if(demand>ROBOT.clampM)issues.push({lvl:'bad',t:`clamp moment ${demand.toFixed(2)} N·m over capacity ${ROBOT.clampM} N·m`});
+    else if(demand>ROBOT.clampM*0.7)issues.push({lvl:'warn',t:`clamp moment ${demand.toFixed(2)} N·m near capacity`});
+    const sub=subModel(md,order.slice(0,k+1));
+    let partU=0,selfStable=true;
+    if(sub.members.length){
+      const stance=sub.remap.get(m.a)??sub.remap.get(m.b);
+      const r=solve(sub,stance!==undefined?[[stance,0,-wR,0]]:null);
+      if(!r.ok){selfStable=false;
+        issues.push({lvl:'warn',t:'frame not yet self-stable — relies on joint stiffness here'});}
+      else{partU=checkMembers(sub,r).reduce((mx,c)=>Math.max(mx,c.worst),0);
+        if(partU>1)issues.push({lvl:'bad',t:`half-built frame overloaded (${(partU*100).toFixed(0)}%) carrying the robot`});
+        else if(partU>0.7)issues.push({lvl:'warn',t:`half-built frame at ${(partU*100).toFixed(0)}% carrying the robot`});}}
+    steps.push({mi,L,mass,demand,partU,selfStable,issues,
+      worst:issues.some(x=>x.lvl==='bad')?'bad':issues.some(x=>x.lvl==='warn')?'warn':'ok'});}
+  return steps;
+}
+
+/* ================= simulation state machine ================= */
+const sim={visible:new Set(),phys:null,stock:[],showBot:true,mode:'idle',
+           order:[],k:0,t:0,speed:1,collapse:null,cEvent:0,cTimer:0};
+const state={checks:null,res:null,steps:[],predFail:null};
+
+function stockPile(md){
+  const out=[],s=md.scale,L=Math.min(md.step*1.4,420);
+  let minx=1e9,minz=1e9,maxz=-1e9;
+  md.nodes.forEach(n=>{minx=Math.min(minx,n.x);minz=Math.min(minz,n.z);maxz=Math.max(maxz,n.z);});
+  const bx=minx-md.step*1.5, bz=(minz+maxz)/2;
+  const r=mat.D*s*0.5;
+  for(let i=0;i<7;i++){
+    const row=i%3, tier=Math.floor(i/3);
+    const zz=bz+(row-1)*(mat.D*s*1.25);
+    const yy=r+tier*mat.D*s*1.05;
+    out.push({a:V(bx-L/2,yy,zz),b:V(bx+L/2,yy,zz)});}
+  return out;
+}
+const PH=[['traverse',0.18],['reach',0.16],['grip',0.08],['carry',0.30],['align',0.16],['release',0.12]];
+function phaseAt(t){let acc=0;
+  for(const[name,dur]of PH){if(t<acc+dur)return{name,u:(t-acc)/dur};acc+=dur;}
+  return{name:'release',u:1};}
+
+function startBuild(){
+  if(!sim.order.length)return;
+  sim.mode='building';sim.k=0;sim.t=0;sim.visible=new Set();sim.phys=null;
+  sim.stock=stockPile(model);sim.showBot=true;bot.held=null;
+  state.checks=null;
+  $('play').textContent='❚❚ Pause';
+  setStatus('ok','building — step 1 of '+sim.order.length);
+}
+function stopBuild(finish){
+  sim.mode='idle';bot.held=null;
+  if(finish){sim.visible=new Set(model.members.map((_,i)=>i));runAnalysis(true);}
+  $('play').textContent='▶ Build it';
+}
+function tickBuild(dt){
+  const stepDur=1.9/sim.speed;
+  sim.t+=dt/stepDur;
+  if(sim.t>=1){
+    sim.visible.add(sim.order[sim.k]);
+    sim.k++;sim.t=0;bot.held=null;
+    if(sim.stock.length>1)sim.stock.pop();
+    if(sim.k>=sim.order.length){stopBuild(true);setStatus('ok','build complete — '+sim.order.length+' sticks placed');return;}
+    const st=state.steps[sim.k];
+    setStatus(st?st.worst:'ok',`step ${sim.k+1} of ${sim.order.length}` + (st&&st.issues.length?' — '+st.issues[0].t:''));
+  }
+  const mi=sim.order[sim.k];
+  if(mi===undefined)return;
+  const m=model.members[mi],na=model.nodes[m.a],nb=model.nodes[m.b];
+  const lowNode=na.y<=nb.y?na:nb;
+  const tgtA=V(na.x,na.y,na.z),tgtB=V(nb.x,nb.y,nb.z);
+  const src=sim.stock[sim.stock.length-1]||{a:V(0,0,0),b:V(0,0,0)};
+  const{name,u}=phaseAt(sim.t);
+  const e=ease(clamp(u,0,1));
+  const sm=k=>1-Math.exp(-k*dt);        // frame-rate independent smoothing
+
+  // carriage rides the frame to the joint it is working on
+  const stand=V(lowNode.x,lowNode.y,lowNode.z);
+  bot.mount=vlerp(bot.mount,stand,sm(name==='traverse'?5.5:8));
+  bot.clampA=name==='traverse'?0.6*Math.sin(e*Math.PI):0;
+  bot.clampB=0;
+
+  const rest=vadd(bot.mount,V(Math.cos(bot.yaw)*70,ROBOT.bodyH+55,Math.sin(bot.yaw)*70));
+  const pileMid=midOf(src), tgtMid=midOf(tgtA?{a:tgtA,b:tgtB}:src);
+  const dirSrc=vnorm(vsub(src.b,src.a)), dirTgt=vnorm(vsub(tgtB,tgtA));
+  const halfLen=vlen(vsub(tgtB,tgtA))/2;
+  const lift=Math.min(190,model.step*1.15);
+
+  let clawTarget,held=null;
+  if(name==='traverse'){ clawTarget=rest; bot.claw=1; }
+  else if(name==='reach'){
+    // swing down to the pile along an arc, not a straight line
+    const apex=V(lerp(rest.x,pileMid.x,.5),Math.max(rest.y,pileMid.y)+lift*.4,lerp(rest.z,pileMid.z,.5));
+    clawTarget=bez(rest,apex,pileMid,e); bot.claw=1;
+  }
+  else if(name==='grip'){ clawTarget=pileMid; bot.claw=1-e; held=src; }
+  else if(name==='carry'||name==='align'){
+    // The stick is rigidly held: its centre IS the claw, and it rotates with the claw.
+    // Nothing slides through the air on its own — it goes exactly where the claw goes.
+    const t = name==='carry' ? e*0.82 : 0.82+e*0.18;
+    const apex=V(lerp(pileMid.x,tgtMid.x,.5),Math.max(pileMid.y,tgtMid.y)+lift,lerp(pileMid.z,tgtMid.z,.5));
+    clawTarget=bez(pileMid,apex,tgtMid,t);
+    const d=vnorm(vlerp(dirSrc,dirTgt,ease(clamp(t*1.15,0,1))));
+    held={a:vsub(clawTarget,vmul(d,halfLen)), b:vadd(clawTarget,vmul(d,halfLen))};
+    bot.claw=0;
+  }
+  else{ // release: open, let the stick settle exactly onto its joints, withdraw
+    held=e<0.45?{a:tgtA,b:tgtB}:null;
+    bot.claw=clamp((e-0.15)*1.8,0,1);
+    clawTarget=bez(tgtMid,V(lerp(tgtMid.x,rest.x,.5),tgtMid.y+lift*.35,lerp(tgtMid.z,rest.z,.5)),rest,e);
+  }
+  bot.held=held;
+  applyPose(bot,aimAt(bot,clawTarget),sm(11));
+}
+// quadratic bezier — gives the claw a real arc instead of a straight slide
+function bez(p0,p1,p2,t){
+  const s=1-t;
+  return V(s*s*p0.x+2*s*t*p1.x+t*t*p2.x,
+           s*s*p0.y+2*s*t*p1.y+t*t*p2.y,
+           s*s*p0.z+2*s*t*p1.z+t*t*p2.z);
+}
+const midOf=s=>V((s.a.x+s.b.x)/2,(s.a.y+s.b.y)/2,(s.a.z+s.b.z)/2);
+
+/* ---- collapse playback ---- */
+// ramp=true  → deliberately hunt for the breaking point (the button)
+// ramp=false → judge it exactly as it stands. Called automatically after every edit,
+//              because gravity does not wait for anyone to press a button.
+function startCollapse(ramp){
+  if(!model.members.length)return false;
+  const md=model;
+  let maxy=0;md.nodes.forEach(n=>maxy=Math.max(maxy,n.y));
+  const topNodes=[];md.nodes.forEach((n,i)=>{if(Math.abs(n.y-maxy)<1e-6)topNodes.push(i);});
+  const mech=state.res&&!state.res.ok;
+  // a mechanism needs no cascade analysis: nothing is holding it up, so just let go
+  const cr=mech?{events:[{type:'mechanism',load:0}],collapsed:true}
+               :progressiveCollapse(md,topNodes,+$('load').value,ramp);
+  if(!cr.events.length){
+    if(ramp)setStatus('ok','held to '+(cr.peak?Math.round(cr.peak):'—')+' N per joint without failing');
+    return false;}
+  sim.collapse=cr;sim.cEvent=0;sim.cTimer=0;
+  sim.visible=new Set(md.members.map((_,i)=>i));
+  sim.phys=makePhysics(md,null,md.step*0.006);
+  sim.mode='collapsing';sim.showBot=false;bot.held=null;
+  const f=cr.events[0];
+  setStatus('bad',f.type==='mechanism'
+    ?'not braced enough — falling under its own weight'
+    :`${ramp?'fails':'overloaded'} at ${Math.round(f.load)} N — ${f.mode}`);
+  $('breakBtn').textContent='↺ Stand it back up';
+  return true;
+}
+function tickCollapse(dt){
+  sim.cTimer+=dt*sim.speed;
+  const ev=sim.collapse.events;
+  while(sim.cEvent<ev.length&&sim.cTimer>0.45+sim.cEvent*0.28){
+    const e=ev[sim.cEvent];
+    if(e.type==='break'){
+      const ci=sim.phys.cons.findIndex(c=>c.mi===e.member);
+      if(ci>=0){spawnDebris(sim.phys,model,e.member);sim.phys.cons.splice(ci,1);
+        sim.visible.delete(e.member);}
+    }
+    // A mechanism needs no member to be removed: the constraints stay intact and the
+    // frame simply folds, because nothing resists that motion. That is what a
+    // mechanism is, and the physics shows it without any help from us.
+    sim.cEvent++;
+  }
+  physStep(sim.phys,dt);
+}
+function resetSim(){
+  sim.mode='idle';sim.phys=null;sim.collapse=null;bot.held=null;sim.showBot=true;
+  sim.visible=new Set(model.members.map((_,i)=>i));
+  sim.stock=stockPile(model);
+  $('breakBtn').textContent='⚡ Test to failure';
+  $('play').textContent='▶ Build it';
+  runAnalysis(true);
+  if(sim.mode!=='collapsing')setStatus('ok','ready');
+}
+function setStatus(sev,txt){
+  const d=$('statusLbl').querySelector('.dot'),t=$('statusLbl').querySelector('.txt');
+  d.style.background=sev==='bad'?'var(--bad)':sev==='warn'?'var(--warn)':'var(--ok)';
+  t.textContent=txt;
+}
+
+/* ================= analysis + reporting ================= */
+function chip(sev,label,pill,val,note){
+  return `<div class="vchip sev-${sev}"><div class="vstripe"></div><div class="vbody">
+    <div class="vtop"><span class="vlabel">${label}</span><span class="vpill">${pill}</span></div>
+    <div class="vval">${val}</div><div class="vnote">${note}</div></div></div>`;}
+const rowsHTML=l=>l.map(([k,v])=>`<div class="rw"><span>${k}</span><b>${v}</b></div>`).join('');
+
+function rebuild(){buildModel();resetSim();drawGrid();}
+function standingStill(){return sim.mode==='idle';}
+function runAnalysis(autoFall){
+  const md=model;
+  state.checks=null;state.res=null;state.steps=[];
+  if(!md.members.length){
+    $('verdict').innerHTML='';$('stats').innerHTML='';
+    $('msgs').innerHTML='<p class="fine">Nothing drawn yet — sketch a frame or pick a preset.</p>';
+    $('botStats').innerHTML='';$('botMsgs').innerHTML='';$('step').max=0;
+    sim.order=[];updateValidation();buildScene();return;}
+  const loadN=+$('load').value;
+  let extra=null,maxy=0;
+  md.nodes.forEach(n=>maxy=Math.max(maxy,n.y));
+  if(loadN>0){extra=[];md.nodes.forEach((n,i)=>{if(Math.abs(n.y-maxy)<1e-6)extra.push([i,0,-loadN,0]);});}
+  const res=solve(md,extra),A=sectionA(mat,md.scale);
+  let tLen=0,tMass=0;
+  md.members.forEach(m=>{const a=md.nodes[m.a],b=md.nodes[m.b];
+    const L=Math.hypot(b.x-a.x,b.y-a.y,b.z-a.z);tLen+=L;tMass+=A*L*mat.rho;});
+
+  if(!res.ok){
+    $('verdict').innerHTML=chip('bad','Structure','Collapses','Mechanism','Not braced enough to stand up.');
+    $('stats').innerHTML=rowsHTML([['Sticks',md.members.length],['Joints',md.nodes.length],
+      ['Material',(tLen/1000).toFixed(2)+' m'],['Mass',(tMass*1000).toFixed(0)+' g']]);
+    state.res=res;
+    const nd=res.reason==='mechanism'?md.nodes[res.node]:null;
+    $('msgs').innerHTML=nd?`<div class="msg m-bad"><b>This frame would collapse.</b> The joint at
+      (${Math.round(nd.x)}, ${Math.round(nd.y)}, ${Math.round(nd.z)}) mm can swing freely along ${res.axis}.
+      Add a diagonal to triangulate that square — or press <b>Test to failure</b> and watch it fold.</div>`
+      :`<div class="msg m-bad">Could not solve (${res.reason}).</div>`;
+    $('botStats').innerHTML='';$('botMsgs').innerHTML='';
+    sim.order=planBuild(md);$('step').max=Math.max(0,sim.order.length-1);
+    updateValidation();buildScene();
+    if(autoFall!==false)startCollapse(false);
+    return;}
+
+  const checks=checkMembers(md,res);state.res=res;state.checks=checks;
+  const worst=checks.reduce((a,c)=>c.worst>a.worst?c:a,checks[0]);
+  const maxT=checks.reduce((a,c)=>Math.max(a,c.F),0);
+  const maxC=checks.reduce((a,c)=>Math.min(a,c.F),0);
+  const jw=checks.reduce((a,c)=>Math.max(a,c.uJoint),0);
+  const SF=worst.worst>0?1/worst.worst:Infinity;
+  const sev=worst.worst>1?'bad':worst.worst>0.7?'warn':'ok';
+  const cls=v=>v>1?'bad':v>0.7?'warn':'ok';
+
+  const order=planBuild(md),steps=analyseBuild(md,order);
+  sim.order=order;state.steps=steps;
+  $('step').max=Math.max(0,order.length-1);
+  const bad=steps.filter(s=>s.worst==='bad').length;
+  const braced=steps.filter(s=>s.selfStable).length;
+  const maxPart=Math.max(...steps.map(s=>s.partU));
+
+  $('verdict').innerHTML=
+    chip(sev,'Structure',sev==='ok'?'Stands':sev==='warn'?'Tight':'Fails',
+      SF===Infinity?'—':SF.toFixed(2)+'×',`safety factor · governed by ${worst.govMode}`)+
+    chip(bad?'bad':'ok','Robot',bad?'Blocked':'Can build',`${steps.length-bad} / ${steps.length}`,
+      bad?'steps it can do — the rest exceed its limits':'steps within reach, clamp and stability limits');
+  $('stats').innerHTML=rowsHTML([
+    ['Sticks',md.members.length],['Material',(tLen/1000).toFixed(2)+' m'],
+    ['Structure mass',(tMass*1000).toFixed(0)+' g'],['Max tension',maxT.toFixed(0)+' N'],
+    ['Max compression',Math.abs(maxC).toFixed(0)+' N'],['Max deflection',res.maxDisp.toFixed(2)+' mm'],
+    ['Joint utilisation',`<span class="${cls(jw)}">${(jw*100).toFixed(0)}%</span>`]]);
+  const msgs=[];
+  if(worst.worst>1)msgs.push(`<div class="msg m-bad"><b>Fails.</b> Worst stick at ${(worst.worst*100).toFixed(0)}%
+    of capacity (${worst.govMode}). Press <b>Test to failure</b> to watch it go.</div>`);
+  else if(worst.worst>0.7)msgs.push(`<div class="msg m-warn"><b>Tight.</b> Worst stick at
+    ${(worst.worst*100).toFixed(0)}% of capacity (${worst.govMode}).</div>`);
+  if(jw>1)msgs.push(`<div class="msg m-bad">The ${mat.jointName} is the failure point —
+    ${(jw*100).toFixed(0)}% of its ${mat.joint} N capacity.</div>`);
+  if(res.planar)msgs.push(`<div class="msg m-warn">Single frame: solved as a planar truss, assumed braced
+    sideways. Raise <b>Depth</b> to 2+ for a full 3D solve.</div>`);
+  $('msgs').innerHTML=msgs.join('');
+  state.predFail=loadN>0?loadN/worst.worst:null;
+
+  $('botStats').innerHTML=rowsHTML([
+    ['Build steps',steps.length],['Self-supporting stages',`${braced} / ${steps.length}`],
+    ['Peak load mid-build',(maxPart*100).toFixed(0)+'%'],
+    ['Longest stick',Math.round(Math.max(...steps.map(s=>s.L)))+' mm'],
+    ['Heaviest stick',(Math.max(...steps.map(s=>s.mass))*1000).toFixed(0)+' g']]);
+  const bm=[];
+  if(!bad)bm.push(`<div class="msg m-ok">One robot can build this unaided — every stick is within reach
+    and clamp capacity, and the part-built frame carries the robot at every stage.</div>`);
+  else{const first=steps.findIndex(s=>s.worst==='bad');
+    bm.push(`<div class="msg m-bad"><b>${bad} step${bad>1?'s':''} the robot cannot do.</b> First at step
+      ${first+1}: ${steps[first].issues.filter(i=>i.lvl==='bad').map(i=>i.t).join('; ')}.</div>`);}
+  if(braced<steps.length)bm.push(`<div class="msg m-warn">${steps.length-braced}
+    stage${steps.length-braced>1?'s are':' is'} not fully triangulated yet. A growing frame always has an open
+    edge — something must brace it until the triangle closes, and here that is the robot's own clamp.</div>`);
+  $('botMsgs').innerHTML=bm.join('');
+  updateValidation();buildScene();
+  // Anything that cannot hold itself up falls on its own. No button required.
+  if(autoFall!==false&&worst.worst>1)startCollapse(false);
+}
+function updateValidation(){
+  const el=$('valid'),m=parseFloat($('meas').value);
+  if(!state.predFail){el.textContent='Add a load above to get a predicted failure load, then enter your bench result.';return;}
+  if(isNaN(m)){el.innerHTML=`Predicted failure load: <b>${state.predFail.toFixed(0)} N</b> per top joint.`;return;}
+  const err=(m-state.predFail)/state.predFail*100,a=Math.abs(err);
+  el.innerHTML=`Predicted <b>${state.predFail.toFixed(0)} N</b> · measured <b>${m.toFixed(0)} N</b> ·
+    error <b class="${a<20?'ok':a<40?'warn':'bad'}">${err>0?'+':''}${err.toFixed(0)}%</b>`;
+}
+
+/* ================= wiring ================= */
+function setMat(w){mat=MATS[w];
+  $('mPine').setAttribute('aria-pressed',String(w==='pine'));
+  $('mBamboo').setAttribute('aria-pressed',String(w==='bamboo'));
+  $('matNote').textContent=mat.note;
+  $('lgMat').style.background=`rgb(${mat.rgb.join(',')})`;
+  rebuild();}
+$('mPine').onclick=()=>setMat('pine');
+$('mBamboo').onclick=()=>setMat('bamboo');
+function setTool(t){tool=t;
+  $('tDraw').setAttribute('aria-pressed',String(t==='draw'));
+  $('tErase').setAttribute('aria-pressed',String(t==='erase'));}
+$('tDraw').onclick=()=>setTool('draw');
+$('tErase').onclick=()=>setTool('erase');
+$('clear').onclick=()=>{edges=[];rebuild();};
+document.querySelectorAll('[data-preset]').forEach(b=>{
+  b.onclick=()=>{edges=PRESETS[b.dataset.preset]();rebuild();};});
+[['bay','bayV',v=>v],['depth','depthV',v=>v],['scale','scaleV',v=>(+v).toFixed(1)],['load','loadV',v=>v]]
+  .forEach(([id,lbl,fmt])=>{$(id).addEventListener('input',()=>{$(lbl).textContent=fmt($(id).value);rebuild();});});
+$('meas').addEventListener('input',updateValidation);
+$('speed').addEventListener('change',()=>sim.speed=+$('speed').value);
+$('step').addEventListener('input',()=>{
+  if(sim.mode==='collapsing')return;
+  sim.mode='idle';$('play').textContent='▶ Build it';
+  const k=+$('step').value;
+  sim.visible=new Set(sim.order.slice(0,k+1));
+  sim.showBot=true;bot.held=null;
+  const st=state.steps[k];
+  if(st)setStatus(st.worst,`step ${k+1} of ${sim.order.length}`+(st.issues.length?' — '+st.issues[0].t:''));
+  buildScene();});
+$('play').onclick=()=>{
+  if(sim.mode==='collapsing')resetSim();
+  if(sim.mode==='building'){stopBuild(false);setStatus('ok','paused');}
+  else startBuild();};
+$('breakBtn').onclick=()=>{
+  if(sim.mode==='collapsing')resetSim();
+  else{sim.mode='idle';
+       if(!startCollapse(true))setStatus('ok','survived the load ramp without failing');}};
+
+/* ================= main loop ================= */
+const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)');
+let last=performance.now();
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt=Math.min((now-last)/1000,0.05);last=now;
+  if(cam.auto&&!reduceMotion.matches&&sim.mode==='idle')cam.yaw+=dt*0.075;
+  if(sim.mode==='building'){tickBuild(dt);buildScene();}
+  else if(sim.mode==='collapsing'){tickCollapse(dt);buildScene();}
+  else if(cam.auto&&!reduceMotion.matches)buildScene();
+  $('phase').textContent=sim.mode==='building'?phaseAt(sim.t).name
+    :sim.mode==='collapsing'?'collapsing':'idle';
+  render();
+}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{drawGrid();buildScene();});
+$('matNote').textContent=mat.note;
+$('lgMat').style.background=`rgb(${mat.rgb.join(',')})`;
+sizeView();
+edges=PRESETS.tower();
+bot.mount=V(0,0,0);
+rebuild();
+requestAnimationFrame(loop);
+setTimeout(sizeView,60);
+</script>
+</body>
+</html>
