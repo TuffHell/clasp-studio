@@ -702,34 +702,61 @@ function ik2(reach,rise,L1,L2){
   return{shoulder:a+b, elbow:Math.PI-c, reachable};
 }
 const bot={
-  mount:V(0,0,0), yaw:0, shoulder:0.6, elbow:1.2, claw:1,   // claw 0 shut .. 1 open
-  clampA:0, clampB:0, held:null, target:null
+  mount:V(0,0,0), yaw:0, armYaw:0, shoulder:0.6, elbow:1.2, claw:1,
+  clampA:0, clampB:0, held:null, atNode:undefined
 };
 function botFK(b){
-  const out={x:Math.cos(b.yaw),y:0,z:Math.sin(b.yaw)};
+  const face={x:Math.cos(b.yaw),y:0,z:Math.sin(b.yaw)};        // carriage hangs this way
+  const out ={x:Math.cos(b.armYaw),y:0,z:Math.sin(b.armYaw)};  // arm slews on its own
   const base=V(b.mount.x,b.mount.y,b.mount.z);
-  // the shoulder sits on the carriage, which hangs off the side of the stick
   const off=ROBOT.side||0;
-  const sh=V(base.x+out.x*off, base.y+ROBOT.bodyH, base.z+out.z*off);
+  const sh=V(base.x+face.x*off, base.y+ROBOT.bodyH, base.z+face.z*off);
   const d1={x:out.x*Math.cos(b.shoulder),y:Math.sin(b.shoulder),z:out.z*Math.cos(b.shoulder)};
   const el=vadd(sh,vmul(d1,ROBOT.L1));
   const a2=b.shoulder-b.elbow;
   const d2={x:out.x*Math.cos(a2),y:Math.sin(a2),z:out.z*Math.cos(a2)};
   const wr=vadd(el,vmul(d2,ROBOT.L2));
-  return{base,sh,el,wr,out,d1,d2};
+  return{base,sh,el,wr,out,face,d1,d2};
 }
 function aimAt(b,target){
-  const dx=target.x-b.mount.x, dz=target.z-b.mount.z;
-  const yaw=(Math.abs(dx)<1e-6&&Math.abs(dz)<1e-6)?b.yaw:Math.atan2(dz,dx);
-  const reach=Math.max(1,Math.hypot(dx,dz)-(ROBOT.side||0));
-  const rise=target.y-(b.mount.y+ROBOT.bodyH);
-  const s=ik2(reach,rise,ROBOT.L1,ROBOT.L2);
-  return{yaw,shoulder:s.shoulder,elbow:s.elbow,reachable:s.reachable};
+  const k=botFK(b);
+  const dx=target.x-k.sh.x, dz=target.z-k.sh.z;
+  const armYaw=(Math.abs(dx)<1e-6&&Math.abs(dz)<1e-6)?b.armYaw:Math.atan2(dz,dx);
+  const s=ik2(Math.hypot(dx,dz), target.y-k.sh.y, ROBOT.L1, ROBOT.L2);
+  return{armYaw,shoulder:s.shoulder,elbow:s.elbow,reachable:s.reachable};
 }
 function applyPose(b,pose,t){
-  let dy=pose.yaw-b.yaw;
+  let dy=pose.armYaw-b.armYaw;
   while(dy>Math.PI)dy-=2*Math.PI; while(dy<-Math.PI)dy+=2*Math.PI;
-  b.yaw+=dy*t; b.shoulder=lerp(b.shoulder,pose.shoulder,t); b.elbow=lerp(b.elbow,pose.elbow,t);
+  b.armYaw+=dy*t; b.shoulder=lerp(b.shoulder,pose.shoulder,t); b.elbow=lerp(b.elbow,pose.elbow,t);
+}
+/* ---- the robot may only travel along sticks it has already built ---- */
+const nodePos=i=>{const n=model.nodes[i];return V(n.x,n.y,n.z);};
+function findPath(from,to){
+  if(from===to)return[from];
+  const adj=new Map();
+  for(const mi of sim.visible){const m=model.members[mi];
+    if(!adj.has(m.a))adj.set(m.a,[]); if(!adj.has(m.b))adj.set(m.b,[]);
+    adj.get(m.a).push(m.b); adj.get(m.b).push(m.a);}
+  if(!adj.has(from)||!adj.has(to))return null;
+  const prev=new Map([[from,null]]),q=[from];
+  while(q.length){
+    const n=q.shift();
+    if(n===to){const p=[];let c=to;while(c!==null){p.unshift(c);c=prev.get(c);}return p;}
+    for(const t of adj.get(n)||[])if(!prev.has(t)){prev.set(t,n);q.push(t);}}
+  return null;
+}
+function alongPath(pts,f){
+  const seg=[];let L=0;
+  for(let i=1;i<pts.length;i++){const d=vlen(vsub(pts[i],pts[i-1]));seg.push(d);L+=d;}
+  if(L<1e-6)return{pos:pts[0],dir:V(1,0,0)};
+  let t=clamp(f,0,1)*L;
+  for(let i=0;i<seg.length;i++){
+    if(t<=seg[i]||i===seg.length-1){
+      const u=seg[i]>1e-6?clamp(t/seg[i],0,1):0;
+      return{pos:vlerp(pts[i],pts[i+1],u),dir:vnorm(vsub(pts[i+1],pts[i]))};}
+    t-=seg[i];}
+  return{pos:pts[pts.length-1],dir:V(1,0,0)};
 }
 
 /* ================= renderer ================= */
@@ -853,7 +880,7 @@ function drawRobot(out,rad){
   // The carriage hangs off the side of the stick it is gripping rather than sitting
   // on the centreline, so it reads as clamped to the frame instead of floating.
   const off=rad+26;
-  const body=V(k.base.x+k.out.x*off, k.base.y+ROBOT.bodyH*0.5, k.base.z+k.out.z*off);
+  const body=V(k.base.x+k.face.x*off, k.base.y+ROBOT.bodyH*0.5, k.base.z+k.face.z*off);
   boxAt(body,58,ROBOT.bodyH,40,GREY,out,bot.yaw);
   // two self-locking clamps, each wrapping the stick from the carriage side
   for(const[h,amt]of[[14,bot.clampA],[ROBOT.bodyH-14,bot.clampB]]){
@@ -985,7 +1012,7 @@ function stockPile(md){
   const out=[],s=md.scale,L=Math.min(md.step*1.4,420);
   let minx=1e9,minz=1e9,maxz=-1e9;
   md.nodes.forEach(n=>{minx=Math.min(minx,n.x);minz=Math.min(minz,n.z);maxz=Math.max(maxz,n.z);});
-  const bx=minx-md.step*1.5, bz=(minz+maxz)/2;
+  const bx=minx-md.step*0.95, bz=(minz+maxz)/2;
   const r=mat.D*s*0.5;
   for(let i=0;i<7;i++){
     const row=i%3, tier=Math.floor(i/3);
@@ -1014,7 +1041,8 @@ function startBuild(){
   if(!sim.order.length)return;
   sim.mode='building';sim.k=0;sim.assigned=0;sim.visible=new Set();sim.phys=null;
   sim.stock=stockPile(model);sim.showBot=true;bot.held=null;
-  sim.mag=[];sim.queue=[];sim.task=null;sim.tt=0;sim.drops=[];sim.blocked=0;sim.droppedIds=new Set();
+  sim.mag=[];sim.queue=[];sim.task=null;sim.tt=0;sim.drops=[];sim.blocked=0;
+  bot.atNode=undefined;bot.mount=V(0,0,0);sim.droppedIds=new Set();
   sim.stepOf=new Map();(state.steps||[]).forEach(st=>sim.stepOf.set(st.mi,st));
   state.checks=null;
   $('play').textContent='❚❚ Pause';
@@ -1030,21 +1058,23 @@ function stopBuild(finish){
   $('play').textContent='▶ Build it';
 }
 // where the carriage parks to reach the pile, and to work on a given stick
-function pileStance(){
+function pileNode(){
   const s=sim.stock[sim.stock.length-1];
-  if(!s)return V(0,0,0);
-  const m=midOf(s);
-  return V(m.x+ROBOT.reach*0.62,0,m.z);
+  const p=s?midOf(s):V(0,0,0);
+  let best=-1,bd=Infinity;
+  model.nodes.forEach((n,i)=>{if(!n.support)return;
+    const d=Math.hypot(n.x-p.x,n.z-p.z);if(d<bd){bd=d;best=i;}});
+  return best>=0?best:0;
 }
-function workStance(mi){
-  const m=model.members[mi],a=model.nodes[m.a],b=model.nodes[m.b];
-  const low=a.y<=b.y?a:b;return V(low.x,low.y,low.z);
+function workNode(mi){
+  const m=model.members[mi];
+  return model.nodes[m.a].y<=model.nodes[m.b].y?m.a:m.b;
 }
 // magazine slots, in world space, riding on the carriage
 function rackSlot(i,len){
   const k=botFK(bot);
-  const side=vnorm(vcross(k.out,V(0,1,0)));
-  const c=V(k.base.x+k.out.x*(ROBOT.side+16), k.base.y+ROBOT.bodyH*0.72+i*24, k.base.z+k.out.z*(ROBOT.side+16));
+  const side=vnorm(vcross(k.face,V(0,1,0)));
+  const c=V(k.base.x+k.face.x*(ROBOT.side+16), k.base.y+ROBOT.bodyH*0.72+i*24, k.base.z+k.face.z*(ROBOT.side+16));
   const h=len/2;
   return{a:vsub(c,vmul(side,h)),b:vadd(c,vmul(side,h))};
 }
@@ -1058,15 +1088,28 @@ function nextTask(){
   // out of sticks on board? go and fetch an armful
   if(!sim.mag.length){
     const n=Math.min(MAG_CAP,sim.order.length-sim.assigned);
-    sim.queue.push({type:'travel',to:'pile'});
+    sim.queue.push({type:'travel',to:'pile',node:pileNode()});
     for(let i=0;i<n;i++)sim.queue.push({type:'load',mi:sim.order[sim.assigned+i]});
     sim.assigned+=n;
   }
   // Walk to the joint BEFORE placing. Without this the arm starts a placement it
   // cannot physically reach, and the stick appears to stretch to its destination.
-  sim.queue.push({type:'travel',to:'work'});
+  sim.queue.push({type:'travel',to:'work',node:workNode(sim.mag[0]!==undefined?sim.mag[0]:sim.order[sim.k])});
   sim.queue.push({type:'place'});
   sim.task=sim.queue.shift();sim.tt=0;
+}
+function planRoute(T){
+  const path=(bot.atNode!==undefined)?findPath(bot.atNode,T.node):null;
+  if(path&&path.length>1){T.pts=path.map(nodePos);T.onStructure=true;}
+  else{
+    // nothing built to walk along yet, so it drives across the ground
+    const from=V(bot.mount.x,0,bot.mount.z), to=nodePos(T.node);
+    T.pts=[from,V(to.x,0,to.z)]; if(to.y>1)T.pts.push(to);
+    T.onStructure=false;
+  }
+  let L=0;for(let i=1;i<T.pts.length;i++)L+=vlen(vsub(T.pts[i],T.pts[i-1]));
+  T.len=L;
+  T.dur=Math.max(0.5,L/(model.step*2.8));
 }
 function finishMsg(){
   if(sim.blocked)setStatus('bad',`stopped — ${sim.blocked} stick${sim.blocked>1?'s':''} dropped, out of the robot's reach or clamp capacity`);
@@ -1077,9 +1120,11 @@ function tickBuild(dt){
   if(!sim.task)nextTask();
   if(!sim.task){stopBuild(true);finishMsg();return;}
   const sm=k=>1-Math.exp(-k*dt);
-  const T=sim.task;
-  sim.tt+=dt*sim.speed/TASK_DUR[T.type];
+  let T=sim.task;
+  if(T.type==='travel'&&!T.pts)planRoute(T);
+  sim.tt+=dt*sim.speed/(T.dur||TASK_DUR[T.type]);
   if(sim.tt>=1){
+    if(T.type==='travel'&&T.node!==undefined)bot.atNode=T.node;
     if(T.type==='load'){sim.mag.push(T.mi);if(sim.stock.length>1)sim.stock.pop();}
     if(T.type==='place'){
       const mi=sim.mag.shift();
@@ -1103,6 +1148,8 @@ function tickBuild(dt){
     }
     bot.held=null;sim.task=null;nextTask();
     if(!sim.task){stopBuild(true);finishMsg();return;}
+    T=sim.task;                                        // the task just changed
+    if(T.type==='travel'&&!T.pts)planRoute(T);         // plan the NEW route, not the old one
   }
   const{name,u}=phaseAt();
   const e=ease(clamp(u,0,1));
@@ -1111,14 +1158,25 @@ function tickBuild(dt){
 
   /* ---- travel: drive the carriage, arm folded, nothing in the claw ---- */
   if(sim.task.type==='travel'){
-    const dest=sim.task.to==='pile'?pileStance()
-      :workStance(sim.mag[0]!==undefined?sim.mag[0]:sim.order[Math.min(sim.k,sim.order.length-1)]);
-    bot.mount=vlerp(bot.mount,dest,sm(4.2));
-    bot.clampA=0.6*Math.abs(Math.sin(sim.tt*Math.PI*3));   // clamps shuffling along
-    bot.clampB=0.6*Math.abs(Math.cos(sim.tt*Math.PI*3));
-    bot.claw=0.35;
-    applyPose(bot,aimAt(bot,rest),sm(7));
-    if(sim.tt<0.5)setStatus('ok',sim.task.to==='pile'?'travelling to the stock pile':'carrying '+sim.mag.length+' sticks back to the frame');
+    const a=alongPath(T.pts,ease(clamp(sim.tt,0,1)));
+    bot.mount=a.pos;
+    // the carriage sits square to whichever stick it is riding
+    const h=Math.hypot(a.dir.x,a.dir.z);
+    if(h>0.08){
+      const want=Math.atan2(a.dir.z,a.dir.x)+Math.PI/2;
+      let d=want-bot.yaw; while(d>Math.PI)d-=2*Math.PI; while(d<-Math.PI)d+=2*Math.PI;
+      bot.yaw+=d*sm(6);
+    }
+    // inchworm: one clamp always holds while the other releases and shuffles ahead
+    const strides=Math.max(1,T.len/(model.step*0.55));
+    const g=sim.tt*strides*Math.PI*2;
+    bot.clampA=0.5+0.5*Math.sin(g);
+    bot.clampB=0.5+0.5*Math.sin(g+Math.PI);
+    bot.claw=0.3;
+    applyPose(bot,aimAt(bot,rest),sm(6));
+    if(sim.tt<0.4)setStatus('ok',T.to==='pile'
+      ?(T.onStructure?'climbing down to the stock pile':'driving to the stock pile')
+      :`carrying ${sim.mag.length} stick${sim.mag.length===1?'':'s'} up to the frame`);
     bot.held=null;return;
   }
 
@@ -1159,7 +1217,6 @@ function tickBuild(dt){
   const dirSlot=vnorm(vsub(slot.b,slot.a)),dirTgt=vnorm(vsub(tgtB,tgtA));
   const half=memberLen(mi)/2;
   // ride to the joint being worked on while the stick is already in hand
-  bot.mount=vlerp(bot.mount,workStance(mi),sm(9));
   let claw,held=null,weld=null;
   if(name==='lift'){claw=slotMid;bot.claw=0;
     held=blendStick(slot,weldToClaw(dirSlot,half),ease(e));}
