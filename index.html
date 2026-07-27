@@ -298,8 +298,8 @@ footer{border-top:1px solid var(--line);padding:20px 22px;text-align:center;font
 
     <div class="sect">
       <h2 class="hd"><span class="n">03</span> Dimensions</h2>
-      <div class="ctl"><label>Bay size <b><span id="bayV">700</span> mm</b></label>
-        <input type="range" id="bay" min="300" max="1600" step="50" value="700"></div>
+      <div class="ctl"><label>Bay size <b><span id="bayV">450</span> mm</b></label>
+        <input type="range" id="bay" min="250" max="1200" step="25" value="450"></div>
       <div class="ctl"><label>Depth <b><span id="depthV">1</span> frame</b></label>
         <input type="range" id="depth" min="1" max="3" step="1" value="1"></div>
       <div class="ctl"><label>Scale factor <b><span id="scaleV">1.0</span>×</b></label>
@@ -308,12 +308,22 @@ footer{border-top:1px solid var(--line);padding:20px 22px;text-align:center;font
         <input type="range" id="load" min="0" max="200" step="5" value="0"></div>
       <p class="hint">Scale grows the structure but not the robot. That is where things start to break.</p>
     </div>
+
+    <div class="sect">
+      <h2 class="hd"><span class="n">04</span> Manipulator</h2>
+      <div class="ctl"><label>Arm reach <b><span id="reachV">400</span> mm</b></label>
+        <input type="range" id="reach" min="150" max="900" step="25" value="400"></div>
+      <div class="ctl"><label>Clamp capacity <b><span id="clampV">6.0</span> N·m</b></label>
+        <input type="range" id="clampCap" min="1" max="20" step="0.5" value="6"></div>
+      <p class="hint">The arm is not in your CAD yet, so these are the specification it would
+        need. Push them until the build passes, then design to that.</p>
+    </div>
     </details>
 
     <details class="grp" open>
       <summary><span class="gn">Results</span><span class="gh">will it stand, can it be built</span></summary>
     <div class="sect">
-      <h2 class="hd"><span class="n">04</span> Structure</h2>
+      <h2 class="hd"><span class="n">05</span> Structure</h2>
       <div class="verdict" id="verdict"></div>
       <div class="rows" id="stats"></div>
       <div id="msgs"></div>
@@ -326,7 +336,7 @@ footer{border-top:1px solid var(--line);padding:20px 22px;text-align:center;font
     </div>
 
     <div class="sect">
-      <h2 class="hd"><span class="n">05</span> Robot build check</h2>
+      <h2 class="hd"><span class="n">06</span> Robot build check</h2>
       <div class="rows" id="botStats"></div>
       <div id="botMsgs"></div>
     </div>
@@ -336,7 +346,7 @@ footer{border-top:1px solid var(--line);padding:20px 22px;text-align:center;font
     <details class="grp">
       <summary><span class="gn">Workshop</span><span class="gh">CAD, cut list, bench results</span></summary>
     <div class="sect">
-      <h2 class="hd"><span class="n">06</span> Your CAD</h2>
+      <h2 class="hd"><span class="n">07</span> Your CAD</h2>
       <div class="rows" id="cadStats"></div>
       <div class="tools" style="margin-top:8px">
         <button id="cadToggle" aria-pressed="true">Show CAD</button>
@@ -350,7 +360,7 @@ footer{border-top:1px solid var(--line);padding:20px 22px;text-align:center;font
     </div>
 
     <div class="sect">
-      <h2 class="hd"><span class="n">07</span> Predicted vs measured</h2>
+      <h2 class="hd"><span class="n">08</span> Predicted vs measured</h2>
       <div class="meas">
         <span style="font-size:12.5px;color:var(--muted)">Measured failure load</span>
         <input type="number" id="meas" placeholder="N" step="1" aria-label="Measured failure load, newtons">
@@ -359,7 +369,7 @@ footer{border-top:1px solid var(--line);padding:20px 22px;text-align:center;font
     </div>
 
     <div class="sect">
-      <h2 class="hd"><span class="n">08</span> Cut list</h2>
+      <h2 class="hd"><span class="n">09</span> Cut list</h2>
       <div class="rows" id="cutSummary"></div>
       <div class="tools" style="margin-top:10px">
         <button id="cutCsv">Download CSV</button>
@@ -379,10 +389,11 @@ footer{border-top:1px solid var(--line);padding:20px 22px;text-align:center;font
   <div id="stage">
     <div id="wrap">
       <canvas id="view"></canvas>
-      <div id="hud">drag to orbit · scroll to zoom · grid = 1 m</div>
+      <div id="hud">drag to orbit · shift-drag or right-drag to move · scroll to zoom · grid = 1 m</div>
       <div id="views">
         <button data-view="iso">Iso</button><button data-view="front">Front</button>
         <button data-view="side">Side</button><button data-view="top">Top</button>
+        <button id="fitBtn" title="Reset zoom and position">Fit</button>
       </div>
       <div id="coach"><b>Press “Build it”</b> to watch the robot assemble this frame, or
         <b>“Test to failure”</b> to load it until something breaks.
@@ -514,7 +525,7 @@ const MATS={
     note:'Bamboo Ø 60 mm, 8 mm wall, wire twist-tie lashings. Stiffer than pine, but the tie is the weak link (≈600 N).'}
 };
 const STOCK_LEN=1000;   // a stick you can actually buy and carry
-const ROBOT={mass:0.9,cg:80,reach:250,clampM:2.4,L1:135,L2:115,bodyH:96};
+const ROBOT={mass:1.6,cg:100,reach:400,clampM:6.0,L1:135,L2:115,bodyH:96};
 let mat=MATS.pine;
 
 const isDark=()=>matchMedia('(prefers-color-scheme: dark)').matches;
@@ -1009,21 +1020,24 @@ async function loadCADFromRepo(){
 
 /* ================= renderer ================= */
 const vc=$('view'),vx=vc.getContext('2d');
-let cam={yaw:0.72,pitch:0.26,zoom:1,auto:true,tYaw:null,tPitch:null,tZoom:null};
+let cam={yaw:0.72,pitch:0.26,zoom:1,zoomT:1,pan:{x:0,y:0},auto:true,tYaw:null,tPitch:null,tZoom:null};
 const VIEWS={iso:[0.72,0.26,1],front:[Math.PI/2,0.10,1],side:[0,0.10,1],top:[Math.PI/2,1.15,0.95]};
 function goView(k){
   const v=VIEWS[k]; if(!v)return;
-  cam.auto=false; cam.tYaw=v[0]; cam.tPitch=v[1]; cam.tZoom=v[2];
+  cam.auto=false; cam.tYaw=v[0]; cam.tPitch=v[1]; cam.tZoom=v[2]; cam.pan.x=0; cam.pan.y=0;
   document.querySelectorAll('#views button').forEach(b=>
     b.setAttribute('aria-pressed',String(b.dataset.view===k)));
 }
 function camEase(dt){
+  cam.zoom+=(cam.zoomT-cam.zoom)*(1-Math.exp(-12*dt));   // wheel glides instead of jumping
   if(cam.tYaw===null)return;
   const t=1-Math.exp(-7*dt);
   let d=cam.tYaw-cam.yaw; while(d>Math.PI)d-=2*Math.PI; while(d<-Math.PI)d+=2*Math.PI;
-  cam.yaw+=d*t; cam.pitch+=(cam.tPitch-cam.pitch)*t; cam.zoom+=(cam.tZoom-cam.zoom)*t;
+  cam.yaw+=d*t; cam.pitch+=(cam.tPitch-cam.pitch)*t;
+  cam.zoomT+=(cam.tZoom-cam.zoomT)*t;
   if(Math.abs(d)<0.002&&Math.abs(cam.tPitch-cam.pitch)<0.002)cam.tYaw=null;
 }
+function fitView(){cam.pan.x=0;cam.pan.y=0;cam.zoomT=1;cam.tYaw=null;}
 const DPR=()=>Math.min(devicePixelRatio||1,2);
 function sizeView(){const r=vc.getBoundingClientRect(),d=DPR();
   vc.width=Math.max(320,r.width*d);vc.height=Math.max(240,r.height*d);
@@ -1217,7 +1231,7 @@ function render(){
       const x1=x*cy+z*sy,z1=-x*sy+z*cy;
       const y2=y*cp-z1*sp,z2=y*sp+z1*cp;
       const sc=f/(dist+z2);
-      pts.push([W/2+x1*sc,H*0.58-y2*sc]);zs+=z2;}
+      pts.push([W/2+x1*sc+cam.pan.x,H*0.58-y2*sc+cam.pan.y]);zs+=z2;}
     const ax=pts[1][0]-pts[0][0],ay=pts[1][1]-pts[0][1];
     const bx=pts[2][0]-pts[0][0],by=pts[2][1]-pts[0][1];
     const area=ax*by-ay*bx;
@@ -1238,15 +1252,46 @@ function render(){
     if(o.alpha!==undefined&&o.alpha<1){vx.globalAlpha=o.alpha;vx.fill();vx.globalAlpha=1;}
     else vx.fill();}
 }
-let vdrag=false,lx=0,ly=0;
-vc.addEventListener('pointerdown',e=>{vdrag=true;cam.auto=false;cam.tYaw=null;lx=e.clientX;ly=e.clientY;
-  vc.setPointerCapture(e.pointerId);});
-vc.addEventListener('pointermove',e=>{if(!vdrag)return;
-  cam.yaw+=(e.clientX-lx)*0.008;cam.pitch=clamp(cam.pitch+(e.clientY-ly)*0.006,-0.15,1.2);
-  lx=e.clientX;ly=e.clientY;});
-vc.addEventListener('pointerup',()=>vdrag=false);
-vc.addEventListener('wheel',e=>{e.preventDefault();
-  cam.zoom=clamp(cam.zoom*(e.deltaY>0?0.92:1.08),0.35,3.2);},{passive:false});
+const ptrs=new Map();
+let mode=null,lx=0,ly=0,pinch0=0,zoom0=1;
+const isPan=e=>e.button===1||e.button===2||e.shiftKey||e.metaKey;
+vc.addEventListener('contextmenu',e=>e.preventDefault());
+vc.addEventListener('pointerdown',e=>{
+  vc.setPointerCapture(e.pointerId);
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  cam.auto=false;cam.tYaw=null;
+  if(ptrs.size===2){
+    const [a,b]=[...ptrs.values()];
+    pinch0=Math.hypot(a.x-b.x,a.y-b.y);zoom0=cam.zoomT;mode='pinch';
+  }else{mode=isPan(e)?'pan':'orbit';lx=e.clientX;ly=e.clientY;}
+});
+vc.addEventListener('pointermove',e=>{
+  if(!ptrs.has(e.pointerId))return;
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(mode==='pinch'&&ptrs.size===2){
+    const [a,b]=[...ptrs.values()];
+    const d=Math.hypot(a.x-b.x,a.y-b.y);
+    if(pinch0>4)cam.zoomT=clamp(zoom0*(d/pinch0),0.25,6);
+    return;
+  }
+  const dx=e.clientX-lx, dy=e.clientY-ly;
+  if(mode==='pan'){cam.pan.x+=dx;cam.pan.y+=dy;}
+  else{cam.yaw+=dx*0.006;cam.pitch=clamp(cam.pitch+dy*0.005,-0.25,1.35);}
+  lx=e.clientX;ly=e.clientY;
+});
+function endPtr(e){ptrs.delete(e.pointerId);if(ptrs.size===0)mode=null;
+  else if(ptrs.size===1){const p=[...ptrs.values()][0];lx=p.x;ly=p.y;mode='orbit';}}
+vc.addEventListener('pointerup',endPtr);
+vc.addEventListener('pointercancel',endPtr);
+vc.addEventListener('wheel',e=>{
+  e.preventDefault();
+  // normalise: a trackpad fires many small deltas, a mouse wheel a few large ones
+  let d=e.deltaY;
+  if(e.deltaMode===1)d*=16; else if(e.deltaMode===2)d*=window.innerHeight;
+  d=clamp(d,-120,120);
+  if(e.shiftKey){cam.pan.y-=d*0.6;return;}
+  cam.zoomT=clamp(cam.zoomT*Math.exp(-d*0.0016),0.25,6);
+},{passive:false});
 
 /* ================= build plan + robot feasibility ================= */
 function planBuild(md){
@@ -1272,6 +1317,7 @@ function subModel(md,idxs){
   return{nodes,members,scale:md.scale,step:md.step,remap};
 }
 function analyseBuild(md,order){
+  ROBOT.reach=+$('reach').value; ROBOT.clampM=+$('clampCap').value;
   const A=sectionA(mat,md.scale),steps=[],wR=ROBOT.mass*G;
   for(let k=0;k<order.length;k++){
     const mi=order[k],m=md.members[mi],a=md.nodes[m.a],b=md.nodes[m.b];
@@ -1702,10 +1748,13 @@ function runAnalysis(autoFall){
   if(!bad)bm.push(`<div class="msg m-ok">One robot can build this unaided — every stick is within reach
     and clamp capacity, and the part-built frame carries the robot at every stage.</div>`);
   else{const first=steps.findIndex(s=>s.worst==='bad');
-    bm.push(`<div class="msg m-warn"><b>The placeholder arm cannot place ${bad} of these.</b> First at
-      step ${first+1}: ${steps[first].issues.filter(i=>i.lvl==='bad').map(i=>i.t).join('; ')}.
-      That is a limit of the manipulator in this simulation, not of your chassis — the CAD you supplied
-      is the locomotion unit, which only has to haul a stick along the beam.</div>`);}
+    const needReach=Math.ceil(Math.max(...steps.map(s=>s.L))/2/25)*25;
+    const needCap=Math.ceil(Math.max(...steps.map(s=>s.demand))*2)/2;
+    bm.push(`<div class="msg m-warn"><b>This arm cannot place ${bad} of these.</b> First at step
+      ${first+1}: ${steps[first].issues.filter(i=>i.lvl==='bad').map(i=>i.t).join('; ')}.<br>
+      To build this frame the manipulator needs <b>${needReach} mm reach</b> and
+      <b>${needCap.toFixed(1)} N·m</b> of clamp capacity. That is a specification for an arm you have
+      not designed yet, not a fault in your chassis.</div>`);}
   const over=steps.filter(s=>s.L>STOCK_LEN).length;
   if(over)bm.push(`<div class="msg m-warn">${over} member${over>1?'s are':' is'} longer than a
     ${STOCK_LEN} mm stick. Either splice them, add an intermediate joint, or shrink the bay size
@@ -1806,10 +1855,12 @@ $('tErase').onclick=()=>setTool('erase');
 $('clear').onclick=()=>{edges=[];rebuild();};
 document.querySelectorAll('[data-preset]').forEach(b=>{
   b.onclick=()=>{edges=PRESETS[b.dataset.preset]();rebuild();};});
-[['bay','bayV',v=>v],['depth','depthV',v=>v],['scale','scaleV',v=>(+v).toFixed(1)],['load','loadV',v=>v]]
+[['bay','bayV',v=>v],['depth','depthV',v=>v],['scale','scaleV',v=>(+v).toFixed(1)],['load','loadV',v=>v],
+ ['reach','reachV',v=>v],['clampCap','clampV',v=>(+v).toFixed(1)]]
   .forEach(([id,lbl,fmt])=>{$(id).addEventListener('input',()=>{$(lbl).textContent=fmt($(id).value);rebuild();});});
 $('meas').addEventListener('input',updateValidation);
-document.querySelectorAll('#views button').forEach(b=>b.onclick=()=>goView(b.dataset.view));
+document.querySelectorAll('#views button[data-view]').forEach(b=>b.onclick=()=>goView(b.dataset.view));
+$('fitBtn').onclick=()=>{fitView();goView('iso');};
 $('cutCsv').onclick=downloadCSV;
 $('shareBtn').onclick=async()=>{
   const url=location.origin+location.pathname+'#'+encodeState();
