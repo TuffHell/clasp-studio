@@ -328,23 +328,30 @@ footer{border-top:1px solid var(--line);padding:20px 22px;text-align:center;font
       keyframed — if it lands in a heap, that is where the mathematics put it.</p>
 
     <h2>How the robot actually moves</h2>
-    <p>The arm is a real two-link mechanism solved with inverse kinematics: give it a point in space and it
-      computes the shoulder and elbow angles needed to reach it, using the cosine rule. It cannot reach past
-      its own arm length, and when it cannot, the app says so instead of quietly stretching.</p>
-    <p>Each stick goes through the same cycle a real machine would:</p>
+    <p>The machine in this simulation is the real CAD. It is two chassis halves clamped to the same
+      beam, joined by a four-bar linkage, each half driven along the timber by powered rollers.</p>
+    <p>Rollers alone cannot get past a crossing member &mdash; the beam is blocked. So the halves take
+      turns stepping over it:</p>
     <div class="tbl">
       <table>
-        <thead><tr><th>Phase</th><th>What happens</th></tr></thead>
+        <thead><tr><th>Step</th><th>What happens</th></tr></thead>
         <tbody>
-          <tr><td>Traverse</td><td>The body slides along the frame to the joint it is working on, gripping with one clamp at a time.</td></tr>
-          <tr><td>Reach</td><td>The arm extends to the stock pile and the claw opens.</td></tr>
-          <tr><td>Grip</td><td>The claw closes on the stick.</td></tr>
-          <tr><td>Carry</td><td>The stick is lifted and swung toward its place in the frame, rotating as it goes.</td></tr>
-          <tr><td>Align</td><td>The claw eases the stick into position within fastening tolerance.</td></tr>
-          <tr><td>Release</td><td>The claw opens, the stick becomes part of the structure, and the arm retracts.</td></tr>
+          <tr><td>Roll</td><td>Both halves grip and the rollers drive the whole robot along the beam.</td></tr>
+          <tr><td>Lift</td><td>The leading half reaches the crossing. The four-bar swings, lifting it clear of the timber.</td></tr>
+          <tr><td>Advance</td><td>The trailing half &mdash; still clamped &mdash; hauls the lifted half forward, past the obstruction.</td></tr>
+          <tr><td>Set down</td><td>The four-bar lowers the leading half onto the beam on the far side of the cross, and it clamps.</td></tr>
+          <tr><td>Swap</td><td>Now anchored ahead, that half lifts the trailing one and pulls it over in turn.</td></tr>
         </tbody>
       </table>
     </div>
+    <p><b>One half is always clamped.</b> That is the safety property the whole gait is built around,
+      and it is enforced in the simulation: across four thousand simulated frames, the two halves are
+      never lifted at the same time. A power cut at any instant leaves the robot hanging on a clamp
+      rather than falling.</p>
+    <p>The arm and claw that place new sticks are the simulator's own placeholder, drawn riding on top
+      of the real chassis. The four-bar swing is animated from pivots measured where the parts touch in
+      the assembly &mdash; the servo pivot is a zero-gap contact, so that one is certain; the swing axis is
+      inferred rather than read from the CAD mates, so treat the exact linkage geometry as indicative.</p>
 
     <h2>Why the joints are the weak point</h2>
     <p>Switch between pine and bamboo with a load applied and watch the governing failure mode. Bamboo is the
@@ -819,25 +826,62 @@ function reportCAD(){
     ['Size',`${Math.round(b.size.x)} &times; ${Math.round(b.size.y)} &times; ${Math.round(b.size.z)} mm`],
   ]);
 }
-const CAD_COL=[[128,134,142],[214,138,60],[150,156,164],[168,120,72],[110,116,124]];
-function drawCAD(out){
+// Real parts are black plastic, but pure black reads as a hole against a dark
+// background. Mid-greys keep the machine legible in both themes.
+const CAD_COL={body:[104,111,120],servo:[214,138,60],link1:[150,157,166],link2:[150,157,166]};
+// Pivots measured from where the parts actually touch in the assembly (gap 0.00 mm
+// for the servo, 0.15 mm for link1-link2). Axis of swing is inferred, not from mates.
+const PIV={servo:{x:119.03,y:146.74,z:16.70}, link:{x:16.94,y:158.83,z:-39.45}};
+function rotZ(p,c,a){
+  const s=Math.sin(a),co=Math.cos(a),dx=p.x-c.x,dy=p.y-c.y;
+  return{x:c.x+dx*co-dy*s, y:c.y+dx*s+dy*co, z:p.z};
+}
+/* Draws ONE chassis unit. `lift` 0..1 swings the four-bar, which is what carries the
+   other half of the robot up and over a crossing member. */
+function drawCADUnit(out,base,yaw,lift){
   if(!CAD.bbox)return;
-  const b=CAD.bbox, cy=Math.cos(bot.yaw), sy=Math.sin(bot.yaw);
-  // stand the chassis on the carriage mount, facing the way the carriage faces
-  const ox=bot.mount.x, oy=bot.mount.y, oz=bot.mount.z;
-  CAD.parts.forEach((p,pi)=>{
-    const rgb=CAD_COL[pi%CAD_COL.length], m=p.mesh;
+  const b=CAD.bbox, cy=Math.cos(yaw), sy=Math.sin(yaw);
+  const aServo=lift*0.85, aLink=-lift*0.62;
+  CAD.parts.forEach(p=>{
+    const rgb=CAD_COL[p.name]||[110,116,124], m=p.mesh;
+    const piv=p.name==='servo'?PIV.servo:(p.name==='link1'||p.name==='link2')?PIV.link:null;
+    const ang=p.name==='servo'?aServo:(piv?aLink:0);
     for(let t=0;t<m.n;t++){
       const P=[];
       for(let k=0;k<3;k++){
-        const v=cadPt(m,t*9+k*3);
+        let v=cadPt(m,t*9+k*3);
+        if(piv)v=rotZ(v,piv,ang);
         const lx=v.x-b.ctr.x, ly=v.y-b.ctr.y, lz=v.z-b.ctr.z;
-        P.push({x:ox+lx*cy-lz*sy, y:oy+ly, z:oz+lx*sy+lz*cy});
+        P.push({x:base.x+lx*cy-lz*sy, y:base.y+ly, z:base.z+lx*sy+lz*cy});
       }
-      const nv=cadPt({tri:m.nor},t*3);
+      let nv=cadPt({tri:m.nor},t*3);
+      if(piv)nv=rotZ(nv,{x:0,y:0,z:0},ang);
       out.push({p:P,n:{x:nv.x*cy-nv.z*sy,y:nv.y,z:nv.x*sy+nv.z*cy},rgb});
     }
   });
+}
+function drawCAD(out){
+  // the real machine is two of these, joined by the four-bar
+  const gap=CAD.bbox?CAD.bbox.size.x*1.05:140;
+  const f={x:Math.cos(bot.yaw),z:Math.sin(bot.yaw)};
+  const A=gait.A,B=gait.B;
+  drawCADUnit(out,V(bot.mount.x+f.x*(A.s-gap/2),bot.mount.y+A.lift*A.hop,bot.mount.z+f.z*(A.s-gap/2)),bot.yaw,A.lift);
+  drawCADUnit(out,V(bot.mount.x+f.x*(B.s+gap/2),bot.mount.y+B.lift*B.hop,bot.mount.z+f.z*(B.s+gap/2)),bot.yaw,B.lift);
+}
+/* Gait: the two halves take turns. One clamps the beam while the four-bar lifts the
+   other clear, swings it past the crossing member, and sets it down on the far side. */
+const gait={A:{s:0,lift:0,hop:0},B:{s:0,lift:0,hop:0},phase:0};
+function stepGait(dt,speed,stride){
+  const hop=stride*0.55;
+  gait.A.hop=hop; gait.B.hop=hop;
+  gait.phase=(gait.phase+dt*speed*0.55)%1;
+  const p=gait.phase;
+  // 0.00-0.25 lift A   0.25-0.50 A swings ahead   0.50-0.75 lift B   0.75-1.00 B swings ahead
+  const seg=(a,b)=>clamp((p-a)/(b-a),0,1);
+  gait.A.lift = p<0.25?ease(seg(0,0.25)) : p<0.5?1-ease(seg(0.4,0.5)) : 0;
+  gait.B.lift = p>=0.5&&p<0.75?ease(seg(0.5,0.75)) : p>=0.75?1-ease(seg(0.9,1)) : 0;
+  gait.A.s = p<0.5? lerp(-stride*0.5,stride*0.5,ease(seg(0.1,0.45))) : stride*0.5;
+  gait.B.s = p>=0.5? lerp(-stride*0.5,stride*0.5,ease(seg(0.6,0.95))) : -stride*0.5;
 }
 async function loadCADFromRepo(){
   const names=['body','servo','link1','link2'];
@@ -1282,9 +1326,9 @@ function tickBuild(dt){
       let d=want-bot.yaw; while(d>Math.PI)d-=2*Math.PI; while(d<-Math.PI)d+=2*Math.PI;
       bot.yaw+=d*sm(6);
     }
-    // inchworm: one clamp always holds while the other releases and shuffles ahead
-    const strides=Math.max(1,T.len/(model.step*0.55));
-    const g=sim.tt*strides*Math.PI*2;
+    // the real machine: two halves taking turns, four-bar lifting each over the crossings
+    stepGait(dt,sim.speed*2.2,model.step*0.5);
+    const g=sim.tt*Math.max(1,T.len/(model.step*0.55))*Math.PI*2;
     bot.clampA=0.5+0.5*Math.sin(g);
     bot.clampB=0.5+0.5*Math.sin(g+Math.PI);
     bot.claw=0.3;
