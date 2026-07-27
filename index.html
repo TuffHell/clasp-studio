@@ -247,7 +247,21 @@ footer{border-top:1px solid var(--line);padding:20px 22px;text-align:center;font
     </div>
 
     <div class="sect">
-      <h2 class="hd"><span class="n">06</span> Predicted vs measured</h2>
+      <h2 class="hd"><span class="n">06</span> Your CAD</h2>
+      <div class="rows" id="cadStats"></div>
+      <div class="tools" style="margin-top:8px">
+        <button id="cadToggle" aria-pressed="true">Show CAD</button>
+        <button id="cadAxis" aria-pressed="true">Z-up</button>
+      </div>
+      <label class="hint" for="cadFile" style="display:block;margin-top:10px">Load your own binary STL parts</label>
+      <input type="file" id="cadFile" accept=".stl" multiple
+             style="font-size:11.5px;margin-top:4px;width:100%">
+      <p class="hint">One file per moving part, millimetres. Parts exported from the same assembly
+        keep their relative positions.</p>
+    </div>
+
+    <div class="sect">
+      <h2 class="hd"><span class="n">07</span> Predicted vs measured</h2>
       <div class="meas">
         <span style="font-size:12.5px;color:var(--muted)">Measured failure load</span>
         <input type="number" id="meas" placeholder="N" step="1" aria-label="Measured failure load, newtons">
@@ -759,6 +773,87 @@ function alongPath(pts,f){
   return{pos:pts[pts.length-1],dir:V(1,0,0)};
 }
 
+/* ================= CAD: binary STL loader ================= */
+const CAD={parts:[],show:true,zUp:true,bbox:null,tris:0};
+function parseSTL(buf){
+  if(buf.byteLength<84)return null;
+  const dv=new DataView(buf);
+  const n=dv.getUint32(80,true);
+  if(84+n*50!==buf.byteLength)return null;      // not binary STL
+  const tri=new Float32Array(n*9), nor=new Float32Array(n*3);
+  for(let i=0;i<n;i++){
+    const o=84+i*50;
+    nor[i*3]=dv.getFloat32(o,true);nor[i*3+1]=dv.getFloat32(o+4,true);nor[i*3+2]=dv.getFloat32(o+8,true);
+    for(let k=0;k<9;k++)tri[i*9+k]=dv.getFloat32(o+12+k*4,true);
+  }
+  return{n,tri,nor};
+}
+// CAD is usually Z-up; the simulator is Y-up. Convert, and allow a flip if not.
+function cadPt(m,i){
+  const x=m.tri[i],y=m.tri[i+1],z=m.tri[i+2];
+  return CAD.zUp?{x:x,y:z,z:-y}:{x:x,y:y,z:z};
+}
+function cadFit(){
+  let lo={x:1e18,y:1e18,z:1e18},hi={x:-1e18,y:-1e18,z:-1e18};
+  let tris=0;
+  for(const p of CAD.parts){
+    tris+=p.mesh.n;
+    for(let i=0;i<p.mesh.tri.length;i+=3){
+      const v=cadPt(p.mesh,i);
+      lo.x=Math.min(lo.x,v.x);hi.x=Math.max(hi.x,v.x);
+      lo.y=Math.min(lo.y,v.y);hi.y=Math.max(hi.y,v.y);
+      lo.z=Math.min(lo.z,v.z);hi.z=Math.max(hi.z,v.z);}}
+  CAD.tris=tris;
+  CAD.bbox=CAD.parts.length?{lo,hi,
+    ctr:{x:(lo.x+hi.x)/2,y:lo.y,z:(lo.z+hi.z)/2},
+    size:{x:hi.x-lo.x,y:hi.y-lo.y,z:hi.z-lo.z}}:null;
+  reportCAD();
+}
+function reportCAD(){
+  const el=$('cadStats');
+  if(!CAD.bbox){el.innerHTML='<p class="fine">No CAD loaded — showing the placeholder robot.</p>';return;}
+  const b=CAD.bbox;
+  el.innerHTML=rowsHTML([
+    ['Parts',CAD.parts.length],
+    ['Triangles',CAD.tris.toLocaleString()],
+    ['Size',`${Math.round(b.size.x)} &times; ${Math.round(b.size.y)} &times; ${Math.round(b.size.z)} mm`],
+  ]);
+}
+const CAD_COL=[[128,134,142],[214,138,60],[150,156,164],[168,120,72],[110,116,124]];
+function drawCAD(out){
+  if(!CAD.bbox)return;
+  const b=CAD.bbox, cy=Math.cos(bot.yaw), sy=Math.sin(bot.yaw);
+  // stand the chassis on the carriage mount, facing the way the carriage faces
+  const ox=bot.mount.x, oy=bot.mount.y, oz=bot.mount.z;
+  CAD.parts.forEach((p,pi)=>{
+    const rgb=CAD_COL[pi%CAD_COL.length], m=p.mesh;
+    for(let t=0;t<m.n;t++){
+      const P=[];
+      for(let k=0;k<3;k++){
+        const v=cadPt(m,t*9+k*3);
+        const lx=v.x-b.ctr.x, ly=v.y-b.ctr.y, lz=v.z-b.ctr.z;
+        P.push({x:ox+lx*cy-lz*sy, y:oy+ly, z:oz+lx*sy+lz*cy});
+      }
+      const nv=cadPt({tri:m.nor},t*3);
+      out.push({p:P,n:{x:nv.x*cy-nv.z*sy,y:nv.y,z:nv.x*sy+nv.z*cy},rgb});
+    }
+  });
+}
+async function loadCADFromRepo(){
+  const names=['body','servo','link1','link2'];
+  const got=[];
+  for(const nm of names){
+    try{
+      const r=await fetch('models/'+nm+'.stl');
+      if(!r.ok)continue;
+      const m=parseSTL(await r.arrayBuffer());
+      if(m)got.push({name:nm,mesh:m});
+    }catch(e){}
+  }
+  if(got.length){CAD.parts=got;cadFit();buildScene();}
+  else reportCAD();
+}
+
 /* ================= renderer ================= */
 const vc=$('view'),vx=vc.getContext('2d');
 let cam={yaw:0.72,pitch:0.26,zoom:1,auto:true};
@@ -877,6 +972,24 @@ function buildScene(){
 function drawRobot(out,rad){
   const k=botFK(bot);
   const GREY=[104,110,118],DARK=[62,68,75],OR=[226,138,44];
+  const useCAD=CAD.show&&CAD.bbox;
+  if(useCAD){
+    drawCAD(out);
+    // the arm still belongs to the simulator, so it rides on top of the real chassis
+    prism(k.sh,k.el,15,6,GREY,out,false);
+    prism(k.el,k.wr,12,6,[126,132,140],out,false);
+    boxAt(k.sh,26,26,26,DARK,out,bot.yaw);
+    boxAt(k.el,21,21,21,DARK,out,bot.yaw);
+    const sideC=vnorm(vcross(k.d2,V(0,1,0)));
+    const spreadC=(6+bot.claw*22);
+    for(const sgn of[1,-1]){
+      const root=vadd(k.wr,vmul(sideC,sgn*spreadC*0.45));
+      const tip=vadd(vadd(k.wr,vmul(k.d2,34)),vmul(sideC,sgn*spreadC));
+      prism(root,tip,6,4,OR,out,true);
+    }
+    boxAt(k.wr,20,20,20,OR,out,bot.yaw);
+    return;
+  }
   // The carriage hangs off the side of the stick it is gripping rather than sitting
   // on the centreline, so it reads as clamped to the frame instead of floating.
   const off=rad+26;
@@ -929,7 +1042,9 @@ function render(){
       pts.push([W/2+x1*sc,H*0.58-y2*sc]);zs+=z2;}
     const ax=pts[1][0]-pts[0][0],ay=pts[1][1]-pts[0][1];
     const bx=pts[2][0]-pts[0][0],by=pts[2][1]-pts[0][1];
-    if(!q.flat&&!q.shadow&&ax*by-ay*bx<=0)continue;
+    const area=ax*by-ay*bx;
+    if(!q.flat&&!q.shadow&&area<=0)continue;
+    if(q.p.length===3&&area<2)continue;      // sub-pixel CAD triangle: not worth a fill
     if(q.shadow){out.push({z:zs/q.p.length+1e5,pts,c:`rgba(0,0,0,${shp})`});continue;}
     const n=q.n;
     const nx=n.x*cy+n.z*sy,nz1=-n.x*sy+n.z*cy;
@@ -1440,6 +1555,22 @@ document.querySelectorAll('[data-preset]').forEach(b=>{
 [['bay','bayV',v=>v],['depth','depthV',v=>v],['scale','scaleV',v=>(+v).toFixed(1)],['load','loadV',v=>v]]
   .forEach(([id,lbl,fmt])=>{$(id).addEventListener('input',()=>{$(lbl).textContent=fmt($(id).value);rebuild();});});
 $('meas').addEventListener('input',updateValidation);
+$('cadToggle').onclick=()=>{CAD.show=!CAD.show;
+  $('cadToggle').setAttribute('aria-pressed',String(CAD.show));
+  $('cadToggle').textContent=CAD.show?'Show CAD':'Show placeholder';buildScene();};
+$('cadAxis').onclick=()=>{CAD.zUp=!CAD.zUp;
+  $('cadAxis').setAttribute('aria-pressed',String(CAD.zUp));
+  $('cadAxis').textContent=CAD.zUp?'Z-up':'Y-up';cadFit();buildScene();};
+$('cadFile').addEventListener('change',async ev=>{
+  const files=[...ev.target.files];
+  const got=[];
+  for(const f of files){
+    const m=parseSTL(await f.arrayBuffer());
+    if(m)got.push({name:f.name.replace(/\.stl$/i,''),mesh:m});
+  }
+  if(got.length){CAD.parts=got;CAD.show=true;cadFit();buildScene();}
+  else $('cadStats').innerHTML='<p class="fine bad">Could not read those files. They must be <b>binary</b> STL, not ASCII.</p>';
+});
 $('speed').addEventListener('change',()=>sim.speed=+$('speed').value);
 $('step').addEventListener('input',()=>{
   if(sim.mode==='collapsing')return;
@@ -1480,6 +1611,7 @@ sizeView();
 edges=PRESETS.tower();
 bot.mount=V(0,0,0);
 rebuild();
+loadCADFromRepo();
 requestAnimationFrame(loop);
 setTimeout(sizeView,60);
 </script>
