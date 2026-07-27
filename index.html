@@ -4,7 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CLASP Studio — a climbing construction robot, simulated</title>
-<meta name="description" content="Draw a timber or bamboo frame, get a real structural analysis, and watch a climbing robot build it. If the design breaks the laws of physics, the structure collapses.">
+<meta name="description" content="Draw a timber or bamboo frame, get a real structural analysis, and watch a climbing robot build it. Designs that break the laws of physics fall over.">
+<meta property="og:title" content="CLASP Studio — a climbing construction robot, simulated">
+<meta property="og:description" content="Draw a frame. Real structural mathematics decides whether it stands. Watch the robot build it, or watch it collapse.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#C2621A">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23C2621A'/%3E%3Cpath d='M8 24V9h3.2v15zM20.8 24V9H24v15zM8 15.6l16-4.4v3.3l-16 4.4z' fill='%23fff'/%3E%3C/svg%3E">
 <style>
 :root{
   --ground:#ECEEF1; --panel:#FAFBFC; --sunk:#F2F4F6;
@@ -38,24 +43,42 @@ body{background:var(--ground);color:var(--ink);font-family:var(--font-sans);font
      -webkit-font-smoothing:antialiased}
 h1,h2,h3{text-wrap:balance}
 
+/* ---------- hero ---------- */
+.hero{border-bottom:1px solid var(--line);background:var(--ground)}
+.hero-in{max-width:1500px;margin:0 auto;padding:38px 22px 32px}
+.eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+         color:var(--accent);margin:0 0 10px}
+.hero-h{font-size:clamp(26px,3.6vw,42px);line-height:1.1;margin:0 0 12px;font-weight:600;
+        letter-spacing:-.02em;max-width:19ch}
+.hero-p{font-size:clamp(15px,1.35vw,17.5px);color:var(--muted);margin:0;max-width:60ch;line-height:1.62}
+.hero-stats{display:flex;flex-wrap:wrap;gap:10px 40px;margin-top:26px;padding-top:20px;
+            border-top:1px solid var(--line)}
+.hero-stats div{display:flex;flex-direction:column;gap:1px}
+.hero-stats b{font-family:var(--font-mono);font-size:21px;font-weight:600;font-variant-numeric:tabular-nums;
+              letter-spacing:-.01em}
+.hero-stats span{font-size:11.5px;color:var(--faint);letter-spacing:.02em}
+.topsub{font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+        color:var(--faint);border:1px solid var(--line);border-radius:99px;padding:3px 10px}
+.top nav{margin-left:auto}
+
 /* ---------- masthead ---------- */
 .top{border-bottom:1px solid var(--line);background:var(--panel)}
 .top-in{max-width:1500px;margin:0 auto;padding:14px 22px;display:flex;align-items:baseline;
         gap:16px;flex-wrap:wrap}
 .brand{font-family:var(--font-mono);font-size:16px;font-weight:600;letter-spacing:.02em;margin:0}
 .brand .dot{color:var(--accent)}
-.tag{font-size:13px;color:var(--muted);margin:0;flex:1;min-width:220px}
+.tag{font-size:13px;color:var(--muted);margin:0}
 .top a{font-size:13px;color:var(--muted);text-decoration:none;border-bottom:1px solid transparent}
 .top a:hover{color:var(--ink);border-bottom-color:var(--accent)}
 
 /* ---------- app ---------- */
-#app{display:flex;height:calc(100dvh - 56px);min-height:560px;overflow:hidden;
+#app{display:flex;height:min(880px,calc(100dvh - 64px));min-height:600px;overflow:hidden;
      max-width:1500px;margin:0 auto;border-left:1px solid var(--line);border-right:1px solid var(--line)}
 #console{width:392px;flex:none;background:var(--panel);border-right:1px solid var(--line);
          overflow-y:auto;overscroll-behavior:contain}
-.sect{border-bottom:1px solid var(--line);padding:15px 18px}
-.hd{display:flex;align-items:baseline;gap:8px;margin:0 0 10px;font-family:var(--font-mono);
-    font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.11em;color:var(--faint)}
+.sect{border-bottom:1px solid var(--line);padding:17px 20px}
+.hd{display:flex;align-items:baseline;gap:9px;margin:0 0 12px;font-family:var(--font-mono);
+    font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.13em;color:var(--faint)}
 .hd .n{color:var(--accent)}
 
 button{font-family:var(--font-sans);font-size:12.5px;padding:6px 10px;border:1px solid var(--line-strong);
@@ -90,14 +113,15 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
 .vlabel{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint)}
 .vpill{font-family:var(--font-mono);font-size:9.5px;font-weight:700;text-transform:uppercase;
        letter-spacing:.08em;padding:2px 6px;border-radius:99px;white-space:nowrap}
-.vval{font-family:var(--font-mono);font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.15}
+..vval-x{}
+.vval{font-family:var(--font-mono);font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.15}
 .vnote{font-size:11.5px;color:var(--muted)}
 .sev-ok .vstripe{background:var(--ok)} .sev-ok .vpill{background:var(--ok-bg);color:var(--ok)}
 .sev-warn .vstripe{background:var(--warn)} .sev-warn .vpill{background:var(--warn-bg);color:var(--warn)}
 .sev-bad .vstripe{background:var(--bad)} .sev-bad .vpill{background:var(--bad-bg);color:var(--bad)}
 
 .rows{display:flex;flex-direction:column}
-.rw{display:flex;justify-content:space-between;gap:10px;padding:4px 0;font-size:12.5px;
+.rw{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:13px;
     border-bottom:1px dotted var(--line)}
 .rw:last-child{border-bottom:none}
 .rw span{color:var(--muted)}
@@ -145,12 +169,13 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
 /* ---------- prose below ---------- */
 .prose{max-width:1500px;margin:0 auto;border-left:1px solid var(--line);border-right:1px solid var(--line);
        background:var(--panel);border-top:1px solid var(--line)}
-.prose-in{max-width:760px;margin:0 auto;padding:44px 22px 60px}
-.prose h2{font-family:var(--font-mono);font-size:13px;text-transform:uppercase;letter-spacing:.11em;
+.prose-in{max-width:720px;margin:0 auto;padding:56px 22px 72px}
+..ph{}
+.prose h2{font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:.11em;
           color:var(--accent);margin:38px 0 10px;font-weight:600}
 .prose h2:first-child{margin-top:0}
 .prose h3{font-size:16px;margin:22px 0 6px}
-.prose p{margin:0 0 12px;color:var(--ink)}
+.prose p{margin:0 0 14px;color:var(--ink);line-height:1.68}
 .prose ul{margin:0 0 12px;padding-left:20px;color:var(--ink)}
 .prose li{margin-bottom:5px}
 .prose code{font-family:var(--font-mono);font-size:12.5px;background:var(--sunk);
@@ -180,18 +205,34 @@ footer{border-top:1px solid var(--line);padding:20px 22px;text-align:center;font
 <header class="top">
   <div class="top-in">
     <h1 class="brand">CLASP Studio<span class="dot">.</span></h1>
-    <p class="tag">A climbing construction robot, simulated — with real structural physics.</p>
-    <a href="#how">How it works</a>
+    <span class="topsub">Regeneron ISEF 2027</span>
+    <nav><a href="#how">How it works</a></nav>
   </div>
 </header>
+
+<section class="hero">
+  <div class="hero-in">
+    <p class="eyebrow">Robotic timber assembly</p>
+    <h2 class="hero-h">A robot that climbs the frame it is building.</h2>
+    <p class="hero-p">Draw a structure below. Real structural mathematics decides whether it stands —
+      and if it cannot, it falls over instead of pretending. Then watch the machine build it,
+      stick by stick.</p>
+    <div class="hero-stats">
+      <div><b>60×60</b><span>mm timber</span></div>
+      <div><b>2</b><span>chassis halves</span></div>
+      <div><b>0</b><span>frames both unclamped</span></div>
+      <div><b>100%</b><span>runs in your browser</span></div>
+    </div>
+  </div>
+</section>
 
 <div id="app">
   <div id="console">
     <div class="sect">
       <h2 class="hd"><span class="n">01</span> Material</h2>
       <div class="seg" role="group" aria-label="Material">
-        <button id="mPine" aria-pressed="true">Pine 20×20</button>
-        <button id="mBamboo" aria-pressed="false">Bamboo Ø20</button>
+        <button id="mPine" aria-pressed="true">Pine 60×60</button>
+        <button id="mBamboo" aria-pressed="false">Bamboo Ø60</button>
       </div>
       <p class="fine" id="matNote" style="margin:8px 0 0"></p>
     </div>
@@ -216,8 +257,8 @@ footer{border-top:1px solid var(--line);padding:20px 22px;text-align:center;font
 
     <div class="sect">
       <h2 class="hd"><span class="n">03</span> Dimensions</h2>
-      <div class="ctl"><label>Bay size <b><span id="bayV">150</span> mm</b></label>
-        <input type="range" id="bay" min="40" max="250" step="10" value="150"></div>
+      <div class="ctl"><label>Bay size <b><span id="bayV">700</span> mm</b></label>
+        <input type="range" id="bay" min="300" max="1600" step="50" value="700"></div>
       <div class="ctl"><label>Depth <b><span id="depthV">1</span> frame</b></label>
         <input type="range" id="depth" min="1" max="3" step="1" value="1"></div>
       <div class="ctl"><label>Scale factor <b><span id="scaleV">1.0</span>×</b></label>
@@ -279,7 +320,7 @@ footer{border-top:1px solid var(--line);padding:20px 22px;text-align:center;font
   <div id="stage">
     <div id="wrap">
       <canvas id="view"></canvas>
-      <div id="hud">drag to orbit · scroll to zoom</div>
+      <div id="hud">drag to orbit · scroll to zoom · grid = 1 m</div>
       <div id="phase">idle</div>
     </div>
     <div id="transport">
@@ -399,19 +440,20 @@ const vlerp=(a,b,t)=>({x:lerp(a.x,b.x,t),y:lerp(a.y,b.y,t),z:lerp(a.z,b.z,t)});
 const vcross=(a,b)=>({x:a.y*b.z-a.z*b.y,y:a.z*b.x-a.x*b.z,z:a.x*b.y-a.y*b.x});
 
 const MATS={
-  pine:{key:'pine',shape:'square',D:20,wall:null,E:9500,sig_t:40,sig_c:30,rho:5.0e-7,
+  pine:{key:'pine',shape:'square',D:60,wall:null,E:9500,sig_t:40,sig_c:30,rho:5.0e-7,
     joint:1200,jointName:'screwed joint',rgb:[201,162,74],
-    note:'Sawn pine strut, screwed joints. E 9500 MPa, bending strength 40 MPa, screw joint ≈1200 N.'},
-  bamboo:{key:'bamboo',shape:'round',D:20,wall:3,E:18000,sig_t:60,sig_c:40,rho:7.0e-7,
+    note:'Sawn pine 60 × 60 mm, screwed joints. E 9500 MPa, bending strength 40 MPa, screw joint ≈1200 N.'},
+  bamboo:{key:'bamboo',shape:'round',D:60,wall:8,E:18000,sig_t:60,sig_c:40,rho:7.0e-7,
     joint:600,jointName:'twist-tie lashing',rgb:[183,196,106],
-    note:'Hollow bamboo cane, wire twist-tie lashings. Stiffer than pine, but the tie is the weak link (≈600 N).'}
+    note:'Bamboo Ø 60 mm, 8 mm wall, wire twist-tie lashings. Stiffer than pine, but the tie is the weak link (≈600 N).'}
 };
+const STOCK_LEN=1000;   // a stick you can actually buy and carry
 const ROBOT={mass:0.9,cg:80,reach:250,clampM:2.4,L1:135,L2:115,bodyH:96};
 let mat=MATS.pine;
 
 const isDark=()=>matchMedia('(prefers-color-scheme: dark)').matches;
-const PAL={light:{dot:'#C3CAD2',dotBase:'#7C8894',rule:'#AFB8C2',ground:[178,184,192],shadow:0.13},
-           dark:{dot:'#3A424B',dotBase:'#6E7A86',rule:'#4A535D',ground:[46,52,59],shadow:0.30}};
+const PAL={light:{dot:'#C3CAD2',dotBase:'#7C8894',rule:'#AFB8C2',ground:[178,184,192],grid:[146,154,164],shadow:0.13},
+           dark:{dot:'#3A424B',dotBase:'#6E7A86',rule:'#4A535D',ground:[46,52,59],grid:[70,78,88],shadow:0.30}};
 const pal=()=>isDark()?PAL.dark:PAL.light;
 
 function sectionA(m,s){const D=m.D*s;
@@ -474,7 +516,7 @@ function eraseNear(g){let best=-1,bd=.6;
   if(best>=0)edges.splice(best,1);}
 
 const PRESETS={
-  tower(){const e=[],w=3;
+  tower(){const e=[],w=1;
     for(let j=0;j<6;j++){e.push({a:{x:4,y:j},b:{x:4,y:j+1}});e.push({a:{x:4+w,y:j},b:{x:4+w,y:j+1}});
       e.push({a:{x:4,y:j+1},b:{x:4+w,y:j+1}});
       e.push(j%2?{a:{x:4,y:j},b:{x:4+w,y:j+1}}:{a:{x:4+w,y:j},b:{x:4,y:j+1}});}
@@ -1002,9 +1044,17 @@ function buildScene(){
   md.nodes.forEach(note);
   for(const st of sim.stock){note(st.a);note(st.b);}
   const pad=md.step*0.9;
-  out.push({p:[{x:minx-pad,y:0,z:minz-pad*1.6},{x:maxx+pad,y:0,z:minz-pad*1.6},
-               {x:maxx+pad,y:0,z:maxz+pad*1.6},{x:minx-pad,y:0,z:maxz+pad*1.6}],
+  const gx0=minx-pad,gx1=maxx+pad,gz0=minz-pad*1.6,gz1=maxz+pad*1.6;
+  out.push({p:[{x:gx0,y:0,z:gz0},{x:gx1,y:0,z:gz0},{x:gx1,y:0,z:gz1},{x:gx0,y:0,z:gz1}],
             n:V(0,1,0),rgb:P.ground,flat:true});
+  // 1 m grid: with metre-long sticks the eye needs a ruler to read the scale
+  const G1=1000, gw=Math.max(6,G1*0.012);
+  for(let x=Math.ceil(gx0/G1)*G1;x<=gx1;x+=G1)
+    out.push({p:[{x:x-gw,y:1,z:gz0},{x:x+gw,y:1,z:gz0},{x:x+gw,y:1,z:gz1},{x:x-gw,y:1,z:gz1}],
+              n:V(0,1,0),rgb:P.grid,flat:true});
+  for(let z=Math.ceil(gz0/G1)*G1;z<=gz1;z+=G1)
+    out.push({p:[{x:gx0,y:1,z:z-gw},{x:gx1,y:1,z:z-gw},{x:gx1,y:1,z:z+gw},{x:gx0,y:1,z:z+gw}],
+              n:V(0,1,0),rgb:P.grid,flat:true});
   view.quads=out;
   view.center=V((minx+maxx)/2,maxy*0.5,(minz+maxz)/2);
   let R=1;
@@ -1528,12 +1578,19 @@ function runAnalysis(autoFall){
   const bad=steps.filter(s=>s.worst==='bad').length;
   const braced=steps.filter(s=>s.selfStable).length;
   const maxPart=Math.max(...steps.map(s=>s.partU));
+  const heaviest=Math.max(...steps.map(s=>s.mass));
+  // the chassis only has to haul a stick along the beam, not hold it out at arm's length
+  const carry=heaviest>ROBOT.mass*4;
 
   $('verdict').innerHTML=
     chip(sev,'Structure',sev==='ok'?'Stands':sev==='warn'?'Tight':'Fails',
       SF===Infinity?'—':SF.toFixed(2)+'×',`safety factor · governed by ${worst.govMode}`)+
-    chip(bad?'bad':'ok','Robot',bad?'Blocked':'Can build',`${steps.length-bad} / ${steps.length}`,
-      bad?'steps it can do — the rest exceed its limits':'steps within reach, clamp and stability limits');
+    chip(carry?'bad':'ok','Chassis',carry?'Too heavy':'Can travel',
+      `${(heaviest*1000).toFixed(0)} g`,
+      carry?'heaviest stick exceeds what the rollers can haul':'heaviest stick it must carry along the beam')+
+    chip(bad?'warn':'ok','Manipulator',bad?'Undersized':'Adequate',`${steps.length-bad} / ${steps.length}`,
+      bad?'sticks the placeholder arm can place — real stock needs a bigger arm'
+         :'sticks within the placeholder arm&rsquo;s reach and grip');
   $('stats').innerHTML=rowsHTML([
     ['Sticks',md.members.length],['Material',(tLen/1000).toFixed(2)+' m'],
     ['Structure mass',(tMass*1000).toFixed(0)+' g'],['Max tension',maxT.toFixed(0)+' N'],
@@ -1554,14 +1611,21 @@ function runAnalysis(autoFall){
   $('botStats').innerHTML=rowsHTML([
     ['Build steps',steps.length],['Self-supporting stages',`${braced} / ${steps.length}`],
     ['Peak load mid-build',(maxPart*100).toFixed(0)+'%'],
-    ['Longest stick',Math.round(Math.max(...steps.map(s=>s.L)))+' mm'],
+    ['Longest stick',(()=>{const L=Math.max(...steps.map(s=>s.L));
+        return `<span class="${L>STOCK_LEN?'bad':'ok'}">${Math.round(L)} mm</span>`;})()],
     ['Heaviest stick',(Math.max(...steps.map(s=>s.mass))*1000).toFixed(0)+' g']]);
   const bm=[];
   if(!bad)bm.push(`<div class="msg m-ok">One robot can build this unaided — every stick is within reach
     and clamp capacity, and the part-built frame carries the robot at every stage.</div>`);
   else{const first=steps.findIndex(s=>s.worst==='bad');
-    bm.push(`<div class="msg m-bad"><b>${bad} step${bad>1?'s':''} the robot cannot do.</b> First at step
-      ${first+1}: ${steps[first].issues.filter(i=>i.lvl==='bad').map(i=>i.t).join('; ')}.</div>`);}
+    bm.push(`<div class="msg m-warn"><b>The placeholder arm cannot place ${bad} of these.</b> First at
+      step ${first+1}: ${steps[first].issues.filter(i=>i.lvl==='bad').map(i=>i.t).join('; ')}.
+      That is a limit of the manipulator in this simulation, not of your chassis — the CAD you supplied
+      is the locomotion unit, which only has to haul a stick along the beam.</div>`);}
+  const over=steps.filter(s=>s.L>STOCK_LEN).length;
+  if(over)bm.push(`<div class="msg m-warn">${over} member${over>1?'s are':' is'} longer than a
+    ${STOCK_LEN} mm stick. Either splice them, add an intermediate joint, or shrink the bay size
+    until every member can be cut from stock.</div>`);
   if(braced<steps.length)bm.push(`<div class="msg m-warn">${steps.length-braced}
     stage${steps.length-braced>1?'s are':' is'} not fully triangulated yet. A growing frame always has an open
     edge — something must brace it until the triangle closes, and here that is the robot's own clamp.</div>`);
