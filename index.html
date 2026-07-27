@@ -43,6 +43,35 @@ body{background:var(--ground);color:var(--ink);font-family:var(--font-sans);font
      -webkit-font-smoothing:antialiased}
 h1,h2,h3{text-wrap:balance}
 
+/* ---------- grouped console ---------- */
+.grp{border-bottom:1px solid var(--line-strong)}
+.grp>summary{list-style:none;cursor:pointer;padding:13px 20px;display:flex;align-items:baseline;
+  gap:10px;background:var(--sunk);user-select:none}
+.grp>summary::-webkit-details-marker{display:none}
+.grp>summary::after{content:'';margin-left:auto;width:7px;height:7px;border-right:1.5px solid var(--faint);
+  border-bottom:1.5px solid var(--faint);transform:rotate(45deg) translateY(-2px);transition:transform .18s}
+.grp[open]>summary::after{transform:rotate(225deg) translateY(-2px)}
+.grp>summary:hover{background:var(--panel)}
+.gn{font-family:var(--font-mono);font-size:12.5px;font-weight:600;letter-spacing:.04em}
+.gh{font-size:11.5px;color:var(--faint)}
+.grp .sect:last-of-type{border-bottom:none}
+
+/* ---------- viewport furniture ---------- */
+#views{position:absolute;top:12px;right:14px;display:flex;gap:4px}
+#views button{font-family:var(--font-mono);font-size:11px;padding:4px 9px;
+  background:color-mix(in srgb,var(--panel) 86%,transparent);border:1px solid var(--line)}
+#views button[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+#coach{position:absolute;left:50%;transform:translateX(-50%);bottom:16px;max-width:min(420px,86%);
+  background:var(--panel);border:1px solid var(--line-strong);border-radius:10px;padding:11px 14px;
+  font-size:13px;color:var(--ink);box-shadow:0 6px 22px rgba(0,0,0,.22);line-height:1.5}
+#coach b{font-weight:600}
+#coach button{display:block;margin:9px 0 0 auto;font-size:12px;padding:4px 11px}
+#coach.gone{display:none}
+#cadBusy{font-size:11.5px;color:var(--faint);display:flex;align-items:center;gap:7px}
+#cadBusy i{width:9px;height:9px;border-radius:99px;border:1.5px solid var(--accent);
+  border-top-color:transparent;animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
 /* ---------- hero ---------- */
 .hero{border-bottom:1px solid var(--line);background:var(--ground)}
 .hero-in{max-width:1500px;margin:0 auto;padding:38px 22px 32px}
@@ -146,9 +175,9 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
 #hud{position:absolute;top:12px;left:14px;font-family:var(--font-mono);font-size:11px;color:var(--muted);
      background:color-mix(in srgb,var(--panel) 82%,transparent);border:1px solid var(--line);
      border-radius:6px;padding:5px 9px;pointer-events:none}
-#phase{position:absolute;top:12px;right:14px;font-family:var(--font-mono);font-size:11px;
+#phase{position:absolute;bottom:12px;right:14px;font-family:var(--font-mono);font-size:11px;
        background:color-mix(in srgb,var(--panel) 82%,transparent);border:1px solid var(--line);
-       border-radius:6px;padding:5px 9px;pointer-events:none;color:var(--accent);min-width:150px;text-align:right}
+       border-radius:6px;padding:5px 9px;pointer-events:none;color:var(--accent);text-align:right}
 #transport{flex:none;border-top:1px solid var(--line);background:var(--panel);padding:9px 14px;
            display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 #transport .grow{flex:1;min-width:100px}
@@ -191,9 +220,19 @@ td.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;text-align
 footer{border-top:1px solid var(--line);padding:20px 22px;text-align:center;font-size:12px;color:var(--faint)}
 
 @media (max-width:960px){
-  #app{flex-direction:column;height:auto;overflow:visible;min-height:0}
-  #console{width:100%;border-right:none;border-bottom:1px solid var(--line);order:2}
-  #stage{order:1;height:62dvh;min-height:400px}
+  #app{flex-direction:column;height:auto;overflow:visible;min-height:0;border:none}
+  #console{width:100%;border-right:none;border-bottom:1px solid var(--line);order:2;overflow:visible}
+  #stage{order:1;height:58dvh;min-height:340px;position:sticky;top:0;z-index:5;
+         border-bottom:1px solid var(--line)}
+  .hero-in{padding:26px 18px 22px}
+  .hero-stats{gap:10px 26px}
+  button{min-height:38px}            /* thumb-sized targets */
+  .presets{grid-template-columns:repeat(2,1fr)}
+  #views{top:auto;bottom:10px;right:10px}
+  #coach{bottom:auto;top:12px}
+  #transport{padding:10px 12px}
+  .grp>summary{padding:15px 18px}
+  .sect{padding:15px 18px}
 }
 @media (prefers-reduced-motion:reduce){
   *{animation-duration:.01ms !important;transition-duration:.01ms !important}
@@ -228,6 +267,8 @@ footer{border-top:1px solid var(--line);padding:20px 22px;text-align:center;font
 
 <div id="app">
   <div id="console">
+    <details class="grp" open>
+      <summary><span class="gn">Design</span><span class="gh">material, shape, size</span></summary>
     <div class="sect">
       <h2 class="hd"><span class="n">01</span> Material</h2>
       <div class="seg" role="group" aria-label="Material">
@@ -267,7 +308,10 @@ footer{border-top:1px solid var(--line);padding:20px 22px;text-align:center;font
         <input type="range" id="load" min="0" max="200" step="5" value="0"></div>
       <p class="hint">Scale grows the structure but not the robot. That is where things start to break.</p>
     </div>
+    </details>
 
+    <details class="grp" open>
+      <summary><span class="gn">Results</span><span class="gh">will it stand, can it be built</span></summary>
     <div class="sect">
       <h2 class="hd"><span class="n">04</span> Structure</h2>
       <div class="verdict" id="verdict"></div>
@@ -287,6 +331,10 @@ footer{border-top:1px solid var(--line);padding:20px 22px;text-align:center;font
       <div id="botMsgs"></div>
     </div>
 
+    </details>
+
+    <details class="grp">
+      <summary><span class="gn">Workshop</span><span class="gh">CAD, cut list, bench results</span></summary>
     <div class="sect">
       <h2 class="hd"><span class="n">06</span> Your CAD</h2>
       <div class="rows" id="cadStats"></div>
@@ -311,16 +359,34 @@ footer{border-top:1px solid var(--line);padding:20px 22px;text-align:center;font
     </div>
 
     <div class="sect">
+      <h2 class="hd"><span class="n">08</span> Cut list</h2>
+      <div class="rows" id="cutSummary"></div>
+      <div class="tools" style="margin-top:10px">
+        <button id="cutCsv">Download CSV</button>
+        <button id="shareBtn">Copy share link</button>
+      </div>
+      <p class="hint" id="shareNote">The link carries your exact frame, material and loads.</p>
+    </div>
+
+    <div class="sect">
       <p class="fine">Material and joint values are literature estimates for model-scale stock, not
         measurements. Every joint is modelled as a frictionless pin, so real screwed and tied joints
         are stiffer than this. Test before you quote any number here.</p>
     </div>
+    </details>
   </div>
 
   <div id="stage">
     <div id="wrap">
       <canvas id="view"></canvas>
       <div id="hud">drag to orbit · scroll to zoom · grid = 1 m</div>
+      <div id="views">
+        <button data-view="iso">Iso</button><button data-view="front">Front</button>
+        <button data-view="side">Side</button><button data-view="top">Top</button>
+      </div>
+      <div id="coach"><b>Press “Build it”</b> to watch the robot assemble this frame, or
+        <b>“Test to failure”</b> to load it until something breaks.
+        <button id="coachX" aria-label="Dismiss">Got it</button></div>
       <div id="phase">idle</div>
     </div>
     <div id="transport">
@@ -926,6 +992,7 @@ function stepGait(dt,speed,stride){
   gait.B.s = p>=0.5? lerp(-stride*0.5,stride*0.5,ease(seg(0.6,0.95))) : -stride*0.5;
 }
 async function loadCADFromRepo(){
+  $('cadStats').innerHTML='<div id="cadBusy"><i></i>loading chassis geometry…</div>';
   const names=['body','servo','link1','link2'];
   const got=[];
   for(const nm of names){
@@ -942,7 +1009,21 @@ async function loadCADFromRepo(){
 
 /* ================= renderer ================= */
 const vc=$('view'),vx=vc.getContext('2d');
-let cam={yaw:0.72,pitch:0.26,zoom:1,auto:true};
+let cam={yaw:0.72,pitch:0.26,zoom:1,auto:true,tYaw:null,tPitch:null,tZoom:null};
+const VIEWS={iso:[0.72,0.26,1],front:[Math.PI/2,0.10,1],side:[0,0.10,1],top:[Math.PI/2,1.15,0.95]};
+function goView(k){
+  const v=VIEWS[k]; if(!v)return;
+  cam.auto=false; cam.tYaw=v[0]; cam.tPitch=v[1]; cam.tZoom=v[2];
+  document.querySelectorAll('#views button').forEach(b=>
+    b.setAttribute('aria-pressed',String(b.dataset.view===k)));
+}
+function camEase(dt){
+  if(cam.tYaw===null)return;
+  const t=1-Math.exp(-7*dt);
+  let d=cam.tYaw-cam.yaw; while(d>Math.PI)d-=2*Math.PI; while(d<-Math.PI)d+=2*Math.PI;
+  cam.yaw+=d*t; cam.pitch+=(cam.tPitch-cam.pitch)*t; cam.zoom+=(cam.tZoom-cam.zoom)*t;
+  if(Math.abs(d)<0.002&&Math.abs(cam.tPitch-cam.pitch)<0.002)cam.tYaw=null;
+}
 const DPR=()=>Math.min(devicePixelRatio||1,2);
 function sizeView(){const r=vc.getBoundingClientRect(),d=DPR();
   vc.width=Math.max(320,r.width*d);vc.height=Math.max(240,r.height*d);
@@ -975,10 +1056,13 @@ function boxAt(c,w,h,dp,rgb,out,yaw){
 function shadowQuad(p1,p2,rad,out){
   const d=vnorm(vsub(p2,p1));
   const per=vnorm(vcross(d,V(0,1,0)));
-  const w=vmul(per,rad*1.15);
+  // a contact shadow: tight and dark under a stick on the ground, wide and faint high up
+  const h=Math.max(0,(p1.y+p2.y)/2);
+  const spread=1+h/900, fade=1/(1+h/650);
+  const w=vmul(per,rad*1.15*spread);
   out.push({p:[{x:p1.x+w.x,y:1,z:p1.z+w.z},{x:p2.x+w.x,y:1,z:p2.z+w.z},
                {x:p2.x-w.x,y:1,z:p2.z-w.z},{x:p1.x-w.x,y:1,z:p1.z-w.z}],
-            n:V(0,1,0),rgb:[0,0,0],shadow:true});
+            n:V(0,1,0),rgb:[0,0,0],shadow:true,fade});
 }
 function utilColor(u,F){
   if(u>1)return[228,66,50];
@@ -1139,7 +1223,7 @@ function render(){
     const area=ax*by-ay*bx;
     if(!q.flat&&!q.shadow&&area<=0)continue;
     if(q.p.length===3&&area<2)continue;      // sub-pixel CAD triangle: not worth a fill
-    if(q.shadow){out.push({z:zs/q.p.length+1e5,pts,c:`rgba(0,0,0,${shp})`});continue;}
+    if(q.shadow){out.push({z:zs/q.p.length+1e5,pts,c:`rgba(0,0,0,${(shp*(q.fade??1)).toFixed(3)})`});continue;}
     const n=q.n;
     const nx=n.x*cy+n.z*sy,nz1=-n.x*sy+n.z*cy;
     const ny=n.y*cp-nz1*sp,nz=n.y*sp+nz1*cp;
@@ -1155,7 +1239,7 @@ function render(){
     else vx.fill();}
 }
 let vdrag=false,lx=0,ly=0;
-vc.addEventListener('pointerdown',e=>{vdrag=true;cam.auto=false;lx=e.clientX;ly=e.clientY;
+vc.addEventListener('pointerdown',e=>{vdrag=true;cam.auto=false;cam.tYaw=null;lx=e.clientX;ly=e.clientY;
   vc.setPointerCapture(e.pointerId);});
 vc.addEventListener('pointermove',e=>{if(!vdrag)return;
   cam.yaw+=(e.clientX-lx)*0.008;cam.pitch=clamp(cam.pitch+(e.clientY-ly)*0.006,-0.15,1.2);
@@ -1537,7 +1621,7 @@ function runAnalysis(autoFall){
     $('verdict').innerHTML='';$('stats').innerHTML='';
     $('msgs').innerHTML='<p class="fine">Nothing drawn yet — sketch a frame or pick a preset.</p>';
     $('botStats').innerHTML='';$('botMsgs').innerHTML='';$('step').max=0;
-    sim.order=[];updateValidation();buildScene();return;}
+    sim.order=[];updateValidation();reportCut();buildScene();return;}
   const loadN=+$('load').value;
   let extra=null,maxy=0;
   md.nodes.forEach(n=>maxy=Math.max(maxy,n.y));
@@ -1630,7 +1714,9 @@ function runAnalysis(autoFall){
     stage${steps.length-braced>1?'s are':' is'} not fully triangulated yet. A growing frame always has an open
     edge — something must brace it until the triangle closes, and here that is the robot's own clamp.</div>`);
   $('botMsgs').innerHTML=bm.join('');
-  updateValidation();buildScene();
+  updateValidation();reportCut();
+  try{history.replaceState(null,'','#'+encodeState());}catch(e){}
+  buildScene();
   // Anything that cannot hold itself up falls on its own. No button required.
   if(autoFall!==false&&worst.worst>1)startCollapse(false);
 }
@@ -1641,6 +1727,66 @@ function updateValidation(){
   const err=(m-state.predFail)/state.predFail*100,a=Math.abs(err);
   el.innerHTML=`Predicted <b>${state.predFail.toFixed(0)} N</b> · measured <b>${m.toFixed(0)} N</b> ·
     error <b class="${a<20?'ok':a<40?'warn':'bad'}">${err>0?'+':''}${err.toFixed(0)}%</b>`;
+}
+
+/* ---- 11. the whole design lives in the URL, so a link reproduces it exactly ---- */
+function encodeState(){
+  const e=edges.map(g=>[g.a.x,g.a.y,g.b.x,g.b.y].map(v=>v.toString(36)).join('')).join('');
+  return `m=${mat.key}&b=${$('bay').value}&d=${$('depth').value}&s=${$('scale').value}`+
+         `&l=${$('load').value}&e=${e}`;
+}
+function applyState(h){
+  const q=new URLSearchParams(h.replace(/^#/,''));
+  if(!q.get('e')&&!q.get('m'))return false;
+  const m=q.get('m'); if(m&&MATS[m])mat=MATS[m];
+  const setv=(id,v)=>{if(v!==null&&$(id)){$(id).value=v;}};
+  setv('bay',q.get('b'));setv('depth',q.get('d'));setv('scale',q.get('s'));setv('load',q.get('l'));
+  const e=q.get('e')||'';
+  const got=[];
+  for(let i=0;i+4<=e.length;i+=4)
+    got.push({a:{x:parseInt(e[i],36),y:parseInt(e[i+1],36)},
+              b:{x:parseInt(e[i+2],36),y:parseInt(e[i+3],36)}});
+  if(got.length)edges=got;
+  $('mPine').setAttribute('aria-pressed',String(mat.key==='pine'));
+  $('mBamboo').setAttribute('aria-pressed',String(mat.key==='bamboo'));
+  $('matNote').textContent=mat.note;
+  $('bayV').textContent=$('bay').value;$('depthV').textContent=$('depth').value;
+  $('scaleV').textContent=(+$('scale').value).toFixed(1);$('loadV').textContent=$('load').value;
+  return true;
+}
+function cutList(){
+  if(!state.steps.length)return[];
+  const rows=state.steps.map((st,i)=>{
+    const c=state.checks?state.checks[st.mi]:null;
+    return{n:i+1,len:Math.round(st.L),mass:(st.mass*1000).toFixed(0),
+      force:c?c.F.toFixed(0):'',mode:c?c.govMode:'',
+      util:c?(c.worst*100).toFixed(0):'',over:st.L>STOCK_LEN?'YES':''};});
+  return rows;
+}
+function reportCut(){
+  const rows=cutList();
+  if(!rows.length){$('cutSummary').innerHTML='<p class="fine">Draw a frame to get a cut list.</p>';return;}
+  const lens={};
+  for(const r of rows)lens[r.len]=(lens[r.len]||0)+1;
+  const distinct=Object.keys(lens).length;
+  const over=rows.filter(r=>r.over).length;
+  const total=rows.reduce((a,r)=>a+r.len,0);
+  $('cutSummary').innerHTML=rowsHTML([
+    ['Pieces',rows.length],
+    ['Distinct lengths',distinct],
+    ['Total timber',(total/1000).toFixed(2)+' m'],
+    ['Longer than stock',`<span class="${over?'bad':'ok'}">${over}</span>`]]);
+}
+function downloadCSV(){
+  const rows=cutList();
+  if(!rows.length)return;
+  const head='piece,length_mm,mass_g,axial_force_N,governing_mode,utilisation_pct,over_stock';
+  const body=rows.map(r=>[r.n,r.len,r.mass,r.force,r.mode,r.util,r.over].join(',')).join('\n');
+  const blob=new Blob([head+'\n'+body],{type:'text/csv'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`clasp-cut-list-${mat.key}-${rows.length}pc.csv`;
+  a.click(); URL.revokeObjectURL(a.href);
 }
 
 /* ================= wiring ================= */
@@ -1663,6 +1809,17 @@ document.querySelectorAll('[data-preset]').forEach(b=>{
 [['bay','bayV',v=>v],['depth','depthV',v=>v],['scale','scaleV',v=>(+v).toFixed(1)],['load','loadV',v=>v]]
   .forEach(([id,lbl,fmt])=>{$(id).addEventListener('input',()=>{$(lbl).textContent=fmt($(id).value);rebuild();});});
 $('meas').addEventListener('input',updateValidation);
+document.querySelectorAll('#views button').forEach(b=>b.onclick=()=>goView(b.dataset.view));
+$('cutCsv').onclick=downloadCSV;
+$('shareBtn').onclick=async()=>{
+  const url=location.origin+location.pathname+'#'+encodeState();
+  try{await navigator.clipboard.writeText(url);$('shareNote').textContent='Link copied to your clipboard.';}
+  catch(e){history.replaceState(null,'','#'+encodeState());
+    $('shareNote').textContent='Copy the address bar — it now holds this design.';}
+};
+$('coachX').onclick=()=>{$('coach').classList.add('gone');
+  try{localStorage.setItem('clasp.coach','1');}catch(e){}};
+try{if(localStorage.getItem('clasp.coach'))$('coach').classList.add('gone');}catch(e){}
 $('cadToggle').onclick=()=>{CAD.show=!CAD.show;
   $('cadToggle').setAttribute('aria-pressed',String(CAD.show));
   $('cadToggle').textContent=CAD.show?'Show CAD':'Show placeholder';buildScene();};
@@ -1704,6 +1861,7 @@ let last=performance.now();
 function loop(now){
   requestAnimationFrame(loop);
   const dt=Math.min((now-last)/1000,0.05);last=now;
+  camEase(dt);
   if(cam.auto&&!reduceMotion.matches&&sim.mode==='idle')cam.yaw+=dt*0.075;
   if(sim.mode==='building'){tickBuild(dt);buildScene();}
   else if(sim.mode==='collapsing'){tickCollapse(dt);buildScene();}
@@ -1716,8 +1874,9 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{drawGr
 $('matNote').textContent=mat.note;
 $('lgMat').style.background=`rgb(${mat.rgb.join(',')})`;
 sizeView();
-edges=PRESETS.tower();
+if(!applyState(location.hash))edges=PRESETS.tower();
 bot.mount=V(0,0,0);
+goView('iso');
 rebuild();
 loadCADFromRepo();
 requestAnimationFrame(loop);
