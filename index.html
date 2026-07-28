@@ -823,13 +823,41 @@ function debrisStep(d,h){
 
 /* ================= robot: 2-link IK arm on a climbing carriage ================= */
 // Solves shoulder + elbow angles that put the claw at a target, using the cosine rule.
-function ik2(reach,rise,L1,L2){
+function ik2(reach,rise,L1,L2,flip){
   const d=Math.hypot(reach,rise), reachable=d<=L1+L2-1;
   const dc=Math.min(d,L1+L2-1);
   const a=Math.atan2(rise,reach);
   const b=Math.acos(clamp((L1*L1+dc*dc-L2*L2)/(2*L1*dc),-1,1));
   const c=Math.acos(clamp((L1*L1+L2*L2-dc*dc)/(2*L1*L2),-1,1));
-  return{shoulder:a+b, elbow:Math.PI-c, reachable};
+  // two valid solutions: elbow up and elbow down. Both put the claw on target.
+  return flip ? {shoulder:a-b, elbow:-(Math.PI-c), reachable}
+              : {shoulder:a+b, elbow:  Math.PI-c,  reachable};
+}
+/* How far the arm would be buried in already-built timber for a given pose. Used to
+   choose between the two elbow solutions — not collision avoidance, but it stops the
+   arm reaching straight through a beam when the other elbow is clear. */
+function armClash(yaw,shoulder,elbow){
+  if(!sim.visible.size)return 0;
+  const probe={mount:bot.mount,yaw:bot.yaw,armYaw:yaw,shoulder,elbow};
+  const k=botFK(probe);
+  const rad=mat.D*model.scale/2+14;
+  const reach=ROBOT.L1+ROBOT.L2+rad;
+  let worst=0;
+  for(const mi of sim.visible){
+    const m=model.members[mi],a=model.nodes[m.a],b=model.nodes[m.b];
+    const mx=(a.x+b.x)/2-k.sh.x,my=(a.y+b.y)/2-k.sh.y,mz=(a.z+b.z)/2-k.sh.z;
+    if(mx*mx+my*my+mz*mz>(reach+memberLen(mi))*(reach+memberLen(mi)))continue;
+    const ab={x:b.x-a.x,y:b.y-a.y,z:b.z-a.z};
+    const L2s=ab.x*ab.x+ab.y*ab.y+ab.z*ab.z;
+    for(let t=0;t<=5;t++){
+      const p=t<=2?vlerp(k.sh,k.el,t/2):vlerp(k.el,k.wr,(t-2)/3);
+      const ap={x:p.x-a.x,y:p.y-a.y,z:p.z-a.z};
+      const u=L2s?clamp((ap.x*ab.x+ap.y*ab.y+ap.z*ab.z)/L2s,0,1):0;
+      const d=Math.hypot(ap.x-u*ab.x,ap.y-u*ab.y,ap.z-u*ab.z);
+      if(d<rad)worst=Math.max(worst,rad-d);
+    }
+  }
+  return worst;
 }
 const bot={
   mount:V(0,0,0), yaw:0, armYaw:0, shoulder:0.6, elbow:1.2, claw:1,
@@ -852,8 +880,14 @@ function aimAt(b,target){
   const k=botFK(b);
   const dx=target.x-k.sh.x, dz=target.z-k.sh.z;
   const armYaw=(Math.abs(dx)<1e-6&&Math.abs(dz)<1e-6)?b.armYaw:Math.atan2(dz,dx);
-  const s=ik2(Math.hypot(dx,dz), target.y-k.sh.y, ROBOT.L1, ROBOT.L2);
-  return{armYaw,shoulder:s.shoulder,elbow:s.elbow,reachable:s.reachable};
+  const reach=Math.hypot(dx,dz), rise=target.y-k.sh.y;
+  const up=ik2(reach,rise,ROBOT.L1,ROBOT.L2,false);
+  const dn=ik2(reach,rise,ROBOT.L1,ROBOT.L2,true);
+  const cu=armClash(armYaw,up.shoulder,up.elbow);
+  // only pay for the second test when the first pose is actually buried
+  const cd=cu>1?armClash(armYaw,dn.shoulder,dn.elbow):1e9;
+  const s=cd<cu-2?dn:up;
+  return{armYaw,shoulder:s.shoulder,elbow:s.elbow,reachable:up.reachable};
 }
 function applyPose(b,pose,t){
   let dy=pose.armYaw-b.armYaw;
@@ -1435,6 +1469,62 @@ function rackSlot(i,len){
   const h=len/2;
   return{a:vsub(c,vmul(side,h)),b:vadd(c,vmul(side,h))};
 }
+/* The carriage is always clamped to a real stick. Given a joint, pick a stick that
+   touches it (preferring an upright one), sit on its axis just back from the joint,
+   and face square to it. Without this the yaw goes stale on vertical struts — where
+   the horizontal component of travel is zero — and the robot appears to hover. */
+function gripAt(nodeIdx){
+  let best=null,bs=-1;
+  for(const mi of sim.visible){
+    const m=model.members[mi];
+    if(m.a!==nodeIdx&&m.b!==nodeIdx)continue;
+    const a=model.nodes[m.a],b=model.nodes[m.b];
+    const far=(m.a===nodeIdx)?b:a, here=model.nodes[nodeIdx];
+    const d=vnorm(V(far.x-here.x,far.y-here.y,far.z-here.z));
+    const score=Math.abs(d.y)*2+0.1;          // an upright stick is the better handhold
+    if(score>bs){bs=score;best={mi,here,far,d,
+      len:Math.hypot(far.x-here.x,far.y-here.y,far.z-here.z)};}
+  }
+  return best;
+}
+function faceYawFor(d,at){
+  // the carriage hangs off the side, so its facing must be square to the stick
+  if(Math.abs(d.y)>0.85){
+    // upright stick: any horizontal facing is square to it, so face out of the frame
+    let cx=0,cz=0;for(const nd of model.nodes){cx+=nd.x;cz+=nd.z;}
+    cx/=model.nodes.length;cz/=model.nodes.length;
+    const ox=at.x-cx, oz=at.z-cz;
+    return (Math.abs(ox)+Math.abs(oz)<1)?bot.yaw:Math.atan2(oz,ox);
+  }
+  const f=vnorm(vcross(d,V(0,1,0)));
+  return Math.atan2(f.z,f.x);
+}
+function clampToStick(nodeIdx,dt,rate){
+  const g=gripAt(nodeIdx);
+  if(!g){bot.mount=vlerp(bot.mount,nodePos(nodeIdx),1-Math.exp(-(rate||8)*dt));return;}
+  const back=Math.min(g.len*0.28,ROBOT.bodyH*0.9);
+  const pos=vadd(V(g.here.x,g.here.y,g.here.z),vmul(g.d,back));
+  const t=1-Math.exp(-(rate||8)*dt);
+  bot.mount=vlerp(bot.mount,pos,t);
+  let want=faceYawFor(g.d,pos), dy=want-bot.yaw;
+  while(dy>Math.PI)dy-=2*Math.PI; while(dy<-Math.PI)dy+=2*Math.PI;
+  bot.yaw+=dy*t;
+}
+/* Height the carried stick must clear to pass over what is already built, rather
+   than sweeping through it. This is not collision avoidance — it is a clearance
+   rule that removes the common case of a stick crossing the frame it is joining. */
+function clearanceOver(p,q,rad){
+  let top=Math.max(p.y,q.y);
+  const x0=Math.min(p.x,q.x)-rad, x1=Math.max(p.x,q.x)+rad;
+  const z0=Math.min(p.z,q.z)-rad, z1=Math.max(p.z,q.z)+rad;
+  for(const mi of sim.visible){
+    const m=model.members[mi];
+    for(const nd of [model.nodes[m.a],model.nodes[m.b]]){
+      if(nd.x>=x0&&nd.x<=x1&&nd.z>=z0&&nd.z<=z1) top=Math.max(top,nd.y);
+    }
+  }
+  return top;
+}
 function memberLen(mi){
   const m=model.members[mi],a=model.nodes[m.a],b=model.nodes[m.b];
   return Math.hypot(b.x-a.x,b.y-a.y,b.z-a.z);
@@ -1518,9 +1608,8 @@ function tickBuild(dt){
     const a=alongPath(T.pts,ease(clamp(sim.tt,0,1)));
     bot.mount=a.pos;
     // the carriage sits square to whichever stick it is riding
-    const h=Math.hypot(a.dir.x,a.dir.z);
-    if(h>0.08){
-      const want=Math.atan2(a.dir.z,a.dir.x)+Math.PI/2;
+    {
+      const want=faceYawFor(a.dir,a.pos);
       let d=want-bot.yaw; while(d>Math.PI)d-=2*Math.PI; while(d<-Math.PI)d+=2*Math.PI;
       bot.yaw+=d*sm(6);
     }
@@ -1541,6 +1630,7 @@ function tickBuild(dt){
 
   /* ---- load: pick a stick out of the pile and stow it on board ---- */
   if(sim.task.type==='load'){
+    if(bot.atNode!==undefined)clampToStick(bot.atNode,dt,9);
     const src=sim.stock[sim.stock.length-1]||{a:V(0,0,0),b:V(0,0,0)};
     const pileMid=midOf(src);
     const slot=rackSlot(sim.mag.length,memberLen(sim.task.mi));
@@ -1554,7 +1644,9 @@ function tickBuild(dt){
     }else if(name==='grip'){claw=pileMid;bot.claw=1-e;
       held=blendStick(src,weldToClaw(dirSrc,half),ease(e));}
     else if(name==='stow'){
-      claw=bez(pileMid,V(lerp(pileMid.x,slotMid.x,.5),Math.max(pileMid.y,slotMid.y)+lift*.5,lerp(pileMid.z,slotMid.z,.5)),slotMid,e);
+      const overL=clearanceOver(pileMid,slotMid,half+model.step*0.15);
+      claw=bez(pileMid,V(lerp(pileMid.x,slotMid.x,.5),
+               Math.max(pileMid.y,slotMid.y,overL)+lift*.5,lerp(pileMid.z,slotMid.z,.5)),slotMid,e);
       weld=vnorm(vlerp(dirSrc,dirSlot,ease(e)));bot.claw=0;
     }else{claw=bez(slotMid,V(lerp(slotMid.x,rest.x,.5),slotMid.y+lift*.3,lerp(slotMid.z,rest.z,.5)),rest,e);
       bot.claw=clamp(e*1.8,0,1);
@@ -1569,6 +1661,7 @@ function tickBuild(dt){
   if(mi===undefined){sim.task=null;return;}
   const m=model.members[mi],na=model.nodes[m.a],nb=model.nodes[m.b];
   const tgtA=V(na.x,na.y,na.z),tgtB=V(nb.x,nb.y,nb.z),tgtMid=midOf({a:tgtA,b:tgtB});
+  clampToStick(workNode(mi),dt,9);
   const slot=rackSlot(0,memberLen(mi)),slotMid=midOf(slot);
   const blocked=sim.stepOf&&(sim.stepOf.get(mi)||{}).worst==='bad';
   const dirSlot=vnorm(vsub(slot.b,slot.a)),dirTgt=vnorm(vsub(tgtB,tgtA));
@@ -1579,7 +1672,10 @@ function tickBuild(dt){
     held=blendStick(slot,weldToClaw(dirSlot,half),ease(e));}
   else if(name==='carry'||name==='align'){
     const t=name==='carry'?e*0.8:0.8+e*0.2;
-    const apex=V(lerp(slotMid.x,tgtMid.x,.5),Math.max(slotMid.y,tgtMid.y)+lift*0.7,lerp(slotMid.z,tgtMid.z,.5));
+    const over=clearanceOver(slotMid,tgtMid,memberLen(mi)*0.5+model.step*0.15);
+    const apex=V(lerp(slotMid.x,tgtMid.x,.5),
+                 Math.max(slotMid.y,tgtMid.y,over)+lift*0.7,
+                 lerp(slotMid.z,tgtMid.z,.5));
     claw=bez(slotMid,apex,tgtMid,t);
     weld=vnorm(vlerp(dirSlot,dirTgt,ease(clamp(t*1.15,0,1))));
     bot.claw=0;
@@ -1656,6 +1752,10 @@ function tickCollapse(dt){
 }
 function resetSim(){
   sim.mode='idle';sim.phys=null;sim.collapse=null;bot.held=null;sim.showBot=true;
+  // the magazine holds member indices; a rebuilt model invalidates them, and drawing
+  // a stale one crashes the scene. Clear the whole in-flight job.
+  sim.mag=[];sim.queue=[];sim.task=null;sim.tt=0;sim.assigned=0;
+  sim.drops=[];sim.blocked=0;sim.droppedIds=new Set();
   sim.visible=new Set(model.members.map((_,i)=>i));
   sim.stock=stockPile(model);
   $('breakBtn').textContent='⚡ Test to failure';
