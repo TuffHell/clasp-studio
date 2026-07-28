@@ -1162,6 +1162,10 @@ function buildScene(){
   view.centerS=vlerp(view.centerS,view.centerT,e);
   view.radiusS=lerp(view.radiusS,view.radiusT,e);
   view.center=view.centerS; view.radius=view.radiusS;
+  let SR=1;
+  for(const nd of md.nodes)SR=Math.max(SR,Math.hypot(nd.x-view.center.x,nd.y-view.center.y,nd.z-view.center.z));
+  for(const st of sim.stock)SR=Math.max(SR,Math.hypot(st.a.x-view.center.x,st.a.y-view.center.y,st.a.z-view.center.z));
+  view.sceneR=SR;
 }
 function drawRobot(out,rad){
   const k=botFK(bot);
@@ -1224,16 +1228,28 @@ function render(){
     vx.font='13px '+getComputedStyle(document.body).fontFamily;vx.textAlign='center';
     vx.fillText('Draw a frame on the left, or pick a preset.',W/2,H/2);return;}
   const sy=Math.sin(cam.yaw),cy=Math.cos(cam.yaw),sp=Math.sin(cam.pitch),cp=Math.cos(cam.pitch);
-  const R=view.radius||300,dist=R*3.1,f=Math.min(W,H)*1.28*cam.zoom,C=view.center;
+  const R=view.radius||300;
+  /* Keep the camera outside the scene's bounding sphere and lengthen the lens to
+     compensate. Sitting 3.1 radii from a 300 mm focus put the eye inside a frame
+     several metres across, so geometry behind it projected through infinity and
+     smeared across the screen. Telephoto keeps the subject the same size on screen
+     while the eye stays clear of the timber. */
+  const base=R*3.1, sceneR=view.sceneR||R;
+  const dist=Math.max(base,sceneR*1.15+R);
+  const f=Math.min(W,H)*1.28*cam.zoom*(dist/base);
+  const near=dist*0.02, C=view.center;
   const L=vnorm(V(0.42,0.8,-0.44)),out=[],shp=pal().shadow;
   for(const q of view.quads){
-    const pts=[];let zs=0;
+    const pts=[];let zs=0,clipped=false;
     for(const p of q.p){
       const x=p.x-C.x,y=p.y-C.y,z=p.z-C.z;
       const x1=x*cy+z*sy,z1=-x*sy+z*cy;
       const y2=y*cp-z1*sp,z2=y*sp+z1*cp;
-      const sc=f/(dist+z2);
+      const denom=dist+z2;
+      if(denom<near){clipped=true;break;}      // at or behind the eye
+      const sc=f/denom;
       pts.push([W/2+x1*sc+cam.pan.x,H*0.58-y2*sc+cam.pan.y]);zs+=z2;}
+    if(clipped)continue;
     const ax=pts[1][0]-pts[0][0],ay=pts[1][1]-pts[0][1];
     const bx=pts[2][0]-pts[0][0],by=pts[2][1]-pts[0][1];
     const area=ax*by-ay*bx;
