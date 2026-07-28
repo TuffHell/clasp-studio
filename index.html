@@ -860,7 +860,7 @@ function armClash(yaw,shoulder,elbow){
   return worst;
 }
 const bot={
-  mount:V(0,0,0), yaw:0, armYaw:0, shoulder:0.6, elbow:1.2, claw:1,
+  mount:V(0,0,0), yaw:0, armYaw:0, shoulder:0.6, elbow:1.2, claw:1, strut:V(0,1,0), span:600, gripFrom:V(0,0,0),
   clampA:0, clampB:0, held:null, atNode:undefined
 };
 function botFK(b){
@@ -918,9 +918,10 @@ function alongPath(pts,f){
   for(let i=0;i<seg.length;i++){
     if(t<=seg[i]||i===seg.length-1){
       const u=seg[i]>1e-6?clamp(t/seg[i],0,1):0;
-      return{pos:vlerp(pts[i],pts[i+1],u),dir:vnorm(vsub(pts[i+1],pts[i]))};}
+      return{pos:vlerp(pts[i],pts[i+1],u),dir:vnorm(vsub(pts[i+1],pts[i])),
+             from:pts[i],len:seg[i]};}
     t-=seg[i];}
-  return{pos:pts[pts.length-1],dir:V(1,0,0)};
+  return{pos:pts[pts.length-1],dir:V(1,0,0),from:pts[pts.length-1],len:1};
 }
 
 /* ================= CAD: binary STL loader ================= */
@@ -1003,19 +1004,48 @@ function drawCADUnit(out,base,yaw,lift){
     }
   });
 }
+/* Guarantee, rather than hope: whatever the gait arithmetic produces, each half is
+   snapped onto the nearest built stick before it is drawn. The four-bar lift is then
+   applied away from that stick. A half can only leave the timber by being lifted. */
+function snapToTimber(p){
+  let bx=p.x,by=p.y,bz=p.z,bd=Infinity;
+  for(const mi of sim.visible){
+    const m=model.members[mi],a=model.nodes[m.a],b=model.nodes[m.b];
+    const ax=b.x-a.x,ay=b.y-a.y,az=b.z-a.z;
+    const L2=ax*ax+ay*ay+az*az; if(!L2)continue;
+    const t=clamp(((p.x-a.x)*ax+(p.y-a.y)*ay+(p.z-a.z)*az)/L2,0,1);
+    const cx=a.x+ax*t,cy=a.y+ay*t,cz=a.z+az*t;
+    const d=(p.x-cx)**2+(p.y-cy)**2+(p.z-cz)**2;
+    if(d<bd){bd=d;bx=cx;by=cy;bz=cz;}
+  }
+  return bd<Infinity?V(bx,by,bz):p;
+}
 function drawCAD(out){
-  // the real machine is two of these, joined by the four-bar
-  const gap=CAD.bbox?CAD.bbox.size.x*1.05:140;
-  const f={x:Math.cos(bot.yaw),z:Math.sin(bot.yaw)};
+  /* Both halves ride the SAME stick, spaced along its axis. Spacing them along the
+     carriage facing put one of them out in mid-air. The four-bar lifts a half clear
+     by moving it away from the timber, which is the facing direction, not upward. */
+  const body=CAD.bbox?CAD.bbox.size.x:130;
+  const gap=Math.min(body*1.05,Math.max(body*0.6,(bot.span||600)*0.45));
+  const st=bot.strut||V(0,1,0);
+  const face={x:Math.cos(bot.yaw),y:0,z:Math.sin(bot.yaw)};
   const A=gait.A,B=gait.B;
-  drawCADUnit(out,V(bot.mount.x+f.x*(A.s-gap/2),bot.mount.y+A.lift*A.hop,bot.mount.z+f.z*(A.s-gap/2)),bot.yaw,A.lift);
-  drawCADUnit(out,V(bot.mount.x+f.x*(B.s+gap/2),bot.mount.y+B.lift*B.hop,bot.mount.z+f.z*(B.s+gap/2)),bot.yaw,B.lift);
+  // where the carriage sits measured along the stick from its near end
+  const g0=bot.gripFrom||bot.mount, span=Math.max(bot.span||600,body);
+  const base=(bot.mount.x-g0.x)*st.x+(bot.mount.y-g0.y)*st.y+(bot.mount.z-g0.z)*st.z;
+  const half=body*0.5;
+  const place=(u,off)=>{
+    const t=clamp(base+off,half,Math.max(half,span-half));
+    const on=snapToTimber(V(g0.x+st.x*t,g0.y+st.y*t,g0.z+st.z*t));
+    return V(on.x+face.x*u.lift*u.hop, on.y+u.lift*u.hop*0.15, on.z+face.z*u.lift*u.hop);
+  };
+  drawCADUnit(out,place(A,A.s-gap/2),bot.yaw,A.lift);
+  drawCADUnit(out,place(B,B.s+gap/2),bot.yaw,B.lift);
 }
 /* Gait: the two halves take turns. One clamps the beam while the four-bar lifts the
    other clear, swings it past the crossing member, and sets it down on the far side. */
 const gait={A:{s:0,lift:0,hop:0},B:{s:0,lift:0,hop:0},phase:0};
 function stepGait(dt,speed,stride){
-  const hop=stride*0.55;
+  const hop=Math.min(stride*0.45,mat.D*model.scale*1.6);
   gait.A.hop=hop; gait.B.hop=hop;
   gait.phase=(gait.phase+dt*speed*0.55)%1;
   const p=gait.phase;
@@ -1501,7 +1531,9 @@ function faceYawFor(d,at){
 }
 function clampToStick(nodeIdx,dt,rate){
   const g=gripAt(nodeIdx);
+  if(g===null&&sim.visible.size){bot.mount=snapToTimber(bot.mount);}
   if(!g){bot.mount=vlerp(bot.mount,nodePos(nodeIdx),1-Math.exp(-(rate||8)*dt));return;}
+  bot.strut=g.d; bot.span=g.len; bot.gripFrom=V(g.here.x,g.here.y,g.here.z);
   const back=Math.min(g.len*0.28,ROBOT.bodyH*0.9);
   const pos=vadd(V(g.here.x,g.here.y,g.here.z),vmul(g.d,back));
   const t=1-Math.exp(-(rate||8)*dt);
@@ -1606,7 +1638,7 @@ function tickBuild(dt){
   /* ---- travel: drive the carriage, arm folded, nothing in the claw ---- */
   if(sim.task.type==='travel'){
     const a=alongPath(T.pts,ease(clamp(sim.tt,0,1)));
-    bot.mount=a.pos;
+    bot.mount=a.pos; bot.strut=a.dir; bot.span=a.len||T.len; bot.gripFrom=a.from||a.pos;
     // the carriage sits square to whichever stick it is riding
     {
       const want=faceYawFor(a.dir,a.pos);
@@ -1614,7 +1646,7 @@ function tickBuild(dt){
       bot.yaw+=d*sm(6);
     }
     // the real machine: two halves taking turns, four-bar lifting each over the crossings
-    stepGait(dt,sim.speed*2.2,model.step*0.5);
+    stepGait(dt,sim.speed*2.2,Math.min(model.step*0.5,Math.max(60,(bot.span||600)*0.3)));
     const g=sim.tt*Math.max(1,T.len/(model.step*0.55))*Math.PI*2;
     bot.clampA=0.5+0.5*Math.sin(g);
     bot.clampB=0.5+0.5*Math.sin(g+Math.PI);
