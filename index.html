@@ -860,7 +860,7 @@ function armClash(yaw,shoulder,elbow){
   return worst;
 }
 const bot={
-  mount:V(0,0,0), yaw:0, armYaw:0, shoulder:0.6, elbow:1.2, claw:1, strut:V(0,1,0), span:600, gripFrom:V(0,0,0),
+  mount:V(0,0,0), yaw:0, armYaw:0, shoulder:0.6, elbow:1.2, claw:1, strut:V(0,1,0), span:600, gripFrom:V(0,0,0), rail:null, railS:0,
   clampA:0, clampB:0, held:null, atNode:undefined
 };
 function botFK(b){
@@ -1020,6 +1020,11 @@ function snapToTimber(p){
   }
   return bd<Infinity?V(bx,by,bz):p;
 }
+function railPos(sMm){
+  const R=bot.rail;
+  if(!R||!R.pts||R.pts.length<2)return V(bot.mount.x,bot.mount.y,bot.mount.z);
+  return alongPath(R.pts,clamp(sMm/Math.max(R.len,1),0,1)).pos;
+}
 function drawCAD(out){
   /* Both halves ride the SAME stick, spaced along its axis. Spacing them along the
      carriage facing put one of them out in mid-air. The four-bar lifts a half clear
@@ -1029,17 +1034,35 @@ function drawCAD(out){
   const st=bot.strut||V(0,1,0);
   const face={x:Math.cos(bot.yaw),y:0,z:Math.sin(bot.yaw)};
   const A=gait.A,B=gait.B;
-  // where the carriage sits measured along the stick from its near end
-  const g0=bot.gripFrom||bot.mount, span=Math.max(bot.span||600,body);
-  const base=(bot.mount.x-g0.x)*st.x+(bot.mount.y-g0.y)*st.y+(bot.mount.z-g0.z)*st.z;
-  const half=body*0.5;
-  const place=(u,off)=>{
-    const t=clamp(base+off,half,Math.max(half,span-half));
-    const on=snapToTimber(V(g0.x+st.x*t,g0.y+st.y*t,g0.z+st.z*t));
+  /* Each half sits at its own arc length along the rail the robot is riding. The rail
+     is either the travelled route or the single gripped stick, so any point on it is
+     on timber by construction — no snapping, no guessing which stick is nearest. */
+  /* Before a rail is established (first frames, or a task that has not set one) a
+     zero-length rail would collapse both halves onto one point. Synthesise a rail
+     from the stick direction through the carriage so they always stay a wheelbase
+     apart. */
+  let rail=bot.rail;
+  if(!rail||!rail.pts||rail.pts.length<2||rail.len<body*0.6){
+    const L=Math.max(gap*1.3,bot.span||body*1.3);
+    rail={pts:[vsub(bot.mount,vmul(st,L/2)),vadd(bot.mount,vmul(st,L/2))],len:L,
+          onStructure:rail?rail.onStructure:false};
+    bot.railS=L/2;
+  }
+  const RL=Math.max(rail.len,1);
+  const s0=clamp(bot.railS||0,0,RL);
+  // if the stick is shorter than the wheelbase, sit on its ends rather than stack
+  const sep=Math.min(gap,RL);
+  let sA=s0-sep/2, sB=s0+sep/2;
+  if(sA<0){sB-=sA;sA=0;}
+  if(sB>RL){sA-=(sB-RL);sB=RL;}
+  sA=clamp(sA,0,RL); sB=clamp(sB,0,RL);
+  const onRail=sMm=>alongPath(rail.pts,clamp(sMm/RL,0,1)).pos;
+  const place=(u,sPos)=>{
+    const on=onRail(clamp(sPos,0,RL));
     return V(on.x+face.x*u.lift*u.hop, on.y+u.lift*u.hop*0.15, on.z+face.z*u.lift*u.hop);
   };
-  drawCADUnit(out,place(A,A.s-gap/2),bot.yaw,A.lift);
-  drawCADUnit(out,place(B,B.s+gap/2),bot.yaw,B.lift);
+  drawCADUnit(out,place(A,sA+A.s*0.4),bot.yaw,A.lift);
+  drawCADUnit(out,place(B,sB+B.s*0.4),bot.yaw,B.lift);
 }
 /* Gait: the two halves take turns. One clamps the beam while the four-bar lifts the
    other clear, swings it past the crossing member, and sets it down on the far side. */
@@ -1534,10 +1557,13 @@ function clampToStick(nodeIdx,dt,rate){
   if(g===null&&sim.visible.size){bot.mount=snapToTimber(bot.mount);}
   if(!g){bot.mount=vlerp(bot.mount,nodePos(nodeIdx),1-Math.exp(-(rate||8)*dt));return;}
   bot.strut=g.d; bot.span=g.len; bot.gripFrom=V(g.here.x,g.here.y,g.here.z);
+  bot.rail={pts:[V(g.here.x,g.here.y,g.here.z),V(g.far.x,g.far.y,g.far.z)],
+            len:g.len,onStructure:true};
   const back=Math.min(g.len*0.28,ROBOT.bodyH*0.9);
   const pos=vadd(V(g.here.x,g.here.y,g.here.z),vmul(g.d,back));
   const t=1-Math.exp(-(rate||8)*dt);
   bot.mount=vlerp(bot.mount,pos,t);
+  bot.railS=back;
   let want=faceYawFor(g.d,pos), dy=want-bot.yaw;
   while(dy>Math.PI)dy-=2*Math.PI; while(dy<-Math.PI)dy+=2*Math.PI;
   bot.yaw+=dy*t;
@@ -1639,6 +1665,8 @@ function tickBuild(dt){
   if(sim.task.type==='travel'){
     const a=alongPath(T.pts,ease(clamp(sim.tt,0,1)));
     bot.mount=a.pos; bot.strut=a.dir; bot.span=a.len||T.len; bot.gripFrom=a.from||a.pos;
+    bot.rail={pts:T.pts,len:T.len,onStructure:T.onStructure};
+    bot.railS=ease(clamp(sim.tt,0,1))*T.len;
     // the carriage sits square to whichever stick it is riding
     {
       const want=faceYawFor(a.dir,a.pos);
