@@ -57,7 +57,11 @@ h1,h2,h3{text-wrap:balance}
 .grp .sect:last-of-type{border-bottom:none}
 
 /* ---------- viewport furniture ---------- */
-#views{position:absolute;top:12px;right:14px;display:flex;gap:4px}
+#views{position:absolute;top:12px;right:14px;display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;max-width:60%}
+#track{position:absolute;top:12px;left:14px;display:flex;gap:4px}
+#track button{font-family:var(--font-mono);font-size:11px;padding:4px 10px;
+  background:color-mix(in srgb,var(--panel) 86%,transparent);border:1px solid var(--line)}
+#track button[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
 #views button{font-family:var(--font-mono);font-size:11px;padding:4px 9px;
   background:color-mix(in srgb,var(--panel) 86%,transparent);border:1px solid var(--line)}
 #views button[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
@@ -86,23 +90,22 @@ h1,h2,h3{text-wrap:balance}
 .hero-stats b{font-family:var(--font-mono);font-size:21px;font-weight:600;font-variant-numeric:tabular-nums;
               letter-spacing:-.01em}
 .hero-stats span{font-size:11.5px;color:var(--faint);letter-spacing:.02em}
-.topsub{font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
-        color:var(--faint);border:1px solid var(--line);border-radius:99px;padding:3px 10px}
+.topsub{font-size:12px;color:var(--faint)}
 .top nav{margin-left:auto}
 
 /* ---------- masthead ---------- */
 .top{border-bottom:1px solid var(--line);background:var(--panel)}
-.top-in{max-width:1500px;margin:0 auto;padding:14px 22px;display:flex;align-items:baseline;
-        gap:16px;flex-wrap:wrap}
-.brand{font-family:var(--font-mono);font-size:16px;font-weight:600;letter-spacing:.02em;margin:0}
+.top-in{max-width:none;margin:0;padding:11px 18px;display:flex;align-items:baseline;
+        gap:14px;flex-wrap:wrap}
+.brand{font-family:var(--font-mono);font-size:14px;font-weight:600;letter-spacing:.02em;margin:0}
 .brand .dot{color:var(--accent)}
 .tag{font-size:13px;color:var(--muted);margin:0}
 .top a{font-size:13px;color:var(--muted);text-decoration:none;border-bottom:1px solid transparent}
 .top a:hover{color:var(--ink);border-bottom-color:var(--accent)}
 
 /* ---------- app ---------- */
-#app{display:flex;height:min(880px,calc(100dvh - 64px));min-height:600px;overflow:hidden;
-     max-width:1500px;margin:0 auto;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+#app{display:flex;height:calc(100dvh - 49px);min-height:520px;overflow:hidden;
+     max-width:none;margin:0}
 #console{width:392px;flex:none;background:var(--panel);border-right:1px solid var(--line);
          overflow-y:auto;overscroll-behavior:contain}
 .sect{border-bottom:1px solid var(--line);padding:17px 20px}
@@ -172,12 +175,11 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
 #view{flex:1;display:block;width:100%;background:linear-gradient(var(--view-a),var(--view-b));
       cursor:grab;touch-action:none}
 #view:active{cursor:grabbing}
-#hud{position:absolute;top:12px;left:14px;font-family:var(--font-mono);font-size:11px;color:var(--muted);
+#hud{position:absolute;bottom:12px;left:14px;font-family:var(--font-mono);font-size:11px;color:var(--muted);
      background:color-mix(in srgb,var(--panel) 82%,transparent);border:1px solid var(--line);
-     border-radius:6px;padding:5px 9px;pointer-events:none}
-#phase{position:absolute;bottom:12px;right:14px;font-family:var(--font-mono);font-size:11px;
-       background:color-mix(in srgb,var(--panel) 82%,transparent);border:1px solid var(--line);
-       border-radius:6px;padding:5px 9px;pointer-events:none;color:var(--accent);text-align:right}
+     border-radius:6px;padding:5px 9px;pointer-events:none;max-width:calc(100% - 28px)}
+#phase{font-family:var(--font-mono);font-size:10.5px;color:var(--accent);border:1px solid var(--line);
+       border-radius:99px;padding:1px 8px;letter-spacing:.05em;flex:none}
 #transport{flex:none;border-top:1px solid var(--line);background:var(--panel);padding:9px 14px;
            display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 #transport .grow{flex:1;min-width:100px}
@@ -196,8 +198,7 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
             border-radius:6px;background:var(--panel);color:var(--ink)}
 
 /* ---------- prose below ---------- */
-.prose{max-width:1500px;margin:0 auto;border-left:1px solid var(--line);border-right:1px solid var(--line);
-       background:var(--panel);border-top:1px solid var(--line)}
+.prose{background:var(--panel);border-top:1px solid var(--line)}
 .prose-in{max-width:720px;margin:0 auto;padding:56px 22px 72px}
 ..ph{}
 .prose h2{font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:.11em;
@@ -219,6 +220,7 @@ td.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;text-align
          border-radius:0 7px 7px 0;margin:0 0 14px;font-size:14px;color:var(--warn)}
 footer{border-top:1px solid var(--line);padding:20px 22px;text-align:center;font-size:12px;color:var(--faint)}
 
+@media (max-width:700px){ #hud{display:none} #views{max-width:70%} }
 @media (max-width:960px){
   #app{flex-direction:column;height:auto;overflow:visible;min-height:0;border:none}
   #console{width:100%;border-right:none;border-bottom:1px solid var(--line);order:2;overflow:visible}
@@ -244,26 +246,12 @@ footer{border-top:1px solid var(--line);padding:20px 22px;text-align:center;font
 <header class="top">
   <div class="top-in">
     <h1 class="brand">CLASP Studio<span class="dot">.</span></h1>
-    <span class="topsub">Regeneron ISEF 2027</span>
+    <span class="topsub">climbing timber-assembly robot &middot; ISEF 2027</span>
     <nav><a href="#how">How it works</a></nav>
   </div>
 </header>
 
-<section class="hero">
-  <div class="hero-in">
-    <p class="eyebrow">Robotic timber assembly</p>
-    <h2 class="hero-h">A robot that climbs the frame it is building.</h2>
-    <p class="hero-p">Draw a structure below. Real structural mathematics decides whether it stands —
-      and if it cannot, it falls over instead of pretending. Then watch the machine build it,
-      stick by stick.</p>
-    <div class="hero-stats">
-      <div><b>60×60</b><span>mm timber</span></div>
-      <div><b>2</b><span>chassis halves</span></div>
-      <div><b>0</b><span>frames both unclamped</span></div>
-      <div><b>100%</b><span>runs in your browser</span></div>
-    </div>
-  </div>
-</section>
+
 
 <div id="app">
   <div id="console">
@@ -395,10 +383,12 @@ footer{border-top:1px solid var(--line);padding:20px 22px;text-align:center;font
         <button data-view="side">Side</button><button data-view="top">Top</button>
         <button id="fitBtn" title="Reset zoom and position">Fit</button>
       </div>
+      <div id="track">
+        <button id="followBtn" aria-pressed="true" title="Keep the camera on the robot">Follow robot</button>
+      </div>
       <div id="coach"><b>Press “Build it”</b> to watch the robot assemble this frame, or
         <b>“Test to failure”</b> to load it until something breaks.
         <button id="coachX" aria-label="Dismiss">Got it</button></div>
-      <div id="phase">idle</div>
     </div>
     <div id="transport">
       <button id="play">▶ Build it</button>
@@ -411,7 +401,7 @@ footer{border-top:1px solid var(--line);padding:20px 22px;text-align:center;font
           <option value="2">2×</option>
           <option value="4">4×</option>
         </select></span>
-      <span id="statusLbl"><span class="dot"></span><span class="txt">ready</span></span>
+      <span id="statusLbl"><span class="dot"></span><span id="phase">idle</span><span class="txt">ready</span></span>
     </div>
   </div>
 </div>
@@ -1020,7 +1010,7 @@ async function loadCADFromRepo(){
 
 /* ================= renderer ================= */
 const vc=$('view'),vx=vc.getContext('2d');
-let cam={yaw:0.72,pitch:0.26,zoom:1,zoomT:1,pan:{x:0,y:0},auto:true,tYaw:null,tPitch:null,tZoom:null};
+let cam={yaw:0.72,pitch:0.26,zoom:1,zoomT:1,pan:{x:0,y:0},auto:true,follow:true,tYaw:null,tPitch:null,tZoom:null};
 const VIEWS={iso:[0.72,0.26,1],front:[Math.PI/2,0.10,1],side:[0,0.10,1],top:[Math.PI/2,1.15,0.95]};
 function goView(k){
   const v=VIEWS[k]; if(!v)return;
@@ -1083,7 +1073,7 @@ function utilColor(u,F){
   const base=F>=0?[47,111,179]:[179,55,44],rest=mat.rgb,t=clamp(u,0,1);
   return[0,1,2].map(i=>Math.round(rest[i]+(base[i]-rest[i])*Math.pow(t,0.55)));
 }
-let view={quads:[],center:V(0,0,0),radius:300};
+let view={quads:[],center:V(0,0,0),radius:300,centerT:null,radiusT:300,centerS:null,radiusS:300,dt:0.016};
 
 function buildScene(){
   const out=[],md=model;
@@ -1140,7 +1130,6 @@ function buildScene(){
   const note=p=>{minx=Math.min(minx,p.x);maxx=Math.max(maxx,p.x);
     minz=Math.min(minz,p.z);maxz=Math.max(maxz,p.z);maxy=Math.max(maxy,p.y);};
   md.nodes.forEach(note);
-  for(const st of sim.stock){note(st.a);note(st.b);}
   const pad=md.step*0.9;
   const gx0=minx-pad,gx1=maxx+pad,gz0=minz-pad*1.6,gz1=maxz+pad*1.6;
   out.push({p:[{x:gx0,y:0,z:gz0},{x:gx1,y:0,z:gz0},{x:gx1,y:0,z:gz1},{x:gx0,y:0,z:gz1}],
@@ -1158,8 +1147,21 @@ function buildScene(){
   let R=1;
   const bump=p=>R=Math.max(R,Math.hypot(p.x-view.center.x,p.y-view.center.y,p.z-view.center.z));
   md.nodes.forEach(bump);
-  for(const st of sim.stock)bump(st.a);
   view.radius=Math.max(R,ROBOT.L1+ROBOT.L2);
+
+  /* Follow mode: sit close to the machine so the mechanism is legible. Framing the
+     whole site made the robot a few pixels tall, which is what made it unwatchable. */
+  if(cam.follow&&sim.showBot&&(sim.mode==='building'||sim.mode==='idle')){
+    const k=botFK(bot);
+    const focus=V((bot.mount.x+k.wr.x)/2,(bot.mount.y+ROBOT.bodyH*0.6+k.wr.y)/2,(bot.mount.z+k.wr.z)/2);
+    const want=bot.held?Math.max(vlen(vsub(midOf(bot.held),focus))*1.6,340):300;
+    view.centerT=focus; view.radiusT=want;
+  }else{ view.centerT=view.center; view.radiusT=view.radius; }
+  if(!view.centerS){view.centerS=view.centerT;view.radiusS=view.radiusT;}
+  const e=1-Math.exp(-4.5*(view.dt||0.016));
+  view.centerS=vlerp(view.centerS,view.centerT,e);
+  view.radiusS=lerp(view.radiusS,view.radiusT,e);
+  view.center=view.centerS; view.radius=view.radiusS;
 }
 function drawRobot(out,rad){
   const k=botFK(bot);
@@ -1658,7 +1660,7 @@ function chip(sev,label,pill,val,note){
     <div class="vval">${val}</div><div class="vnote">${note}</div></div></div>`;}
 const rowsHTML=l=>l.map(([k,v])=>`<div class="rw"><span>${k}</span><b>${v}</b></div>`).join('');
 
-function rebuild(){buildModel();resetSim();drawGrid();}
+function rebuild(){buildModel();resetSim();drawGrid();view.centerS=null;}
 function standingStill(){return sim.mode==='idle';}
 function runAnalysis(autoFall){
   const md=model;
@@ -1861,6 +1863,10 @@ document.querySelectorAll('[data-preset]').forEach(b=>{
 $('meas').addEventListener('input',updateValidation);
 document.querySelectorAll('#views button[data-view]').forEach(b=>b.onclick=()=>goView(b.dataset.view));
 $('fitBtn').onclick=()=>{fitView();goView('iso');};
+$('followBtn').onclick=()=>{cam.follow=!cam.follow;
+  $('followBtn').setAttribute('aria-pressed',String(cam.follow));
+  $('followBtn').textContent=cam.follow?'Follow robot':'Whole frame';
+  view.centerS=null;buildScene();};
 $('cutCsv').onclick=downloadCSV;
 $('shareBtn').onclick=async()=>{
   const url=location.origin+location.pathname+'#'+encodeState();
@@ -1914,6 +1920,7 @@ function loop(now){
   const dt=Math.min((now-last)/1000,0.05);last=now;
   camEase(dt);
   if(cam.auto&&!reduceMotion.matches&&sim.mode==='idle')cam.yaw+=dt*0.075;
+  view.dt=dt;
   if(sim.mode==='building'){tickBuild(dt);buildScene();}
   else if(sim.mode==='collapsing'){tickCollapse(dt);buildScene();}
   else if(cam.auto&&!reduceMotion.matches)buildScene();
