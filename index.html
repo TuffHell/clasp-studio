@@ -89,7 +89,7 @@ button,input,select{font:inherit;color:inherit}
 
 /* ===================================================================== layout: areas like Blender editors */
 .app{flex:1;min-height:0;display:grid;gap:2px;padding:2px;background:var(--gap);
-  grid-template-columns:minmax(0,1fr) 340px;grid-template-rows:minmax(0,1fr) 168px 22px;
+  grid-template-columns:minmax(0,1fr) 340px;grid-template-rows:minmax(0,1fr) 150px 22px;
   grid-template-areas:"view right" "time right" "status status"}
 .app[data-mode="checks"]{grid-template-rows:minmax(0,1fr) 46% 22px}
 .area{background:var(--panel);border-radius:6px;overflow:hidden;display:flex;flex-direction:column;min-height:0}
@@ -108,7 +108,6 @@ button,input,select{font:inherit;color:inherit}
 .hgroup .hbtn:last-child{border-radius:0 var(--r) var(--r) 0}.hgroup .hbtn+.hbtn{margin-left:1px}
 .view-area{grid-area:view}
 .right{grid-area:right;display:flex;flex-direction:column;gap:2px;min-height:0}
-.outliner{flex:0 0 190px}
 .props{flex:1}
 .time{grid-area:time}
 .statusbar{grid-area:status;display:flex;align-items:center;justify-content:space-between;padding:0 8px;
@@ -118,35 +117,14 @@ button,input,select{font:inherit;color:inherit}
 .app[data-mode="robot"] [data-for~="robot"],.app[data-mode="build"] [data-for~="build"],
 .app[data-mode="checks"] [data-for~="checks"],.app[data-mode="drive"] [data-for~="drive"]{display:revert!important}
 
-/* ===================================================================== outliner */
-.otree{flex:1;overflow:auto;padding:3px 0;font-size:12px}
-.orow{display:flex;align-items:center;gap:5px;height:21px;padding-right:6px;cursor:pointer;color:var(--ink-2)}
-.orow:nth-child(even){background:rgba(255,255,255,.018)}
-.orow:hover{background:var(--hover)}
-.orow.sel{background:var(--accent-soft);color:var(--ink)}
-.orow .tw{width:12px;text-align:center;color:var(--muted);font-size:9px}
-.orow .ic{width:14px;height:14px;flex:none}
-.orow .nm{flex:1;overflow:hidden;text-overflow:ellipsis}
-.orow .ct{color:var(--faint);font:10.5px var(--mono)}
-.orow .eye{border:0;background:none;color:var(--muted);cursor:pointer;padding:0 2px;display:flex}
-.orow .eye svg{width:14px;height:14px}
-.orow .eye.off{opacity:.35}
-
 /* ===================================================================== properties editor */
 .pbody{flex:1;display:flex;min-height:0}
-.ptabs{flex:none;width:30px;background:var(--head);display:flex;flex-direction:column;gap:2px;padding:4px 3px;
-  border-right:1px solid var(--line)}
-.ptabs button{width:24px;height:24px;border:0;background:none;border-radius:var(--r);cursor:pointer;color:var(--muted);
-  display:flex;align-items:center;justify-content:center}
-.ptabs button svg{width:16px;height:16px}
-.ptabs button:hover{background:var(--hover);color:var(--ink)}
-.ptabs button[aria-selected="true"]{background:var(--panel);color:var(--ink);box-shadow:inset 2px 0 0 var(--accent)}
-.pcontent{flex:1;overflow:auto;padding:4px 5px 10px}
-.ptitle{font-weight:600;padding:5px 4px 6px;color:var(--ink);display:flex;align-items:center;gap:6px}
-.ptitle svg{width:14px;height:14px;color:var(--muted)}
+.pcontent{flex:1;overflow:auto;padding:4px 5px 10px;display:flex;flex-direction:column}
+.pcontent .sec[data-tab="demo"]{order:-1}.pcontent .sec[data-tab="object"]{order:-2}
+.ptitle{font-weight:600;padding:0 0 4px;color:var(--ink)}
 /* panels */
 .sec{background:var(--panel-2);border-radius:5px;margin:0 0 4px;overflow:hidden}
-.app .pcontent .sec.hide-tab{display:none!important}
+.app .pcontent .sec.gone{display:none!important}
 .sh{display:flex;align-items:center;gap:6px;height:25px;padding:0 8px;cursor:pointer;user-select:none;background:var(--box)}
 .sh::before{content:"";width:0;height:0;border:4px solid transparent;border-top-color:var(--muted);border-top-width:5px;
   transform:translateY(2px);flex:none}
@@ -279,12 +257,9 @@ kbd{font:500 10.5px var(--mono);padding:1px 5px;border-radius:3px;background:var
 
 /* ===================================================================== timeline + info */
 .tl-body{flex:1;display:flex;min-height:0}
-.tl-left{flex:1.4;display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--line)}
-#tlCanvas{flex:1;width:100%;min-height:0;display:block;cursor:default}
 .info{flex:1;display:flex;flex-direction:column;min-width:0}
-.info-h{display:flex;align-items:center;justify-content:space-between;height:22px;padding:0 8px;color:var(--muted);
-  font-size:11px;border-bottom:1px solid var(--line)}
-.info-h button{border:0;background:none;color:var(--muted);cursor:pointer;font-size:11px}
+.lclear{border:0;background:none;color:var(--muted);cursor:pointer;font-size:11px}
+.lclear:hover{color:var(--ink)}
 #log{list-style:none;margin:0;padding:2px 0;overflow:auto;flex:1;font:11px/1.55 var(--mono)}
 #log li{display:grid;grid-template-columns:54px 46px 1fr;gap:6px;padding:0 8px;color:var(--ink-2)}
 #log li .t{color:var(--faint)}
@@ -331,7 +306,7 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
   body{overflow:auto;display:block}
   .app{display:flex;flex-direction:column;height:auto}
   .view-area{height:62vh;min-height:340px;flex:none}
-  .right,.time{flex:none}.outliner{flex:0 0 160px}.props{min-height:420px}
+  .right,.time{flex:none}.props{min-height:420px}
   .time{height:200px}
   .logo{font-size:0;gap:0;padding-right:4px}.logo small{display:none}
   .mbtn{padding:4px 7px}
@@ -395,18 +370,18 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
         <button class="hbtn" data-shade="solid" title="Solid"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="currentColor"/></svg></button>
         <button class="hbtn" data-shade="material" aria-pressed="true" title="Material preview"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="currentColor" opacity=".45"/><circle cx="6" cy="6" r="2.6" fill="currentColor"/></svg></button>
       </div>
-      <button class="hbtn" id="xrayBtn" title="X-ray" aria-pressed="false"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="6" y="6" width="8" height="8" rx="1"/></svg></button>
       <div class="menu overlays"><button class="hbtn mbtn2" id="ovBtn">Overlays</button><div class="mdrop">
         <label><input type="checkbox" id="ovEdges" checked> CAD edges</label>
         <label><input type="checkbox" id="ovGrid" checked> Floor grid</label>
         <label><input type="checkbox" id="ovLabels" checked> Labels</label>
         <label><input type="checkbox" id="ovShadows" checked> Shadows</label>
+        <label><input type="checkbox" id="ovXray"> X-ray</label>
       </div></div>
     </div>
     <div class="viewport" id="viewport" aria-label="3D view">
       <canvas id="gl" tabindex="0"></canvas>
       <div class="labels" id="labels"></div>
-      <div class="ov vp-title" id="vpTitle"><b>User Perspective</b><span>loading the CAD model</span></div>
+      <div class="ov vp-title" id="vpTitle"><b>loading the CAD model</b></div>
       <div class="navbtns">
         <button id="fitBtn" title="Frame all"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 5V2h3M11 2h3v3M14 11v3h-3M5 14H2v-3"/></svg></button>
         <button id="followBtn" title="Follow the robot" aria-pressed="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="1.5" fill="currentColor"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2"/></svg></button>
@@ -425,16 +400,10 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 
   <!-- ================================================================== OUTLINER + PROPERTIES -->
   <aside class="right">
-    <section class="area outliner">
-      <div class="ahead"><span class="ed"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 3h12M4 6.5h10M4 10h10M2 13.5h12"/></svg>Outliner</span></div>
-      <div class="otree" id="outliner"></div>
-    </section>
     <section class="area props">
       <div class="ahead"><span class="ed"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M10 2a3 3 0 00-3 4L2.5 10.5a1.4 1.4 0 002 2L9 8a3 3 0 004-3l-2 1-1.5-1.5 1-2z"/></svg>Properties</span></div>
       <div class="pbody">
-        <nav class="ptabs" id="ptabs" aria-label="Property tabs"></nav>
         <div class="pcontent" id="pcontent">
-          <div class="ptitle" id="ptitle"></div>
 
           <!-- robot: rig -->
           <section class="sec" data-for="robot" data-tab="scene">
@@ -697,7 +666,7 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
   <!-- ================================================================== TIMELINE + INFO / SPREADSHEET -->
   <section class="area time">
     <div class="ahead">
-      <span class="ed" data-for="robot drive build"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>Timeline</span>
+      <span class="ed" data-for="robot drive build"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2.5 4h11M2.5 8h11M2.5 12h7"/></svg>Log</span>
       <span class="ed" data-for="checks"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="2.5" width="12" height="11" rx="1"/><path d="M2 6h12M2 9.5h12M6 2.5v11"/></svg>Spreadsheet · engineering checks</span>
       <div class="transport" id="transport">
         <button class="hbtn" id="playBtn">Run</button>
@@ -711,11 +680,10 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
       </div>
       <span class="sp"></span>
       <span class="aux mono" id="ckSummary" data-for="checks"></span>
+      <button class="lclear" id="logClear" data-for="robot drive build">Clear log</button>
     </div>
     <div class="tl-body">
-      <div class="tl-left"><canvas id="tlCanvas" aria-label="Event timeline"></canvas></div>
       <div class="info">
-        <div class="info-h"><span>Info</span><button id="logClear">Clear</button></div>
         <ol id="log" aria-live="polite"></ol>
       </div>
     </div>
@@ -786,14 +754,12 @@ let simT=0;
 
 /* ======================================================================= event log */
 const LOG={quiet:0,max:500,last:{}};
-const EVENTS=[];
 const KIND={cmd:'tx',rx:'rx',ok:'ok',warn:'warn',bad:'fault',info:'info'};
 function stamp(t){const m=Math.floor(t/60),s=t-m*60;return String(m).padStart(2,'0')+':'+s.toFixed(1).padStart(4,'0');}
 function log(kind,text){
   if(LOG.quiet)return;
   const li=document.createElement('li');li.className=kind==='rx'?'info':kind;
   li.innerHTML=`<span class="t">${stamp(simT)}</span><span class="k">${KIND[kind]||kind}</span><span>${esc(text)}</span>`;
-  EVENTS.push({t:simT,kind});if(EVENTS.length>800)EVENTS.shift();
   const ol=$('log');ol.appendChild(li);
   while(ol.children.length>LOG.max)ol.firstChild.remove();
   ol.scrollTop=ol.scrollHeight;
@@ -1407,9 +1373,11 @@ const VMAX=300/60*Math.PI*WHEEL_D;                  // 628.3 mm/s at PWM 255, no
 const T_CLAMP=0.6,T_LINK=1.2,ARM_RATE=30,GRIP_RATE=2.2;
 const DETACH_CLEAR=25;                              // mm past the post face, whole free module
 const SENS_Y=30,TOF_TOL=6,TOF_OOR=8190;             // ToF mount (assumed) and WARN margin
-/* The claw hooks down in pose A (grip 0) and swings level in pose B (grip 1). A member sits in the
-   crook under the arm head, at this point in CAD pose-A coordinates. x is set to the post centre at load. */
-const GRIP={y:55,z:355,closed:0,open:1,hold:0.3};
+/* The claw hooks down in pose A (grip 0) and swings level in pose B (grip 1). A 60 mm member seats in the
+   palm's V: the palm touches two faces and the finger closes on the other two at 12% open. y and z are the
+   member centre in CAD pose-A coordinates, th its roll in the claw, all measured against the CAD mesh.
+   x is set to the post centre at load. The self-test rechecks the fit. */
+const GRIP={y:92.3,z:347,th:-43,closed:0,open:1,hold:0.12};
 const CARRY_ARM=-10;                                 // arm tilted back while carrying, so the member clears the post
 
 const RB={ready:false,bodies:[],byId:new Map(),order:[],group:{lower:[],upper:[],link:[],arm:[]},
@@ -1503,7 +1471,8 @@ async function loadRobot(){
   for(const g in RB.group){let zmin=1e9,zmax=-1e9,ymin=1e9,ymax=-1e9;
     for(const b of RB.group[g])for(const P of b.verts)for(let i=0;i<P.length;i+=3){
       zmin=Math.min(zmin,P[i+2]);zmax=Math.max(zmax,P[i+2]);ymin=Math.min(ymin,P[i+1]);ymax=Math.max(ymax,P[i+1]);}
-    RB.ext[g]={zmin,zmax,ymin,ymax};}
+    RB.ext[g]={zmin,zmax,ymin,ymax,
+      axleTop:Math.max(-1e9,...RB.group[g].filter(b=>b.joint.type==='spin').map(b=>b.centroid.z))};}
   /* detach poses. With both hinge angles equal, the free module translates without turning.
      Find the smallest swing that puts all of it, clamp open, DETACH_CLEAR past the post face. */
   fkAll({...q0,clampLower:1,clampUpper:1});
@@ -1664,10 +1633,10 @@ function groupBoxDist(g,box){let best=1e9;
       const d=Math.hypot(dx,dy,dz);if(d<best)best=d;}}
   return best;}
 /* is any part of the group above height z? */
-function groupAbove(g,zl){
-  for(const b of RB.group[g]){const e=b.world.elements,c=b.bc;
-    if(e[2]*c[0]+e[6]*c[1]+e[10]*c[2]+e[14]+b.br<zl)continue;
-    const P=b.pts;for(let i=0;i<P.length;i+=3)if(e[2]*P[i]+e[6]*P[i+1]+e[10]*P[i+2]+e[14]>zl)return true;}
+/* a module stays on the post while its wheel axles are below the top edge. The frame may stand above it. */
+function axleAbove(g,zl){
+  for(const b of RB.group[g]){if(b.joint.type!=='spin')continue;const e=b.world.elements,c=b.centroid;
+    if(e[2]*c.x+e[6]*c.y+e[10]*c.z+e[14]>zl)return true;}
   return false;}
 function minYof(g){let lo=1e9;
   for(const b of RB.group[g]){const e=b.world.elements,P=b.pts;
@@ -1697,16 +1666,39 @@ function disposeTree(o){o.traverse(n=>{if(n.geometry)n.geometry.dispose();
 function plate(w,h,d,pos,matl){const g=new THREE.BoxGeometry(w,h,d),m=new THREE.Mesh(g,matl);
   m.position.copy(pos);m.castShadow=true;m.receiveShadow=true;m.add(edgesOf(g,20));return m;}
 
-/* the arm angle that puts the gripped member's centre over the post, and the post height that seats it */
+/* A released beam falls onto its lowest edge and tips flat about it, so it comes to rest a few mm from
+   where it let go. settleOf gives the resting centre y for a beam centred at c with roll a (CAD frame). */
+const RECV=60,DROP_CLEAR=4,WHEEL_ON=15;
+function settleOf(c,a){
+  const d=a-Math.round(a/(Math.PI/2))*(Math.PI/2);if(Math.abs(d)<1e-9)return c.y;
+  const k=[[30,30],[30,-30],[-30,30],[-30,-30]].map(([u,w])=>[u*Math.cos(d)-w*Math.sin(d),u*Math.sin(d)+w*Math.cos(d)])
+    .reduce((m,q)=>q[1]<m[1]?q:m);
+  return c.y+k[0]-30*Math.sign(k[0]);
+}
+/* The arm angle at which the released beam comes to rest centred on the post, and the post height that
+   leaves the beam and every claw part DROP_CLEAR above the cap plate. Also how far the resting beam
+   clears the upper module, which rides the post just below it. */
 function solvePlacement(){
   const H=RB.armJoint.point,dy=GRIP.y-H[1],dz=GRIP.z-H[2];
   const at=phi=>{const c=Math.cos(phi*DEG),s=Math.sin(phi*DEG);return{y:H[1]+dy*c-dz*s,z:H[2]+dy*s+dz*c};};
-  let lo=0,hi=85;
-  for(let i=0;i<60;i++){const mid=(lo+hi)/2;if(at(mid).y>RB.post.y)lo=mid;else hi=mid;}
+  const rest=phi=>settleOf(at(phi),(GRIP.th+phi)*DEG);
+  let lo=0,hi=-GRIP.th-1;                       // one side of level, so the beam always tips the same way
+  for(let i=0;i<60;i++){const mid=(lo+hi)/2;if(rest(mid)>RB.post.y)lo=mid;else hi=mid;}
   RIG.phi=hi;
-  const z=at(hi).z;
-  RIG.postTop=RIG.sPlace+z-30-PLATE;
-  RIG.capTarget=new THREE.Vector3(GRIP.x-RB.post.x,0,RIG.postTop+PLATE+30);
+  const a=(GRIP.th+hi)*DEG;
+  let low=at(hi).z-30*(Math.abs(Math.cos(a))+Math.abs(Math.sin(a)));
+  poseState({q:{lowerHinge:0,upperHinge:0,armBase:hi,clampLower:0,clampUpper:0,grip:GRIP.hold,roll:{lower:0,upper:0}},
+    anchor:'lower',s:0});
+  const each=(list,fn)=>{for(const b of list){const e=b.world.elements;
+    for(const P of b.verts)for(let i=0;i<P.length;i+=3)fn(e[0]*P[i]+e[4]*P[i+1]+e[8]*P[i+2]+e[12],
+      e[1]*P[i]+e[5]*P[i+1]+e[9]*P[i+2]+e[13],e[2]*P[i]+e[6]*P[i+1]+e[10]*P[i+2]+e[14]);}};
+  each(RB.group.arm,(x,y,z)=>{if(Math.abs(x)<=RECV/2+4&&Math.abs(y)<=RECV/2+4)low=Math.min(low,z);});
+  const yr=rest(hi)-RB.post.y;let up=-1e9;
+  each(RB.group.upper,(x,y,z)=>{if(Math.abs(y-yr)<=30&&Math.abs(x)<=500)up=Math.max(up,z);});
+  if(R.q)poseState(R);
+  RIG.postTop=RIG.sPlace+low-DROP_CLEAR-PLATE;
+  RIG.capClear=low-DROP_CLEAR-up;
+  RIG.capTarget=new THREE.Vector3(0,0,RIG.postTop+PLATE+30);
 }
 function buildRig(){
   disposeTree(RIG.group);RIG.group.clear();clearLabels('rig');RIG.boxes=[];
@@ -1737,9 +1729,9 @@ function buildRig(){
     addLabel('FINISH','acc',()=>new THREE.Vector3(0,COURSE_TOP+40,0),'rig');
   }
   if(RIG.kind==='cap'){
-    RIG.group.add(plate(96,PLATE,96,new THREE.Vector3(0,top+PLATE/2,0),CONCEPT_MAT));
-    RIG.group.add(plate(96,40,6,new THREE.Vector3(0,top+PLATE+20,34),CONCEPT_MAT));
-    addLabel('CONCEPT receiver','acc',()=>new THREE.Vector3(0,top+PLATE+48,40),'rig');
+    RIG.group.add(plate(RECV,PLATE,RECV,new THREE.Vector3(0,top+PLATE/2,0),CONCEPT_MAT));
+    RIG.boxes.push({name:'receiver',min:[-RECV/2,-RECV/2,top],max:[RECV/2,RECV/2,top+PLATE]});
+    addLabel('CONCEPT receiver','acc',()=>new THREE.Vector3(RECV/2+30,top+PLATE,0),'rig');
     RIG.beam=new THREE.Group();
     RIG.beam.add(timber(1000,'x',new THREE.Vector3(),23));
     RIG.placed=false;
@@ -1753,13 +1745,73 @@ function attachBeam(){
   const arm=RB.bodies.find(b=>b.role==='arm');
   arm.obj.add(RIG.beam);
   RIG.beam.position.set(GRIP.x,GRIP.y,GRIP.z);
-  RIG.beam.rotation.set(-RIG.phi*DEG,0,0);
-  RIG.placed=false;
+  RIG.beam.rotation.set(GRIP.th*DEG,0,0);
+  RIG.placed=false;FALL.on=false;FALL.st=null;
+  RIG.boxes=RIG.boxes.filter(o=>o.name!=='cap beam');
+}
+/* Released, the beam falls onto the cap plate and tips flat about its lowest edge. The motion runs on a
+   small state {x,y,z,a} in the scene frame (y up, roll a about x), so the demo can also trace it ahead. */
+const FALL={on:false,st:null};
+const beamCorners=st=>{const c=Math.cos(st.a),s=Math.sin(st.a);
+  return[[30,30],[30,-30],[-30,30],[-30,-30]].map(([u,w])=>[st.y+u*c-w*s,st.z+u*s+w*c]);};
+function fallState(){
+  if(!RIG.placed)syncRobotObjects();RB.root.updateMatrixWorld(true);RIG.beam.updateWorldMatrix(true,false);
+  const p=V3(),q=new THREE.Quaternion(),sc=V3();RIG.beam.matrixWorld.decompose(p,q,sc);
+  const a=new THREE.Euler().setFromQuaternion(q,'XYZ').x;
+  return{x:p.x,y:p.y,z:p.z,a,af:Math.round(a/(Math.PI/2))*(Math.PI/2),phase:0,v:0,w:0,pivot:null};
+}
+/* one step of the fall; true once the beam lies flat */
+function fallStep(st,dt){
+  const top=RIG.postTop+PLATE;
+  if(st.phase===0){st.v+=9810*dt;st.y-=st.v*dt;
+    const low=Math.min(...beamCorners(st).map(c=>c[0]));
+    if(low<=top){st.y+=top-low;st.pivot=beamCorners(st).reduce((m,c)=>c[0]<m[0]?c:m);st.phase=1;}
+    return false;}
+  const da=st.af-st.a;st.w+=14*dt;
+  const step=Math.sign(da)*Math.min(Math.abs(da),st.w*dt),[py,pz]=st.pivot,c=Math.cos(step),s=Math.sin(step);
+  const ry=st.y-py,rz=st.z-pz;st.y=py+ry*c-rz*s;st.z=pz+ry*s+rz*c;st.a+=step;
+  return Math.abs(st.af-st.a)<1e-6;
+}
+/* the beam at state st as a box in the post-centred CAD frame */
+function stBox(st,shr=0){const c=Math.cos(st.a),s=Math.sin(st.a);
+  return{obb:{c:[st.x,-st.z,st.y],u:[[1,0,0],[0,-s,c],[0,-c,-s]],h:[500-shr,30-shr,30-shr]}};}
+/* would the beam, let go now, fall and tip without touching the claw? */
+function fallClear(){
+  const st=fallState();
+  for(let k=0;k<400;k++){const done=fallStep(st,0.004);
+    if(k%3===0||done){const bx=stBox(st,0.5);if(RB.group.arm.some(b=>bodyHitsBox(b,bx)))return false;}
+    if(done)return true;}
+  return true;
 }
 function releaseBeam(){
   if(!RIG.beam)return;
-  syncRobotObjects();RB.root.updateMatrixWorld(true);
+  const st=fallState();
   scene.attach(RIG.beam);RIG.placed=true;
+  RIG.beam.position.set(st.x,st.y,st.z);RIG.beam.rotation.set(st.a,0,0);
+  FALL.on=true;FALL.st=st;
+  log('info',`Beam released ${fx(Math.abs(st.a-st.af)/DEG,1)}° off level, claw ${fx(R.q.grip*100,0)}% open`);
+}
+/* the beam as a box in the post-centred CAD frame, for the self-test */
+function beamBox(shr=0){
+  if(!RIG.placed)syncRobotObjects();
+  RIG.beam.updateWorldMatrix(true,false);const m=RIG.beam.matrixWorld.elements,cad=(x,y,z)=>[x,-z,y];
+  const ax=i=>{const v=V3(m[i*4],m[i*4+1],m[i*4+2]).normalize();return cad(v.x,v.y,v.z);};
+  return{obb:{c:cad(m[12],m[13],m[14]),u:[ax(0),ax(1),ax(2)],h:[500-shr,30-shr,30-shr]}};}
+/* how the held beam sits in the claw: no overlap, and how many of its four faces touch within 2 mm */
+function beamFit(){
+  const bx=beamBox(0.3),free=!RB.bodies.some(b=>bodyHitsBox(b,bx)),o=beamBox(0).obb;let contacts=0;
+  for(const a of[1,2])for(const sg of[1,-1]){const u=o.u[a];
+    const f={obb:{c:o.c.map((v,k)=>v+u[k]*31*sg),u:o.u,h:o.h.map((h,k)=>k===a?1:h-2)}};
+    if(RB.group.arm.some(b=>bodyHitsBox(b,f)))contacts++;}
+  return{free,contacts};}
+function beamTick(dt){
+  if(!FALL.on)return;
+  const st=FALL.st,done=fallStep(st,dt);
+  RIG.beam.position.set(st.x,st.y,st.z);RIG.beam.rotation.set(st.a,0,0);
+  if(done){FALL.on=false;
+    const p=beamCentreCad();
+    RIG.boxes.push({name:'cap beam',min:[p.x-500,p.y-30,p.z-30],max:[p.x+500,p.y+30,p.z+30]});
+    log('ok',`Beam seated level on the cap plate, ${fx(Math.abs(p.y),1)} mm ${p.y<0?'behind':'in front of'} the post centre`);}
 }
 function beamCentreCad(){
   if(!RIG.beam)return null;
@@ -1769,7 +1821,7 @@ function beamCentreCad(){
   return new THREE.Vector3(p.x,-p.z,p.y);
 }
 function updateCrossCheck(){
-  const el=$('crossCheck');
+  const el=$('crossCheck');el.closest('.sec').classList.toggle('gone',RIG.kind!=='junction');
   if(RIG.kind!=='junction'||!RB.ready){el.className='msg';
     el.innerHTML='Pick the <b>Junction</b> rig to check a crossing.';return;}
   if(RIG.jDir==='front'){el.className='msg bad';
@@ -1832,8 +1884,14 @@ function gaitTick(dt){
 /* arm and gripper move on their own drives, rate limited */
 function armTick(dt){
   const da=R.armTarget-R.armCmd,dg=R.gripTarget-R.q.grip;
+  if(Math.abs(da)<1e-6&&Math.abs(dg)<1e-6)return;
+  const a0=R.armCmd,g0=R.q.grip;
   if(Math.abs(da)>1e-6)R.armCmd+=Math.sign(da)*Math.min(Math.abs(da),ARM_RATE*dt);
   if(Math.abs(dg)>1e-6)R.q.grip+=Math.sign(dg)*Math.min(Math.abs(dg),GRIP_RATE*dt);
+  if(!RIG.boxes.length)return;
+  applyArm();poseState(R);
+  const hit=findCollision();
+  if(hit){R.armCmd=R.armTarget=a0;R.q.grip=R.gripTarget=g0;applyArm();poseState(R);log('bad','Arm stopped: '+hit);}
 }
 const armIdle=()=>Math.abs(R.armTarget-R.armCmd)<1e-3&&Math.abs(R.gripTarget-R.q.grip)<1e-3;
 
@@ -1841,7 +1899,7 @@ const armIdle=()=>Math.abs(R.armTarget-R.armCmd)<1e-3&&Math.abs(R.gripTarget-R.q
 function findCollision(){
   for(const box of RIG.boxes)for(const g of['lower','upper','link','arm'])
     if(groupHit(g,box))return`the ${GROUP_NAME[g]} hit the ${box.name}`;
-  for(const m of MODS)if(holding(m)&&groupAbove(m,RIG.postTop+2))return`the ${m} module ran off the top of the post`;
+  for(const m of MODS)if(holding(m)&&axleAbove(m,RIG.postTop-WHEEL_ON))return`the ${m} module ran off the top of the post`;
   return null;
 }
 /* would a linkage move from the current pose to hinge angle q hit anything? */
@@ -2111,7 +2169,7 @@ const H=()=>({upTop:RB.ext.upper.zmax,upBot:RB.ext.upper.zmin,loTop:RB.ext.lower
 const CLEAR=15;
 /* how far the robot can climb from here with both modules on */
 function freeAbove(){
-  const h=H();let lim=RIG.postTop-10-h.upTop;
+  const h=H();let lim=RIG.postTop-WHEEL_ON-2-RB.ext.upper.axleTop;
   if(RIG.kind==='junction'&&RIG.jH-30>R.s+h.upTop)lim=Math.min(lim,RIG.jH-30-CLEAR-h.upTop);
   if(RIG.kind==='cap')lim=Math.min(lim,RIG.sPlace);
   return lim;
@@ -2194,11 +2252,13 @@ function demoCross(){
 function demoPlace(){
   needRig('cap');resetRobot(START_S);
   return runScript('Carry and place',[
-    Note(`Carrying a 1000 mm pine cap beam (${fx(memberMass(MATS.pine,1000),2)} kg)`),D(RIG.sPlace,110),
-    Arm(RIG.phi),Grip(GRIP.open),Do(()=>{releaseBeam();log('ok','Beam released onto the receiver');}),
-    Wt(0.3),Arm(0),Grip(GRIP.closed),
-    Do(()=>{const c=beamCentreCad(),e=c.distanceTo(RIG.capTarget);
-      log(e<1?'ok':'warn',`Beam seated ${fx(e,2)} mm from the target`);})]);
+    Note(`Carrying a 1000 mm pine cap beam (${fx(memberMass(MATS.pine,1000),2)} kg) in the claw's V`),D(RIG.sPlace,110),
+    Note(`Arm to ${fx(RIG.phi,1)}°. The beam will rest ${fx(RIG.capClear,1)} mm above the upper module.`,RIG.capClear<5?'warn':'info'),
+    Arm(RIG.phi),
+    {start(){R.gripTarget=GRIP.open;log('cmd','grip open  from demo');return true;},
+     update(){if(!RIG.placed&&(fallClear()||armIdle())){if(armIdle()&&!fallClear())log('warn','The open claw is in the way of the falling beam');releaseBeam();}
+       return RIG.placed&&armIdle()&&!FALL.on;}},
+    Wt(0.3),Arm(0),Grip(GRIP.closed)]);
 }
 
 /* ======================================================================= CHECKS */
@@ -2726,9 +2786,12 @@ function planTravel(ch,from,to){
   return{ok:false,why:'too many joints'};
 }
 
-/* ---- the concept arm: CAD pitch hinge, plus a slew about the arm base and a wrist at the claw */
+/* ---- the concept arm: CAD pitch hinge, plus a slew about the arm base and a wrist at the claw.
+   CONCEPT: it holds a member by one end at this point under the arm head, with the concept wrist setting
+   the member's direction. The CAD claw holds a member across its V instead (GRIP), as in the Robot demo. */
+const BOT_GRIP={y:55,z:355,hold:0.3};
 function armIK(t){
-  const Hp=RB.armJoint.point,gx=GRIP.x-Hp[0],vy=GRIP.y-Hp[1],vz=GRIP.z-Hp[2];
+  const Hp=RB.armJoint.point,gx=GRIP.x-Hp[0],vy=BOT_GRIP.y-Hp[1],vz=BOT_GRIP.z-Hp[2];
   const Wy=t.y+RB.post.y-Hp[1],A=vy,B=-vz,Rr=Math.hypot(A,B);
   if(Math.abs(Wy)>Rr*0.999)return null;
   const base=Math.atan2(B,A),dl=Math.acos(Wy/Rr);
@@ -2747,7 +2810,7 @@ const _claw=new THREE.Matrix4();
 function clawWorld(out=_claw){
   const arm=RB.bodies.find(b=>b.role==='arm');
   RB.root.updateMatrixWorld(true);
-  return out.multiplyMatrices(arm.obj.matrixWorld,new THREE.Matrix4().makeTranslation(GRIP.x,GRIP.y,GRIP.z));
+  return out.multiplyMatrices(arm.obj.matrixWorld,new THREE.Matrix4().makeTranslation(GRIP.x,BOT_GRIP.y,BOT_GRIP.z));
 }
 function robotFrame(){return BOT.moveFrame||(BOT.chain?BOT.chain.F:BOT.home.F);}
 function syncRoot(){RB.root.matrixAutoUpdate=false;RB.root.matrix.copy(robotFrame());RB.root.matrixWorldNeedsUpdate=true;
@@ -2898,7 +2961,7 @@ function addConceptMarkers(){
   const ring=new THREE.Mesh(new THREE.CylinderGeometry(24,24,8,32),CONCEPT_MAT);
   ring.position.set(Hp[0],Hp[1]+40,Hp[2]);link.obj.add(ring);
   const wrist=new THREE.Mesh(new THREE.BoxGeometry(22,22,22),CONCEPT_MAT);
-  wrist.position.set(GRIP.x,GRIP.y+14,GRIP.z+22);arm.obj.add(wrist);
+  wrist.position.set(GRIP.x,BOT_GRIP.y+14,BOT_GRIP.z+22);arm.obj.add(wrist);
   RB.markers=[ring,wrist];RB.markers.forEach(m=>m.visible=false);
 }
 function botRelease(){
@@ -2921,7 +2984,7 @@ function hoistSteps(mi,plan){
   return[Say('the hoist brings the next member'),ArmTo(BOT_CARRY,BOT_PICK_PSI),Grip(GRIP.open),
     Do(()=>{top=heldMatrix(held,held.qCarry);bottom=SG.D;BOT.hoist.visible=true;BOT.hoist.group.visible=true;}),
     Timed(1.8,u=>place(ease(u))),
-    Grip(GRIP.hold),Do(()=>{BOT.held={...held,q:held.qCarry.clone()};}),
+    Grip(BOT_GRIP.hold),Do(()=>{BOT.held={...held,q:held.qCarry.clone()};}),
     Timed(1.2,u=>{const M=top.clone();M.elements[13]-=ease(u)*(top.elements[13]-bottom);hoistAt(M,held,true);}),
     Do(()=>{BOT.hoist.visible=false;BOT.hoist.group.visible=false;}),
     ArmTo(BOT_CARRY,0)];
@@ -3036,7 +3099,7 @@ function botTick(dt){
 }
 function syncBot(){
   const show=RB.ready&&MODE==='build'&&sim.mode!=='collapsing'&&!!BOT.home;
-  BOT.group.visible=MODE==='build'&&!!BOT.home&&!UI.hidden.has('props');RB.root.visible=show&&!UI.hidden.has('robot');
+  BOT.group.visible=MODE==='build'&&!!BOT.home;RB.root.visible=show;
   if(!show){if(BOT.heldMesh)BOT.heldMesh.visible=false;return;}
   if(RB.markers)RB.markers.forEach(m=>m.visible=true);
   syncRoot();
@@ -3134,44 +3197,11 @@ $('dPwm').oninput=()=>{$('dPwmV').textContent=$('dPwm').value;};
 
 
 /* ======================================================================= UI: a Blender-style shell */
-const ICON={
-  scene:'<path d="M3 13h10M8 3l5 10H3z"/>',
-  demo:'<path d="M5 3l8 5-8 5z" fill="currentColor" stroke="none"/>',
-  teleop:'<rect x="1.5" y="5" width="13" height="7" rx="3.5"/><path d="M5 7v3M3.5 8.5h3M11 7.5h.01M12.5 9h.01"/>',
-  course:'<path d="M4 14V2M4 3h8l-2 3 2 3H4"/>',
-  keys:'<rect x="1.5" y="4" width="13" height="8" rx="1.5"/><path d="M4 7h1M7 7h1M10 7h1M5 9.5h6"/>',
-  cmd:'<rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><path d="M4 6l2 2-2 2M8 10h4"/>',
-  tele:'<path d="M1 9h3l2-5 3 9 2-6 1 2h3"/>',
-  frame:'<path d="M2 14V2h12v12zM2 14L14 2M2 8h12"/>',
-  dims:'<path d="M2 11l9-9 3 3-9 9zM5 8l1.5 1.5M7 6l1.5 1.5M9 4l1.5 1.5"/>',
-  struct:'<path d="M2 14h12M4 12V8M8 12V4M12 12V6"/>',
-  order:'<path d="M5 4h9M5 8h9M5 12h9M2 4h.5M2 8h.5M2 12h.5"/>',
-  case:'<rect x="3" y="2.5" width="10" height="12" rx="1.5"/><path d="M6 8l1.5 1.5L10.5 6"/>',
-  object:'<path d="M8 1.5l6 3.2v6.6L8 14.5 2 11.3V4.7zM2 4.7l6 3.3 6-3.3M8 8v6.5"/>',
-  coll:'<rect x="2.5" y="3.5" width="11" height="9" rx="1"/><path d="M2.5 6h11"/>',
-  mesh:'<path d="M8 2l6 11H2z"/>',
-  eye:'<path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/>',
-  scn:'<circle cx="8" cy="8" r="5.5"/><path d="M2.5 8h11M8 2.5v11"/>',
-};
-const svg=(k,extra='')=>`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" ${extra}>${ICON[k]||''}</svg>`;
-const TABS=[
-  {id:'scene',label:'Rig',icon:'scene'},{id:'demo',label:'Demonstrations',icon:'demo'},
-  {id:'teleop',label:'Teleop and joints',icon:'teleop'},{id:'course',label:'Practice course',icon:'course'},
-  {id:'keys',label:'Controls',icon:'keys'},{id:'cmd',label:'Commands',icon:'cmd'},{id:'tele',label:'Telemetry',icon:'tele'},
-  {id:'frame',label:'Frame',icon:'frame'},{id:'dims',label:'Dimensions',icon:'dims'},{id:'struct',label:'Structure',icon:'struct'},
-  {id:'order',label:'Build order and cut list',icon:'order'},{id:'case',label:'Case',icon:'case'},{id:'object',label:'Selected object',icon:'object'}];
-const TAB_SEL={robot:'demo',drive:'course',build:'frame',checks:'case'};
-const UI={sliders:[],events:[],fps:60,fpsT:0,fpsN:0,uiT:0,shade:'material',xray:false,sel:null,hidden:new Set()};
-function tabsForMode(){
-  return TABS.filter(t=>[...document.querySelectorAll('#pcontent .sec')].some(s=>s.dataset.tab===t.id&&s.dataset.for.split(' ').includes(MODE)));}
-function renderTabs(){
-  const tabs=tabsForMode();if(!tabs.some(t=>t.id===TAB_SEL[MODE]))TAB_SEL[MODE]=tabs[0]?.id;
-  $('ptabs').innerHTML=tabs.map(t=>`<button data-ptab="${t.id}" title="${t.label}" aria-selected="${t.id===TAB_SEL[MODE]}">${svg(t.icon)}</button>`).join('');
-  $('ptabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{TAB_SEL[MODE]=b.dataset.ptab;renderTabs();});
-  const cur=TABS.find(t=>t.id===TAB_SEL[MODE]);
-  $('ptitle').innerHTML=cur?`${svg(cur.icon)}${cur.label}`:'';
-  document.querySelectorAll('#pcontent .sec').forEach(s=>s.classList.toggle('hide-tab',s.dataset.tab!==TAB_SEL[MODE]));
-}
+const UI={sliders:[],fps:60,fpsT:0,fpsN:0,uiT:0,shade:'material',xray:false,sel:null};
+/* properties: every panel of the workspace stacked, as in Blender. The main ones start open. */
+const OPEN_TABS=new Set(['scene','demo','course','frame','case','object']);
+document.querySelectorAll('#pcontent .sec').forEach(s=>s.classList.toggle('closed',!OPEN_TABS.has(s.dataset.tab)));
+function renderPanels(){$('objInfo').closest('.sec').classList.toggle('gone',!UI.sel);}
 document.querySelectorAll('#pcontent .sh').forEach(h=>h.addEventListener('click',e=>{
   if(e.target.closest('button,input,select'))return;h.parentElement.classList.toggle('closed');}));
 
@@ -3214,11 +3244,11 @@ function applyShading(){
     const base=UI.shade==='solid'?SOLID_MAT:mesh.userData.mat;
     mesh.material=UI.xray?xrayOf(base):base;mesh.visible=UI.shade!=='wire';}
   document.querySelectorAll('[data-shade]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.shade===UI.shade)));
-  $('xrayBtn').setAttribute('aria-pressed',String(UI.xray));
+  $('ovXray').checked=UI.xray;
   EDGE_MAT.opacity=UI.shade==='wire'?0.95:(THEME.dark?0.7:0.5);
 }
 document.querySelectorAll('[data-shade]').forEach(b=>b.onclick=()=>{UI.shade=b.dataset.shade;applyShading();});
-$('xrayBtn').onclick=()=>{UI.xray=!UI.xray;applyShading();};
+$('ovXray').onchange=()=>{UI.xray=$('ovXray').checked;applyShading();};
 $('ovEdges').onchange=()=>{EDGE_MAT.visible=$('ovEdges').checked;};
 $('ovGrid').onchange=()=>{grid.visible=AXES.visible=$('ovGrid').checked;};
 $('ovLabels').onchange=()=>{$('labels').hidden=!$('ovLabels').checked;};
@@ -3236,40 +3266,9 @@ scene.add(AXES);
   const hc=helper.handleClick.bind(helper);
   helper.handleClick=e=>hc({clientX:e.clientX+8,clientY:e.clientY+(canvas.clientHeight-128-8)});}
 
-/* outliner */
-const OUT={open:new Set(['robot','rig','frame'])};
-function outlinerRows(){
-  const rows=[{id:'scene',depth:0,name:'Scene',icon:'scn'}];
-  if(RB.ready&&MODE!=='checks'||RB.ready){
-    rows.push({id:'robot',depth:1,name:'CLASP robot',icon:'coll',count:RB.bodies.length,tw:true,eye:'robot'});
-    if(OUT.open.has('robot'))for(const[g,label]of[['lower','Lower module'],['upper','Upper module'],['link','C-link'],['arm','Arm']])
-      rows.push({id:'g:'+g,depth:2,name:label,icon:'mesh',count:RB.group[g].length,group:g,eye:'g:'+g});}
-  if(MODE!=='build')rows.push({id:'rig',depth:1,name:RIG.kind==='course'?'Practice course':RIG.kind==='junction'?'Post and junction':RIG.kind==='cap'?'Post and cap beam':'Post',icon:'coll',eye:'rig'});
-  if(MODE==='build'){
-    rows.push({id:'frame',depth:1,name:'Frame',icon:'coll',count:model.members.length,tw:true,eye:'frame'});
-    if(OUT.open.has('frame'))model.members.slice(0,60).forEach((m,i)=>rows.push({id:'m:'+i,depth:2,name:`Member ${i+1}`,icon:'mesh',member:i}));
-    rows.push({id:'props',depth:1,name:'Build props (CONCEPT)',icon:'coll',eye:'props'});}
-  return rows;
-}
-function renderOutliner(){
-  const selId=UI.sel?(UI.sel.type==='member'?'m:'+UI.sel.i:UI.sel.type==='group'?'g:'+UI.sel.g:'g:'+UI.sel.b.group):'';
-  $('outliner').innerHTML=outlinerRows().map(r=>`<div class="orow${r.id===selId?' sel':''}" data-id="${r.id}" style="padding-left:${4+r.depth*14}px">
-    <span class="tw">${r.tw?(OUT.open.has(r.id)?'▼':'▶'):''}</span><span class="ic">${svg(r.icon)}</span><span class="nm">${esc(r.name)}</span>
-    ${r.count!==undefined?`<span class="ct">${r.count}</span>`:''}
-    ${r.eye?`<button class="eye${UI.hidden.has(r.eye)?' off':''}" data-eye="${r.eye}" title="Show or hide">${svg('eye')}</button>`:''}</div>`).join('');
-  $('outliner').querySelectorAll('.orow').forEach(el=>el.onclick=e=>{
-    const id=el.dataset.id,eye=e.target.closest('[data-eye]');
-    if(eye){toggleHidden(eye.dataset.eye);return;}
-    if(e.target.closest('.tw')&&el.querySelector('.tw').textContent){OUT.open.has(id)?OUT.open.delete(id):OUT.open.add(id);renderOutliner();return;}
-    if(id.startsWith('g:'))select({type:'group',g:id.slice(2)});
-    else if(id.startsWith('m:'))select({type:'member',i:+id.slice(2)});});
-}
-function toggleHidden(k){UI.hidden.has(k)?UI.hidden.delete(k):UI.hidden.add(k);applyHidden();renderOutliner();}
 function applyHidden(){
-  if(RB.ready)for(const b of RB.bodies)b.obj.visible=!UI.hidden.has('robot')&&!UI.hidden.has('g:'+b.group);
-  RIG.group.visible=MODE!=='build'&&!UI.hidden.has('rig');
-  if(MODE==='build'){SG.group.visible=!UI.hidden.has('frame');}
-  BOT.group.visible=MODE==='build'&&!!BOT.home&&!UI.hidden.has('props');
+  RIG.group.visible=MODE!=='build';
+  BOT.group.visible=MODE==='build'&&!!BOT.home;
 }
 
 /* selection: click a part, it turns orange and the Object panel describes it */
@@ -3282,8 +3281,8 @@ function select(sel){
   if(sel&&(sel.type==='body'||sel.type==='group')&&RB.ready){
     const list=sel.type==='body'?[sel.b]:RB.group[sel.g];
     list.forEach(b=>b.obj.children.forEach(c=>{if(c.isLineSegments)c.material=EDGE_SEL;}));}
-  renderObject();renderOutliner();updateTitle();
-  if(sel){TAB_SEL[MODE]='object';renderTabs();}
+  renderObject();renderPanels();updateTitle();
+  if(sel)$('objInfo').closest('.sec').classList.remove('closed');
 }
 function bodyName(b){
   const G={lower:'Lower module',upper:'Upper module',link:'C-link',arm:'Arm'}[b.group];
@@ -3293,23 +3292,23 @@ function bodyName(b){
 }
 function renderObject(){
   const el=$('objInfo'),s=UI.sel;
-  if(!s){el.innerHTML='<p class="note">Nothing selected. Click a robot part or a frame member, or pick an item in the Outliner.</p>';return;}
+  if(!s){el.innerHTML='';return;}
   const row=(k,v)=>`<dt>${k}</dt><dd>${v}</dd>`;
   if(s.type==='body'){const b=s.b,j=b.joint,mats=[...new Set(b.meshes.map(m=>(m.userData.mat||m.material).color?Object.keys(RMAT).find(k=>RMAT[k]===(m.userData.mat||m.material)):''))].filter(Boolean);
     const val=j.type==='hinge'?fx(R.q[j.name]||0)+'°':j.type==='screw'?`${fx((R.q[j.param]||0)*100,0)}% of travel`:j.type==='spin'?'free':'fixed';
     const c=b.centroid.clone().applyMatrix4(b.world);
-    el.innerHTML=`<div class="ptitle" style="padding:0 0 4px">${esc(bodyName(b))}</div><dl class="kv">${
+    el.innerHTML=`<div class="ptitle">${esc(bodyName(b))}</div><dl class="kv">${
       row('Body',b.id)+row('Joint',j.type==='hinge'?`${j.type} ${j.name}`:j.type==='screw'?`linkage, ${j.param}`:j.type)+row('Now',val)+
       row('Material',mats.join(', ')||'pla')+row('Mass',fx(b.mass*1000,0)+' g')+row('Triangles',b.tri.reduce((a,m)=>a+m.I.length/3,0).toLocaleString())+
       row('Centre',`${fx(c.x,0)}, ${fx(c.y,0)}, ${fx(c.z,0)} mm`)}</dl>
       <p class="note">Mass is the ${b.group==='arm'?'submission arm mass':'BOM group mass'} shared out by volume.</p>`;return;}
   if(s.type==='group'){const g=s.g,list=RB.group[g];
-    el.innerHTML=`<div class="ptitle" style="padding:0 0 4px">${{lower:'Lower module',upper:'Upper module',link:'C-link',arm:'Arm'}[g]}</div><dl class="kv">${
+    el.innerHTML=`<div class="ptitle">${{lower:'Lower module',upper:'Upper module',link:'C-link',arm:'Arm'}[g]}</div><dl class="kv">${
       row('Bodies',list.length)+row('Mass',fx(GROUP_MASS[g],3)+' kg')+row('Triangles',list.reduce((a,b)=>a+b.tri.reduce((x,m)=>x+m.I.length/3,0),0).toLocaleString())}</dl>`;return;}
   if(s.type==='member'){const i=s.i,m=model.members[i];if(!m){el.innerHTML='';return;}
     const a=model.nodes[m.a],b=model.nodes[m.b],L=Math.hypot(b.x-a.x,b.y-a.y,b.z-a.z),c=state.checks&&state.checks[i];
     const k=sim.order.indexOf(i);
-    el.innerHTML=`<div class="ptitle" style="padding:0 0 4px">Frame member ${i+1}</div><dl class="kv">${
+    el.innerHTML=`<div class="ptitle">Frame member ${i+1}</div><dl class="kv">${
       row('Length',fx(L,0)+' mm')+row('Mass',fx(memberMass(mat,L)*1000,0)+' g')+(c?row('Axial force',fx(c.F,0)+' N')+row('Utilisation',fx(c.worst*100,0)+'%')+row('Governed by',c.govMode):'')+
       row('Build step',k>=0?`${k+1} of ${sim.order.length}`:'n/a')}</dl>`;}
 }
@@ -3327,39 +3326,18 @@ canvas.addEventListener('pointerup',e=>{
   else select({type:'body',b:hit.object.userData.body});
 },true);
 
-/* timeline: the last minute of events on a ruler, newest at the playhead */
-function tlDraw(){
-  const c=$('tlCanvas');if(!c||MODE==='checks')return;
-  const W=c.clientWidth,H=c.clientHeight;if(!W||!H)return;
-  const pr=Math.min(devicePixelRatio||1,2);if(c.width!==Math.round(W*pr)){c.width=Math.round(W*pr);c.height=Math.round(H*pr);}
-  const g=c.getContext('2d');g.setTransform(pr,0,0,pr,0,0);g.clearRect(0,0,W,H);
-  const span=60,x0=W*0.9,t=simT,px=s=>x0-(t-s)/span*(W*0.9-8);
-  g.fillStyle=css('--sunk');g.fillRect(0,0,W,20);
-  g.strokeStyle=css('--line-2');g.fillStyle=css('--faint');g.font='10px '+css('--mono');g.lineWidth=1;
-  for(let s=Math.floor((t-span)/5)*5;s<=t+6;s+=5){const x=Math.round(px(s))+0.5;if(x<0||x>W)continue;
-    g.beginPath();g.moveTo(x,14);g.lineTo(x,H);g.globalAlpha=0.35;g.stroke();g.globalAlpha=1;
-    if(s>=0)g.fillText(stamp(s).slice(0,5),x+3,12);}
-  const col={cmd:css('--accent-ink'),ok:css('--ok'),warn:css('--warn'),bad:css('--bad'),info:css('--faint'),rx:css('--muted')};
-  const lanes={cmd:0,rx:0,ok:1,info:1,warn:2,bad:2},lh=(H-28)/3;
-  g.fillStyle=css('--muted');g.font='10px '+css('--sans');
-  ['commands','progress','warnings'].forEach((n,i)=>g.fillText(n,4,28+i*lh+lh/2+3));
-  for(const ev of EVENTS){if(ev.t<t-span)continue;const x=px(ev.t),y=28+lanes[ev.kind]*lh+lh/2;
-    g.fillStyle=col[ev.kind]||'#888';g.beginPath();g.moveTo(x,y-5);g.lineTo(x+4,y);g.lineTo(x,y+5);g.lineTo(x-4,y);g.closePath();g.fill();}
-  g.strokeStyle=css('--accent');g.lineWidth=2;g.beginPath();g.moveTo(x0,0);g.lineTo(x0,H);g.stroke();
-  g.fillStyle=css('--accent');g.fillRect(x0-22,2,44,15);g.fillStyle='#fff';g.font='500 10px '+css('--mono');
-  g.fillText(stamp(t).slice(0,7),x0-19,13);
-}
 const HINTS={robot:'<kbd>LMB</kbd> orbit  <kbd>RMB</kbd> pan  <kbd>Wheel</kbd> zoom  <kbd>Click</kbd> select a part  <kbd>Home</kbd> frame all',
   drive:'<kbd>W</kbd><kbd>S</kbd> drive  <kbd>Shift</kbd> creep  <kbd>Q</kbd><kbd>E</kbd> clamps  <kbd>R</kbd> both_attach  <kbd>Space</kbd> estop',
-  build:'Drag between dots to draw  <kbd>Build it</kbd> in the Timeline runs the robot  <kbd>Click</kbd> select a member',
+  build:'Drag between dots to draw  <kbd>Build it</kbd> runs the robot  <kbd>Click</kbd> select a member',
   checks:'Change the case in Properties. The checks update at once.'};
 function uiTick(dt){
   UI.fpsN++;UI.fpsT+=dt;if(UI.fpsT>=0.5){UI.fps=UI.fpsN/UI.fpsT;UI.fpsN=0;UI.fpsT=0;}
   UI.uiT+=dt;if(UI.uiT<0.1)return;UI.uiT=0;
-  tlDraw();UI.sliders.forEach(f=>f());
+  UI.sliders.forEach(f=>f());
   $('sbStats').textContent=`CLASP · ${RB.ready?RB.bodies.length+' bodies · '+RB.tris.toLocaleString()+' tris':'loading'}${MODE==='build'?' · '+model.members.length+' members':''} · ${Math.round(UI.fps)} fps`;
 }
-function uiMode(){$('sbHints').innerHTML=HINTS[MODE]||'';renderTabs();renderOutliner();applyHidden();}
+function uiMode(){$('sbHints').innerHTML=HINTS[MODE]||'';renderPanels();applyHidden();
+  document.querySelector('.chips').style.display=MODE==='robot'||MODE==='drive'?'':'none';}
 
 /* ======================================================================= MODES */
 function focusBox(){
@@ -3374,12 +3352,11 @@ function fitNow(k='iso'){
   VIEW.anim=null;controls.update();
 }
 function updateTitle(){
-  const t=$('vpTitle'),ws={robot:'Robot',drive:'Drive',build:'Build',checks:'Checks'}[MODE];
+  const t=$('vpTitle');
   const sel=typeof UI!=='undefined'&&UI.sel?(UI.sel.type==='member'?`Member ${UI.sel.i+1}`:UI.sel.type==='group'?
     {lower:'Lower module',upper:'Upper module',link:'C-link',arm:'Arm'}[UI.sel.g]:bodyName(UI.sel.b)):'';
-  const what=MODE==='build'?`${mat.key==='pine'?'Pine 60 × 60':'Bamboo Ø60'} frame, ${model.members.length} members`:
-    MODE==='checks'?$('cPose').selectedOptions[0].text.split(',')[0]+' pose':RB.ready?`${RB.bodies.length} bodies`:RB.error?'robot model missing':'loading the CAD model';
-  t.innerHTML=`<b>User Perspective</b><span>(${ws}) CLASP | ${esc(what)}${sel?' | '+esc(sel):''}</span>`;
+  const msg=sel||(RB.ready?'':RB.error?'robot model missing':'loading the CAD model');
+  t.style.display=msg?'':'none';t.innerHTML=msg?`<b>${esc(msg)}</b>`:'';
 }
 function syncTransport(){
   const b=MODE==='build';
@@ -3470,7 +3447,7 @@ $('shareBtn').onclick=async()=>{
 ['cPose','cMember','cAct','cDrive'].forEach(id=>$(id).onchange=()=>{runChecks();updateTitle();});
 
 /* ======================================================================= SELF-TEST: window.CLASP_TEST() */
-function robotStep(dt){simT+=dt;scriptTick(dt);gaitTick(dt);armTick(dt);applyArm();driveTick(dt);poseState(R);telemetryTick(dt);}
+function robotStep(dt){simT+=dt;scriptTick(dt);gaitTick(dt);armTick(dt);applyArm();driveTick(dt);poseState(R);beamTick(dt);telemetryTick(dt);}
 function runFor(sec,until,dt=1/60){for(let t=0;t<sec;t+=dt){robotStep(dt);if(until&&until())return true;}return false;}
 function selfTest(){
   if(!RB.ready)return{error:'robot model not loaded'};
@@ -3526,9 +3503,19 @@ function selfTest(){
     setRig('junction',{jDir:'front',jH:1100});
     ok('crossing refused on the C-link face',demoCross()===false,'refused');
     /* placement */
-    setRig('cap');demoPlace();runFor(60,()=>!SCRIPT.name);
-    const e=RIG.placed?beamCentreCad().distanceTo(RIG.capTarget):Infinity;
-    ok('cap beam seated within 1 mm',e<1,fx(e,3)+' mm');
+    setRig('cap');resetRobot(START_S);
+    const bf=beamFit();
+    ok("cap beam sits in the claw's V without overlap",bf.free&&bf.contacts>=3,
+      `${bf.contacts} of 4 faces touching, ${bf.free?'no overlap':'overlaps the robot'}`);
+    demoPlace();let worst=null;
+    const post={obb:obbFromAabb({min:[-30,-30,0],max:[30,30,RIG.postTop]})};
+    runFor(60,()=>{if(!worst){const bx=beamBox(0.5),b=RB.bodies.find(b=>bodyHitsBox(b,bx));
+        if(b)worst=bodyName(b);else if(obbOverlap(bx,post))worst='the post';
+        else{const o=RIG.boxes.find(o=>o.name!=='cap beam'&&obbOverlap(bx,{obb:obbFromAabb(o)}));if(o)worst='the '+o.name;}}
+      return!SCRIPT.name;});
+    const bp=RIG.placed&&!FALL.on?beamCentreCad():null,lvl=bp&&FALL.st&&Math.abs(RIG.beam.rotation.x-FALL.st.af)<1e-4;
+    ok('cap beam carried clear, dropped and seated level',!!bp&&lvl&&!worst&&Math.abs(bp.y)<5&&!R.latch,
+      worst?'overlapped '+worst:bp?`${fx(Math.abs(bp.y),1)} mm off the post centre, ${fx(bp.z-RIG.capTarget.z,2)} mm above the plate, ${fx(RIG.capClear,1)} mm over the upper module`:'not placed');
     /* the practice course, driven by following the coach */
     RIG.kind='course';courseReset();setPip(false);
     for(let i=0;i<60000&&!DRIVE.done;i++){
