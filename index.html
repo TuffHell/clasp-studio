@@ -243,6 +243,9 @@ kbd{font:500 10.5px var(--mono);padding:1px 5px;border-radius:3px;background:var
 .hud .row{display:flex;gap:16px;margin-top:6px;font:500 11px var(--mono);opacity:.9;flex-wrap:wrap}
 .hud .track{position:relative;height:5px;border-radius:3px;background:rgba(255,255,255,.12);margin-top:8px}
 .hud .track i{position:absolute;top:-3px;width:2px;height:11px;background:var(--warn)}
+.hud .hudbtn{pointer-events:auto;margin-top:9px;border:0;border-radius:var(--r);background:var(--accent);color:#fff;
+  font:600 12px var(--sans);padding:6px 12px;cursor:pointer}
+.hud .hudbtn:hover{filter:brightness(1.12)}
 .hud .track em{position:absolute;top:0;left:0;height:5px;border-radius:3px;background:var(--accent)}
 .navbtns{position:absolute;right:48px;top:146px;display:flex;flex-direction:column;gap:6px}
 .navbtns button{width:28px;height:28px;border-radius:50%;border:0;background:rgba(60,60,60,.7);color:#ddd;cursor:pointer;
@@ -393,6 +396,7 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
         <div class="row"><span>time <b id="hudTime">0:00.0</b></span><span>height <b id="hudH">0 mm</b></span>
           <span>speed <b id="hudV">0 mm/s</b></span><span>faults <b id="hudF">0</b></span></div>
         <div class="track" id="hudTrack"><em id="hudBar"></em></div>
+        <button class="hudbtn" id="hudMove" hidden>Move the robot to the next post</button>
       </div>
       <div class="ov vp-msg" id="vpMsg"></div>
     </div>
@@ -486,7 +490,7 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
             <div class="sb">
               <div class="seg" role="group" aria-label="Task">
                 <button data-task="course" aria-pressed="true">Practice course</button>
-                <button data-task="bay" aria-pressed="false">Place a top beam</button>
+                <button data-task="bay" aria-pressed="false">Top plate</button>
               </div>
               <dl class="kv" id="courseKV" style="margin-top:8px"></dl>
               <button class="btn block" id="courseReset" style="margin-top:8px">Restart</button>
@@ -1886,10 +1890,8 @@ function buildRig(){
     RIG.group.add(plate(RECV,PLATE,RECV,new THREE.Vector3(0,top+PLATE/2,0),CONCEPT_MAT));
     RIG.boxes.push({name:'receiver',min:[-RECV/2,-RECV/2,top],max:[RECV/2,RECV/2,top+PLATE]});
     addLabel('CONCEPT receiver','acc',()=>new THREE.Vector3(RECV/2+30,top+PLATE,0),'rig');
-    RIG.beam=new THREE.Group();
-    RIG.beam.add(timber(1000,'x',new THREE.Vector3(),23));
     RIG.placed=false;
-    attachBeam();
+    if(RIG.kind==='cap'||BAY.loaded){RIG.beam=new THREE.Group();RIG.beam.add(timber(1000,'x',new THREE.Vector3(),23));attachBeam();}
   }
   RIG.boxes.forEach(b=>b.minZ=b.min[2]);
   updateCrossCheck();
@@ -3423,9 +3425,9 @@ function driveUI(force){
   $('hudTime').textContent=mmss(bay?BAY.t:DRIVE.t);$('hudF').textContent=bay?BAY.faults:DRIVE.faults;
   if(RB.ready){const lb=lowerBase();$('hudH').textContent=fx(lb,0)+' mm';
     $('hudV').textContent=fx(R.pwm/255*VMAX*R.dir,0)+' mm/s';
-    $('hudBar').style.width=(bay?clamp((R.s-START_S)/(RIG.sPlace-START_S),0,1):clamp((lb-START_S+54)/(COURSE_TOP-H().upTop-START_S),0,1))*100+'%';}
+    $('hudBar').style.width=(bay?BAY.placed.length/BAY.TOPS.length:clamp((lb-START_S+54)/(COURSE_TOP-H().upTop-START_S),0,1))*100+'%';}
   const tr=$('hudTrack');
-  if(bay){$('courseKV').innerHTML=[['Time',mmss(BAY.t)],['Top beam',{seated:'placed',off:'off the line',fell:'fell'}[BAY.result]||'in the claw'],
+  if(bay){$('courseKV').innerHTML=[['Time',mmss(BAY.t)],['Top beams laid',`${BAY.placed.length} / ${BAY.TOPS.length}`],
       ['Faults',BAY.faults,BAY.faults?'warn':''],['Best time',BAY.best?mmss(BAY.best):'none yet']]
       .map(([k,v,c])=>`<dt>${k}</dt><dd class="${c||''}">${v}</dd>`).join('');return;}
   if(!tr.dataset.marks){tr.dataset.marks='1';
@@ -3435,56 +3437,89 @@ function driveUI(force){
     .map(([k,v,c])=>`<dt>${k}</dt><dd class="${c||''}">${v}</dd>`).join('');
 }
 $('courseReset').onclick=()=>{driveReset();canvas.focus();};
+$('hudMove').onclick=()=>{bayMove();canvas.focus();};
 document.querySelectorAll('[data-task]').forEach(b=>b.onclick=()=>{DRIVE.task=b.dataset.task;if(MODE==='drive')driveReset();else syncTaskUI();canvas.focus();});
 function syncTaskUI(){
   document.querySelectorAll('[data-task]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.task===DRIVE.task)));
   $('taskNote').innerHTML=DRIVE.task==='bay'?TASK_NOTE.bay:TASK_NOTE.course;$('hudTrack').dataset.marks='';$('hudTrack').innerHTML='<em id="hudBar"></em>';}
 const TASK_NOTE={course:'Climb to the top, crossing a member across the post at 1000 mm and one behind it at 1900 mm. The coach at the top of the view gives the next move.',
-  bay:'Lay a 1000 mm top beam across posts A and B. Climb post A past the lower beam at 700 mm with the beam in the claw, stop at the top, swing the arm forward over the post and press G. The beam drops onto the cap plates and must land within 20 mm of the post line. Only the robot\'s real controls are used; the cap plates are CONCEPT.'};
+  bay:'Lay three 1000 mm top beams on posts A, C and E; they butt together over B and D into one top plate. At the foot of each post press G to take a beam, climb past the lower beams at 700 mm, stop at the top, swing the arm forward and press G to let go. Each beam must land within 20 mm of the post line. The robot uses its real controls; a person hands the beams in and moves the robot between posts; the cap plates are CONCEPT.'};
 $('dPwm').oninput=()=>{$('dPwmV').textContent=$('dPwm').value;};
 
 
-/* ======================================================================= DRIVE: top a bay by hand
-   Posts A and B stand 450 mm apart with a lower beam between them at 700 mm. The robot starts at the foot
-   of post A holding a 1000 mm top beam in its claw's V. With the real controls only (drive, clamps, arm
-   pitch, claw) the driver climbs past the lower beam, pitches the arm over the post and lets go. The beam
-   drops onto the cap plates and tips flat; it must end up on the post line to bridge A and B. A move that
-   would take the claw or the beam into anything is undone and counts as a fault. */
-const BAY={W:450,LOW:700,TOL:20,win:null,passed:false,releasing:false,result:null,drop:0,anim:null,
+/* ======================================================================= DRIVE: top plates along a row of posts
+   Five posts stand 500 mm apart, with lower beams between them at 700 mm. The robot lays a 1000 mm top beam
+   on posts A, C and E; each is centred on its post, so neighbouring beams butt together over B and D and
+   make one top plate. Robot controls are the real ones (drive, clamps, arm pitch, claw). Between beams an
+   operator does what a person would: hands a beam into the open claw at the foot of the post, and lifts
+   the robot onto the next post. The world stays centred on the post the robot is on. */
+const BAY={GAP:500,LOW:700,TOL:20,POSTS:[0,500,1000,1500,2000],TOPS:[0,2,4],NAMES:['A','B','C','D','E'],
+  k:0,placed:[],fallen:[],loaded:false,win:null,passed:false,releasing:false,result:null,drop:0,anim:null,
   t:0,running:false,done:false,faults:0,prevLatch:false,pre:null,best:null};
-try{BAY.best=+localStorage.getItem('clasp.bay.best')||null;}catch(e){}
+try{BAY.best=+localStorage.getItem('clasp.row.best')||null;}catch(e){}
 const bayOn=()=>MODE==='drive'&&DRIVE.task==='bay';
-const GHOST_MAT=new THREE.MeshBasicMaterial({color:0x3fdf8f,transparent:true,opacity:0.25,depthWrite:false});
-/* the scene: post B with its cap plate, the lower beam, and a ghost where the top beam should end up */
+const GHOST_MAT=new THREE.MeshBasicMaterial({color:0x3fdf8f,transparent:true,opacity:0.28,depthWrite:false});
+const GHOST_FAR=new THREE.MeshBasicMaterial({color:0x3fdf8f,transparent:true,opacity:0.1,depthWrite:false});
+const bayPost=()=>BAY.TOPS[Math.min(BAY.k,BAY.TOPS.length-1)];
+const bayX0=()=>BAY.POSTS[bayPost()];
+const bayNext=()=>BAY.NAMES[BAY.TOPS[BAY.k+1]]||'';
+/* the scene around the robot's post: the other posts, the lower beams, the beams already laid, ghosts */
 function bayRig(){
-  const top=RIG.postTop,W=BAY.W,L=BAY.LOW;
-  RIG.group.add(timber(top,'y',T3(W,0,top/2),37),plate(360,40,360,T3(W,0,20),CONCRETE));
-  RIG.group.add(plate(RECV,PLATE,RECV,T3(W,0,top+PLATE/2),CONCEPT_MAT));
-  RIG.group.add(timber(W,'x',T3(W/2,0,L),41));
-  RIG.boxes.push({name:'post B',min:[W-30,-30,0],max:[W+30,30,top]},{name:'footing B',min:[W-180,-180,-5],max:[W+180,180,40]},
-    {name:'post B cap plate',min:[W-RECV/2,-RECV/2,top],max:[W+RECV/2,RECV/2,top+PLATE]},
-    {name:'lower beam',min:[30,-30,L-30],max:[W-30,30,L+30]});
-  const g=new THREE.Mesh(new THREE.BoxGeometry(1000,60,60),GHOST_MAT);g.position.copy(T3(0,0,top+PLATE+30));RIG.group.add(g);
-  addLabel('POST B','',()=>T3(W,0,top+60),'rig');
-  addLabel(`lower beam · ${L} mm`,'',()=>T3(W/2,0,L+50),'rig');
-  addLabel('top beam goes here','acc',()=>T3(-380,0,top+PLATE+80),'rig');
+  const top=RIG.postTop,X0=bayX0(),zT=top+PLATE+30,cur=bayPost();
+  BAY.POSTS.forEach((x,i)=>{const dx=x-X0;
+    if(i!==cur){RIG.group.add(timber(top,'y',T3(dx,0,top/2),37+i),plate(300,40,300,T3(dx,0,20),CONCRETE),
+        plate(RECV,PLATE,RECV,T3(dx,0,top+PLATE/2),CONCEPT_MAT));
+      RIG.boxes.push({name:'post '+BAY.NAMES[i],min:[dx-30,-30,0],max:[dx+30,30,top]},
+        {name:'post '+BAY.NAMES[i]+' footing',min:[dx-150,-150,-5],max:[dx+150,150,40]},
+        {name:'post '+BAY.NAMES[i]+' cap plate',min:[dx-RECV/2,-RECV/2,top],max:[dx+RECV/2,RECV/2,top+PLATE]});}
+    addLabel('POST '+BAY.NAMES[i],i===cur?'acc':'',()=>T3(dx,0,top+70),'rig');
+    if(i<BAY.POSTS.length-1){const m=dx+BAY.GAP/2;RIG.group.add(timber(BAY.GAP,'x',T3(m,0,BAY.LOW),41+i));
+      RIG.boxes.push({name:'lower beam',min:[dx+30,-30,BAY.LOW-30],max:[dx+BAY.GAP-30,30,BAY.LOW+30]});}});
+  BAY.placed.forEach(p=>{const dx=BAY.POSTS[p.post]-X0,b=timber(1000,'x',T3(dx,p.y,zT),23+p.post);RIG.group.add(b);
+    RIG.boxes.push({name:'top beam on '+BAY.NAMES[p.post],min:[dx-500,p.y-30,zT-30],max:[dx+500,p.y+30,zT+30]});});
+  BAY.TOPS.forEach((i,n)=>{if(BAY.placed.some(p=>p.post===i))return;
+    const g=new THREE.Mesh(new THREE.BoxGeometry(1000,60,60),n===BAY.k?GHOST_MAT:GHOST_FAR);g.position.copy(T3(BAY.POSTS[i]-X0,0,zT));RIG.group.add(g);});
+  BAY.fallen.forEach(f=>{const b=timber(1000,'x',T3(f.x-X0,f.y,30),23);b.rotation.y=f.yaw;RIG.group.add(b);});
+  if(BAY.k<BAY.TOPS.length)addLabel(`top beam ${BAY.k+1} of ${BAY.TOPS.length}`,'acc',()=>T3(-420,0,zT+50),'rig');
   BAY.win=null;
 }
+/* a person hands a top beam into the open claw at the foot of the post */
+const bayAtFoot=()=>R.s<=START_S+40&&nHolding()===2;
+function bayLoad(){
+  RIG.beam=new THREE.Group();RIG.beam.add(timber(1000,'x',new THREE.Vector3(),23+BAY.k));attachBeam();
+  BAY.loaded=true;R.gripTarget=GRIP.hold;
+  const why=bayBlocked();
+  if(why){RIG.beam.removeFromParent();disposeTree(RIG.beam);RIG.beam=null;BAY.loaded=false;R.gripTarget=GRIP.open;
+    log('warn',`No room to hand the beam in here: ${why}. Swing the arm back (A) first.`);return;}
+  log('ok',`A person hands top beam ${BAY.k+1} into the claw.`);
+}
 /* what the claw or the beam it holds would pass into, or null */
-const POST_A=()=>({name:'post A',min:[-30,-30,0],max:[30,30,RIG.postTop]});
+const POST_A=()=>({name:'its own post',min:[-30,-30,0],max:[30,30,RIG.postTop]});
 function bayBlocked(){
-  if(groupHit('arm',POST_A()))return'the claw hit post A';
+  if(groupHit('arm',POST_A()))return'the claw hit its own post';
   if(!RIG.beam||RIG.placed)return null;
   const bx=beamBox(0.5);
-  for(const o of[...RIG.boxes,POST_A()])if(obbOverlap(bx,{obb:obbFromAabb(o)}))return`the top beam hit ${o.name.startsWith('post')?o.name:'the '+o.name}`;
+  for(const o of[...RIG.boxes,POST_A()])if(obbOverlap(bx,{obb:obbFromAabb(o)}))return`the top beam hit ${/^(post|its)/.test(o.name)?o.name:'the '+o.name}`;
   for(const g of['lower','upper','link'])for(const b of RB.group[g])if(bodyHitsBox(b,bx))return'the top beam hit the robot';
   return null;
 }
-/* G: open the claw. The beam falls once the finger is out of its way. */
+/* G: at the foot with an empty claw it takes a beam; holding one, it lets go; otherwise it opens or closes */
 function bayGrip(){
+  if(!BAY.done&&!BAY.loaded&&!BAY.result&&bayAtFoot()){bayLoad();return;}
   if(!RIG.beam||RIG.placed||BAY.releasing){R.gripTarget=R.gripTarget>0.5?GRIP.closed:GRIP.open;
     log('cmd',`grip ${R.gripTarget?'open':'close'}  from keyboard`);return;}
   BAY.releasing=true;R.gripTarget=GRIP.open;log('cmd','grip open  from keyboard');
+}
+/* the operator lifts the robot onto the next post, or back onto the same one after a miss */
+function bayMove(){
+  if(BAY.done||!BAY.result)return;
+  const same=BAY.result==='fell',from=BAY.NAMES[bayPost()];
+  if(!same)BAY.k++;
+  Object.assign(BAY,{loaded:false,result:null,passed:false,releasing:false,anim:null});
+  if(BAY.k>=BAY.TOPS.length){BAY.k=BAY.TOPS.length-1;return;}
+  buildRig();resetRobot(START_S);R.q.grip=R.gripTarget=GRIP.open;fitNow();
+  log('info',same?`Back to the foot of post ${from} by hand for another beam.`:`Moved by hand from post ${from} to post ${BAY.NAMES[bayPost()]}.`);
+  driveUI(true);
 }
 function bayTick(dt){
   if(!bayOn()||!RB.ready)return;
@@ -3501,53 +3536,62 @@ function bayTick(dt){
       BAY.result='fell';BAY.faults++;BAY.anim={t:0,v:0,phase:0};
       log('bad',BAY.drop<-1?'Let go below the top of the posts. The beam fell.':'Let go away from the post line. The beam fell.');}
     else releaseBeam();}
-  /* once it has tipped flat, judge it: on the post line it bridges A and B, off it, it falls */
+  /* once it has tipped flat, judge it: on the post line it joins the top plate, off it, it falls */
   if(RIG.placed&&!FALL.on&&!BAY.result&&!BAY.anim){
     const p=beamCentreCad(),off=Math.abs(p.y);
     if(off>45){BAY.result='fell';BAY.faults++;
       RIG.boxes=RIG.boxes.filter(o=>o.name!=='cap beam');RIG.beam.updateMatrix();RIG.beam.matrixAutoUpdate=false;
-      BAY.anim={t:0,v:0,phase:0};
-      log('bad',`The top beam missed the posts: ${fx(off,0)} mm off the post line. It fell.`);}
-    else if(off>BAY.TOL){BAY.result='off';BAY.faults++;
-      log('warn',`The top beam sits ${fx(off,0)} mm off the post line. It needs to be within ${BAY.TOL} mm to bear on both posts.`);}
-    else{BAY.result='seated';BAY.done=true;BAY.running=false;if(R.pwm)setDrive(0,0,'auto');
+      BAY.anim={t:0,v:0,phase:0};log('bad',`Top beam ${BAY.k+1} missed the posts: ${fx(off,0)} mm off the post line. It fell.`);}
+    else{BAY.result='seated';BAY.placed.push({post:bayPost(),y:p.y});
+      if(off>BAY.TOL){BAY.faults++;log('warn',`Top beam ${BAY.k+1} sits ${fx(off,0)} mm off the post line. Within ${BAY.TOL} mm it bears fully.`);}
+      else log('ok',`Top beam ${BAY.k+1} laid on post ${BAY.NAMES[bayPost()]}, ${fx(off,1)} mm off the post line.`);
       if(BAY.drop>40){BAY.faults++;log('warn',`It dropped ${fx(BAY.drop,0)} mm before it landed. Lower it closer next time.`);}
-      if(!LOG.quiet&&(!BAY.best||BAY.t<BAY.best)){BAY.best=BAY.t;try{localStorage.setItem('clasp.bay.best',String(BAY.t));}catch(e){}}
-      log('ok',`Top beam placed in ${mmss(BAY.t)} with ${BAY.faults} fault${BAY.faults===1?'':'s'}, ${fx(off,1)} mm off the post line.`);}}
+      if(BAY.placed.length===BAY.TOPS.length){BAY.done=true;BAY.running=false;if(R.pwm)setDrive(0,0,'auto');
+        if(!LOG.quiet&&(!BAY.best||BAY.t<BAY.best)){BAY.best=BAY.t;try{localStorage.setItem('clasp.row.best',String(BAY.t));}catch(e){}}
+        log('ok',`Top plate complete: ${BAY.TOPS.length} beams in ${mmss(BAY.t)} with ${BAY.faults} fault${BAY.faults===1?'':'s'}.`);}}
+    driveUI(true);}
   /* a beam that missed the posts falls to the ground and lies flat */
   const an=BAY.anim;
   if(an){const b=RIG.beam,p=V3(),q=new THREE.Quaternion(),sc=V3();b.matrix.decompose(p,q,sc);
     if(an.phase===0){an.v+=9810*dt;p.y=Math.max(SG.D/2,p.y-an.v*dt);if(p.y<=SG.D/2){an.phase=1;an.t=0;an.q0=q.clone();}}
-    else{an.t+=dt;q.copy(an.q0).slerp(new THREE.Quaternion(),ease(clamp(an.t/0.3,0,1)));if(an.t>=0.3)BAY.anim=null;}
+    else{an.t+=dt;q.copy(an.q0).slerp(new THREE.Quaternion(),ease(clamp(an.t/0.3,0,1)));
+      if(an.t>=0.3){BAY.anim=null;BAY.fallen.push({x:p.x+bayX0(),y:-p.z,yaw:0});}}
     b.matrix.compose(p,q,V3(1,1,1));b.matrixWorldNeedsUpdate=true;}
-  /* nothing may pass into anything: undo the move and latch */
+  /* nothing may pass into anything: undo the move */
   if(BAY.pre){const why=bayBlocked();
     if(why){const v=BAY.pre,inGait=!!GAIT.cur||GAIT.q.length>0;R.s=v.s;R.armCmd=v.a;R.armTarget=v.a;R.q.lowerHinge=v.lh;R.q.upperHinge=v.uh;
       R.q.clampLower=v.cl;R.q.clampUpper=v.cu;R.q.grip=v.g;R.anchor=v.anchor;
       GAIT.q.length=0;GAIT.cur=null;applyArm();poseState(R);if(inGait)fault('COLLISION: '+why);else blocked(why);}}
+  $('hudMove').hidden=!(BAY.result&&!BAY.done);
+  $('hudMove').textContent=BAY.result==='fell'?`Back to post ${BAY.NAMES[bayPost()]} for another beam`:`Move the robot to post ${bayNext()}`;
 }
 function baySnap(){return{s:R.s,a:R.armCmd,lh:R.q.lowerHinge,uh:R.q.upperHinge,cl:R.q.clampLower,cu:R.q.clampUpper,g:R.q.grip,anchor:R.anchor};}
-function bayClear(){BAY.anim=null;BAY.releasing=false;}
+function bayClear(){BAY.anim=null;BAY.releasing=false;const b=document.getElementById('hudMove');if(b)b.hidden=true;}
 function bayReset(){
   if(!RB.ready)return;
   abortScript('task restarted');bayClear();
-  Object.assign(BAY,{result:null,drop:0,t:0,running:false,done:false,faults:0,prevLatch:false,passed:false});
+  Object.assign(BAY,{k:0,placed:[],fallen:[],loaded:false,result:null,drop:0,t:0,running:false,done:false,faults:0,prevLatch:false,passed:false});
   Object.assign(DRIVE,{touched:false});
-  RIG.kind='bay';buildRig();resetRobot(START_S);setPip(true);
-  log('info',`Top beam ready. Climb post A past the lower beam, swing the arm over the post and let go. The beam must land on the post line.`);
+  RIG.kind='bay';buildRig();resetRobot(START_S);R.q.grip=R.gripTarget=GRIP.open;setPip(true);
+  log('info',`Top plate ready: lay ${BAY.TOPS.length} beams on posts ${BAY.TOPS.map(i=>BAY.NAMES[i]).join(', ')}. The robot starts at the foot of post A with an empty claw.`);
   driveUI(true);
 }
 function bayCoach(){
-  if(BAY.done)return[`Top beam placed in ${mmss(BAY.t)} with ${BAY.faults} fault${BAY.faults===1?'':'s'}. Press Restart to go again.`,'ok'];
-  if(BAY.result==='fell')return['The beam missed the posts and fell. Press Restart to try again.','bad'];
-  if(BAY.result==='off')return['The beam sits off the post line. Press Restart to try again.','bad'];
+  const n=BAY.TOPS.length,here=BAY.NAMES[bayPost()];
+  if(BAY.done)return[`Top plate complete in ${mmss(BAY.t)} with ${BAY.faults} fault${BAY.faults===1?'':'s'}. Press Restart to go again.`,'ok'];
+  if(BAY.anim)return['The beam is falling…','bad'];
+  if(BAY.result==='fell')return[`The beam fell. Click "Back to post ${here}" to have the robot put back at the foot for another beam.`,'bad'];
+  if(BAY.result==='seated')return[`Beam ${BAY.k+1} of ${n} laid. Click "Move the robot to post ${bayNext()}".`,'ok'];
   if(R.latch)return[`${R.warn||'Safety latch set'}. Press R (both_attach) to clear it.`,'bad'];
   if(FALL.on||BAY.releasing)return['Letting go…',''];
   if(gaitBusy())return['Linkage moving…',''];
-  const h=H(),s=R.s,sT=RIG.sPlace,j={name:'the lower beam',h:BAY.LOW};
-  if(!BAY.passed&&sT+h.loBot>j.h+30){if(!BAY.win)BAY.win=crossingWindow(RIG.boxes.filter(o=>o.name==='lower beam'),j.h);
+  if(!BAY.loaded){
+    if(bayAtFoot())return[`At the foot of post ${here}. Press G to close the claw on beam ${BAY.k+1} of ${n}.`,''];
+    return[`Drive down (S) ${fx(R.s-START_S,0)} mm to the foot of post ${here} for a beam.`,''];}
+  const h=H(),s=R.s,sT=RIG.sPlace,j={name:'the lower beams',h:BAY.LOW};
+  if(!BAY.passed&&sT+h.loBot>j.h+30){if(!BAY.win)BAY.win=crossingWindow(RIG.boxes.filter(o=>o.name==='lower beam'&&Math.abs(o.min[0]+o.max[0])<1200),j.h);
     return crossCoach(j,BAY.win);}
-  if(sT-s>4)return[`Drive up (W) ${fx(sT-s,0)} mm to the top of post A.`,''];
+  if(sT-s>4)return[`Drive up (W) ${fx(sT-s,0)} mm to the top of post ${here}.`,''];
   if(s-sT>4)return[`Drive down (S) ${fx(s-sT,0)} mm. The beam must hang just above the cap plates.`,''];
   const d=RIG.phi-R.armCmd;
   if(d>0.8)return[`Arm forward (D) ${fx(d,0)}° to swing the beam over the post.`,''];
@@ -3894,18 +3938,18 @@ function selfTest(){
       DRIVE.touched=true;robotStep(1/60);courseTick(1/60,true);}
     ok('practice course completed by following the coach',DRIVE.done&&DRIVE.faults===0,
       DRIVE.done?`${mmss(DRIVE.t)}, ${DRIVE.faults} faults`:'did not finish: '+coach()[0]);
-    /* topping a bay by hand: follow the coach up past the lower beam with the top beam, then let go */
+    /* a top plate by hand: at each post follow the coach, take a beam, climb past the lower beams, let go */
     {const was=MODE;MODE='drive';DRIVE.task='bay';bayReset();
-      for(let i=0;i<60000&&!BAY.result;i++){
+      for(let i=0;i<150000&&!BAY.done;i++){
         const t=bayCoach()[0],m=t.match(/(\d+) mm/),d=m?+m[1]:999;BAY.pre=baySnap();
         if(/Drive up|Drive down|Back down/.test(t)){if(!R.latch)setDrive(d<60?30:150,/Drive up/.test(t)?1:-1,'test');}
         else{if(R.pwm)setDrive(0,0,'test');
           if(/Press Q/.test(t))toggleModule('upper','test');else if(/Press E/.test(t))toggleModule('lower','test');
           else if(/Press R/.test(t))send('both_attach','test');else if(/Arm (forward|back)/.test(t))R.armTarget=RIG.phi;
-          else if(/Press G/.test(t))bayGrip();}
+          else if(/Press G/.test(t))bayGrip();else if(/Click "/.test(t))bayMove();}
         DRIVE.touched=true;robotStep(1/60);bayTick(1/60);}
-      ok('a top beam can be placed by hand',BAY.result==='seated'&&BAY.faults===0,
-        BAY.result?`${BAY.result} in ${mmss(BAY.t)}, ${BAY.faults} faults, ${fx(Math.abs(beamCentreCad().y),1)} mm off the line`:'did not finish: '+bayCoach()[0]);
+      ok('a top plate can be laid by hand',BAY.done&&BAY.faults===0,
+        BAY.done?`${BAY.placed.length} beams in ${mmss(BAY.t)}, ${BAY.faults} faults, worst ${fx(Math.max(...BAY.placed.map(p=>Math.abs(p.y))),1)} mm off the line`:'did not finish: '+bayCoach()[0]);
       bayClear();DRIVE.task='course';MODE=was;}
     /* the robot builds the current frame, one member at a time */
     const was=MODE;MODE='build';startBuild();let faults=0,prevL=false,overlaps=0,firstOv='';
