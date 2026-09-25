@@ -1211,7 +1211,7 @@ const RMAT={                                                      // Onshape app
   steel:new THREE.MeshStandardMaterial({color:0xa4aab1,roughness:0.3,metalness:0.9}),
   black:new THREE.MeshStandardMaterial({color:0x1c1e21,roughness:0.7,metalness:0}),
   white:new THREE.MeshStandardMaterial({color:0xe9ebed,roughness:0.5,metalness:0}),
-  acrylic:new THREE.MeshStandardMaterial({color:0x4fc3ff,roughness:0.12,metalness:0,transparent:true,opacity:0.42,depthWrite:false}),
+  acrylic:new THREE.MeshStandardMaterial({color:0x2436c8,roughness:0.18,metalness:0,transparent:true,opacity:0.78,depthWrite:false}),
 };
 for(const m of Object.values(RMAT)){m.polygonOffset=true;m.polygonOffsetFactor=1;m.polygonOffsetUnits=1;}
 const EDGE_MAT=new THREE.LineBasicMaterial({color:0x0b0d10,transparent:true,opacity:0.5});
@@ -1471,9 +1471,9 @@ function splitArmHead(){
   RB.tris=RB.bodies.reduce((a,b)=>a+b.tri.reduce((x,m)=>x+m.I.length/3,0),0);
 }
 const clawBody=()=>RB.head||RB.bodies.find(b=>b.role==='arm');
-const ACRYLIC_EDGE=new THREE.LineBasicMaterial({color:0x9adfff,transparent:true,opacity:0.28,depthWrite:false});
+const ACRYLIC_EDGE=new THREE.LineBasicMaterial({color:0x6f82ff,transparent:true,opacity:0.3,depthWrite:false});
 /* The C-link is a stack of acrylic plates. They are found as the slab between the outermost of its large
-   flat faces across x, and drawn clear blue. Motors, servos and bolts in the same body stay as they are.
+   flat faces across x, and drawn translucent dark blue, the servo casing's colour. Motors, servos and bolts in the same body stay as they are.
    Only the drawing changes; collisions still use every triangle. */
 function acrylicLink(){
   const b=RB.bodies.find(x=>x.role==='clink');if(!b)return;
