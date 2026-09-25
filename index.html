@@ -480,11 +480,15 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 
           <!-- drive -->
           <section class="sec" data-for="drive" data-tab="course">
-            <div class="sh"><h2>Practice course</h2><span class="aux">3.2 m post, two junctions</span></div>
+            <div class="sh"><h2>Task</h2><span class="aux">timed, faults counted</span></div>
             <div class="sb">
-              <dl class="kv" id="courseKV"></dl>
-              <button class="btn block" id="courseReset" style="margin-top:8px">Restart course</button>
-              <p class="note">Climb to the top, crossing a member across the post at 1000 mm and one behind it
+              <div class="seg" role="group" aria-label="Task">
+                <button data-task="course" aria-pressed="true">Practice course</button>
+                <button data-task="bay" aria-pressed="false">Assemble a bay</button>
+              </div>
+              <dl class="kv" id="courseKV" style="margin-top:8px"></dl>
+              <button class="btn block" id="courseReset" style="margin-top:8px">Restart</button>
+              <p class="note" id="taskNote">Climb to the top, crossing a member across the post at 1000 mm and one behind it
                 at 1900 mm. The coach at the top of the view gives the next move.</p>
             </div>
           </section>
@@ -498,6 +502,10 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
                 <kbd>Q</kbd><span>upper clamp, detach or attach</span><kbd>E</kbd><span>lower clamp, detach or attach</span>
                 <kbd>R</kbd><span>both_attach, clears the latch</span><kbd>G</kbd><span>claw open or close</span>
                 <kbd>C</kbd><span>webcam view on or off</span><kbd>Space</kbd><span>estop</span>
+                <kbd>H</kbd><span>assembly: the hoist brings the next member</span>
+                <kbd>Z</kbd><span>assembly: slew left (hold)</span><kbd>X</kbd><span>assembly: slew right (hold)</span>
+                <kbd>U</kbd><span>assembly: wrist one way (hold)</span><kbd>O</kbd><span>assembly: wrist the other way (hold)</span>
+                <kbd>T</kbd><span>assembly: roll the claw one way (hold)</span><kbd>Y</kbd><span>assembly: roll it the other way (hold)</span>
               </div>
               <div class="ctl"><label for="dPwm">Drive PWM <b><span id="dPwmV">150</span> / 255</b></label>
                 <input type="range" id="dPwm" min="40" max="255" step="1" value="150"></div>
@@ -1850,7 +1858,7 @@ function solvePlacement(){
 function buildRig(){
   disposeTree(RIG.group);RIG.group.clear();clearLabels('rig');RIG.boxes=[];
   if(RIG.beam){RIG.beam.removeFromParent();disposeTree(RIG.beam);RIG.beam=null;}
-  if(RIG.kind==='cap'&&RB.ready)solvePlacement();else RIG.postTop=RIG.kind==='course'?COURSE_TOP:2400;
+  if(RIG.kind==='cap'&&RB.ready)solvePlacement();else RIG.postTop=RIG.kind==='course'?COURSE_TOP:RIG.kind==='bay'?BAY.TOP:2400;
   const top=RIG.postTop;
   RIG.group.add(timber(top,'y',new THREE.Vector3(0,top/2,0),7,RIG.kind==='post'?POST_DEFECTS:[]));
   RIG.group.add(plate(360,40,360,new THREE.Vector3(0,20,0),CONCRETE));
@@ -1875,6 +1883,7 @@ function buildRig(){
       addLabel(`${j.name} · ${h} mm`,'',()=>new THREE.Vector3(j.dir==='across'?560:0,h+40,j.dir==='across'?0:600),'rig');}
     addLabel('FINISH','acc',()=>new THREE.Vector3(0,COURSE_TOP+40,0),'rig');
   }
+  if(RIG.kind==='bay')bayRig();
   if(RIG.kind==='cap'){
     RIG.group.add(plate(RECV,PLATE,RECV,new THREE.Vector3(0,top+PLATE/2,0),CONCEPT_MAT));
     RIG.boxes.push({name:'receiver',min:[-RECV/2,-RECV/2,top],max:[RECV/2,RECV/2,top+PLATE]});
@@ -2220,7 +2229,7 @@ const KEYS=new Set();
 const KEYMAP={Digit1:'up_detach',Digit2:'up_attach',Digit3:'down_detach',Digit4:'down_attach',
   Digit5:'both_attach',Digit6:'both_detach'};
 const teleOn=()=>($('teleOn').checked&&MODE==='robot')||MODE==='drive';
-const HOLD=['KeyW','KeyS','ArrowUp','ArrowDown','KeyJ','KeyL','KeyA','KeyD','ShiftLeft','ShiftRight'];
+const HOLD=['KeyW','KeyS','ArrowUp','ArrowDown','KeyJ','KeyL','KeyA','KeyD','ShiftLeft','ShiftRight','KeyZ','KeyX','KeyU','KeyO','KeyT','KeyY'];
 function toggleModule(m,src){
   const st=R.mod[m].state;
   send((m==='upper'?'up':'down')+(st==='attached'?'_detach':'_attach'),src);
@@ -2234,6 +2243,8 @@ window.addEventListener('keydown',e=>{
     if(e.code==='KeyE'){toggleModule('lower','key');e.preventDefault();return;}
     if(e.code==='KeyR'){send('both_attach','key');e.preventDefault();return;}
     if(e.code==='KeyC'){setPip(!PIP.on);return;}
+    if(DRIVE.task==='bay'&&e.code==='KeyH'){bayHoist();DRIVE.touched=true;e.preventDefault();return;}
+    if(DRIVE.task==='bay'&&e.code==='KeyG'){bayGrip();DRIVE.touched=true;e.preventDefault();return;}
     DRIVE.touched=true;}
   if(KEYMAP[e.code]){send(KEYMAP[e.code],'key');e.preventDefault();return;}
   if(e.code==='Space'){send('estop','key');e.preventDefault();return;}
@@ -2270,7 +2281,12 @@ function teleopTick(dt){
     PAD.prev=gp.buttons.map(x=>x.pressed);}
   if(pwm&&SCRIPT.name)abortScript('operator took over');
   if(!SCRIPT.name&&(pwm!==R.pwm||dir!==R.dir))setDrive(pwm,dir,src);
-  if(arm)R.armTarget=clamp(R.armCmd+arm*ARM_RATE*dt*1.5,-45,60);
+  const bay=bayOn()&&!BAY.hoist,fine=KEYS.has('ShiftLeft')||KEYS.has('ShiftRight')?0.25:1;
+  if(arm)R.armTarget=bay?clamp(R.armCmd+arm*ARM_RATE*dt*fine,-60,85):clamp(R.armCmd+arm*ARM_RATE*dt*1.5,-45,60);
+  if(bay){const sl=(KEYS.has('KeyX')?1:0)-(KEYS.has('KeyZ')?1:0),wr=(KEYS.has('KeyO')?1:0)-(KEYS.has('KeyU')?1:0);
+    if(sl)R.q.slew=clamp((R.q.slew||0)+sl*SLEW_RATE*0.6*dt*fine,-75,75);
+    if(wr)BAY.wrist=clamp(BAY.wrist+wr*40*dt*fine,-180,180);
+    const ro=(KEYS.has('KeyY')?1:0)-(KEYS.has('KeyT')?1:0);if(ro)BAY.roll=clamp(BAY.roll+ro*40*dt*fine,-180,180);}
 }
 
 /* ======================================================================= SCRIPTS: demos are lists of robot commands */
@@ -3327,7 +3343,7 @@ function setTool(t){tool=t;
   $('tDraw').setAttribute('aria-pressed',String(t==='draw'));$('tErase').setAttribute('aria-pressed',String(t==='erase'));}
 
 /* ======================================================================= DRIVE: practice course with the keyboard */
-const DRIVE={saved:null,t:0,running:false,done:false,faults:0,crossed:0,prevLatch:false,touched:false,
+const DRIVE={task:'course',saved:null,t:0,running:false,done:false,faults:0,crossed:0,prevLatch:false,touched:false,
   best:null,wins:[],lastUI:0,passed:new Set()};
 try{DRIVE.best=+localStorage.getItem('clasp.drive.best')||null;}catch(e){}
 const mmss=t=>`${Math.floor(t/60)}:${(t%60).toFixed(1).padStart(4,'0')}`;
@@ -3342,23 +3358,31 @@ function courseReset(){
 }
 function enterDrive(){
   DRIVE.saved={kind:RIG.kind,jH:RIG.jH,jDir:RIG.jDir};
-  RIG.kind='course';courseReset();
+  driveReset();
 }
 function leaveDrive(){
   if(!DRIVE.saved)return;
+  bayClear();
   Object.assign(RIG,DRIVE.saved);DRIVE.saved=null;syncRigUI();buildRig();resetRobot(START_S);
 }
+function driveReset(){if(DRIVE.task==='bay')bayReset();else{bayClear();RIG.kind='course';courseReset();}syncTaskUI();}
 /* the next thing to do, read from the robot's state and the crossing plan */
 function coach(){
   if(!RB.ready)return['Loading the robot…',''];
   if(DRIVE.done)return[`Course complete in ${mmss(DRIVE.t)} with ${DRIVE.faults} fault${DRIVE.faults===1?'':'s'}. Press Restart to go again.`,'ok'];
   if(R.latch)return[`${R.warn||'Safety latch set'}. Press R (both_attach) to clear it.`,'bad'];
+  if(DRIVE.task==='bay')return bayCoach();
   if(gaitBusy())return['Linkage moving…',''];
-  const h=H(),s=R.s,up=R.mod.upper.state,lo=R.mod.lower.state;
+  const h=H(),s=R.s;
   const k=COURSE_J.findIndex((j,i)=>!DRIVE.passed.has(i));
   if(k<0){const togo=COURSE_TOP-10-h.upTop-s;
     return togo>150?[`Both junctions crossed. Drive up ${fx(togo,0)} mm to the top.`,'']:['Nearly there.',''];}
-  const j=COURSE_J[k],w=DRIVE.wins[k],s1=j.h-30-CLEAR-h.upTop,s3=j.h+30+CLEAR-h.loBot;
+  return crossCoach(COURSE_J[k],DRIVE.wins[k]);
+}
+/* the next move to climb past junction j, whose crossing window is w */
+function crossCoach(j,w){
+  const h=H(),s=R.s,up=R.mod.upper.state,lo=R.mod.lower.state;
+  const s1=j.h-30-CLEAR-h.upTop,s3=j.h+30+CLEAR-h.loBot;
   if(!w)return[`${j.name} cannot be crossed with this CAD.`,'bad'];
   if(up==='attached'&&lo==='attached'){
     if(s<s1-4)return[`Drive up (W). Stop ${fx(s1-s,0)} mm higher, just under ${j.name}.`,''];
@@ -3375,6 +3399,7 @@ function coach(){
 }
 function courseTick(dt,force){
   if((MODE!=='drive'&&!force)||!RB.ready)return;
+  if(DRIVE.task==='bay'&&!force){driveUI(false);return;}
   if(!DRIVE.running&&!DRIVE.done&&(DRIVE.touched||R.pwm||gaitBusy()))DRIVE.running=true;
   if(DRIVE.running&&!DRIVE.done)DRIVE.t+=dt;
   if(R.latch&&!DRIVE.prevLatch&&DRIVE.running)DRIVE.faults++;
@@ -3391,20 +3416,262 @@ function courseTick(dt,force){
 function driveUI(force){
   const now=performance.now();if(!force&&now-DRIVE.lastUI<100)return;DRIVE.lastUI=now;
   const[c,cls]=coach();const el=$('hudCoach');el.textContent=c;el.className='coach '+cls;
-  $('hudTime').textContent=mmss(DRIVE.t);$('hudF').textContent=DRIVE.faults;
+  const bay=DRIVE.task==='bay';
+  $('hudTime').textContent=mmss(bay?BAY.t:DRIVE.t);$('hudF').textContent=bay?BAY.faults:DRIVE.faults;
   if(RB.ready){const lb=lowerBase();$('hudH').textContent=fx(lb,0)+' mm';
     $('hudV').textContent=fx(R.pwm/255*VMAX*R.dir,0)+' mm/s';
-    $('hudBar').style.width=clamp((lb-START_S+54)/(COURSE_TOP-H().upTop-START_S),0,1)*100+'%';}
+    $('hudBar').style.width=(bay?BAY.placed.length/BAY.plan.length:clamp((lb-START_S+54)/(COURSE_TOP-H().upTop-START_S),0,1))*100+'%';}
   const tr=$('hudTrack');
+  if(bay){$('courseKV').innerHTML=[['Time',mmss(BAY.t)],['Members seated',`${BAY.placed.length} / ${BAY.plan.length}`],
+      ['Faults',BAY.faults,BAY.faults?'warn':''],['Best time',BAY.best?mmss(BAY.best):'none yet']]
+      .map(([k,v,c])=>`<dt>${k}</dt><dd class="${c||''}">${v}</dd>`).join('');return;}
   if(!tr.dataset.marks){tr.dataset.marks='1';
     COURSE_J.forEach(j=>{const i=document.createElement('i');i.style.left=clamp((j.h-START_S)/(COURSE_TOP-START_S),0,1)*100+'%';tr.appendChild(i);});}
   $('courseKV').innerHTML=[['Time',mmss(DRIVE.t)],['Junctions crossed',`${DRIVE.passed.size} / ${COURSE_J.length}`],
     ['Faults',DRIVE.faults,DRIVE.faults?'warn':''],['Best time',DRIVE.best?mmss(DRIVE.best):'none yet']]
     .map(([k,v,c])=>`<dt>${k}</dt><dd class="${c||''}">${v}</dd>`).join('');
 }
-$('courseReset').onclick=()=>{courseReset();canvas.focus();};
+$('courseReset').onclick=()=>{driveReset();canvas.focus();};
+document.querySelectorAll('[data-task]').forEach(b=>b.onclick=()=>{DRIVE.task=b.dataset.task;if(MODE==='drive')driveReset();else syncTaskUI();canvas.focus();});
+function syncTaskUI(){
+  document.querySelectorAll('[data-task]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.task===DRIVE.task)));
+  $('taskNote').innerHTML=DRIVE.task==='bay'?TASK_NOTE.bay:TASK_NOTE.course;$('hudTrack').dataset.marks='';$('hudTrack').innerHTML='<em id="hudBar"></em>';}
+const TASK_NOTE={course:'Climb to the top, crossing a member across the post at 1000 mm and one behind it at 1900 mm. The coach at the top of the view gives the next move.',
+  bay:'Build a bay between your post and post B: the lower beam, the upper beam, then the brace. H calls the hoist. Line the member up with its green ghost and press G. It seats within 20 mm and 8°; otherwise it drops. The slew, wrist, arm extension and hoist are CONCEPT, as in Build.'};
 $('dPwm').oninput=()=>{$('dPwmV').textContent=$('dPwm').value;};
 
+
+/* ======================================================================= DRIVE: assemble a bay by hand
+   Post B stands 450 mm from the robot's post A. Green ghosts show a lower beam, an upper beam and a brace.
+   H calls the CONCEPT hoist, which hands the next member into the claw at a grip the planner has checked.
+   The driver lines it up with the robot's own controls plus Build's CONCEPT slew, wrist and arm extension,
+   and lets go with G: within tolerance the member seats in its joint, otherwise it drops. A move that would
+   take the claw or the member into anything is undone and counts as a fault. */
+const BAY={W:450,TOP:1400,TOL_MM:20,TOL_DEG:8,GRIPS:[110,90,140,70,180,225],
+  plan:[{name:'lower beam',a:[0,0,450],b:[450,0,450]},{name:'upper beam',a:[0,0,900],b:[450,0,900]},
+        {name:'brace',a:[0,0,900],b:[450,0,450]}],
+  k:0,placed:[],drops:[],held:null,hoist:null,anim:null,sol:null,wrist:0,roll:0,t:0,running:false,done:false,
+  faults:0,prevLatch:false,pre:null,wins:{},best:null};
+try{BAY.best=+localStorage.getItem('clasp.bay.best')||null;}catch(e){}
+const POST_A={name:'post A',min:[-30,-30,0],max:[30,30,BAY.TOP]};
+const bayOn=()=>MODE==='drive'&&DRIVE.task==='bay';
+const GHOST_MAT=new THREE.MeshBasicMaterial({color:0x3fbf7f,transparent:true,opacity:0.14,depthWrite:false});
+const GHOST_NEXT=new THREE.MeshBasicMaterial({color:0x3fdf8f,transparent:true,opacity:0.32,depthWrite:false});
+const HOIST_MAT=CONCEPT_MAT;
+/* member i of the bay: CAD end points, direction, length, and the scene pose of its centre (local y along it) */
+function bayMember(i){const p=BAY.plan[i],a=V3(...p.a),b=V3(...p.b),d=b.clone().sub(a),L=d.length();d.normalize();
+  const c=a.clone().add(b).multiplyScalar(0.5);
+  return{a,b,d,L,M:new THREE.Matrix4().compose(T3(c.x,c.y,c.z),new THREE.Quaternion().setFromUnitVectors(V3(0,1,0),T3(d.x,d.y,d.z)),V3(1,1,1))};}
+function memberMesh(L,M){const g=new THREE.Group();g.matrixAutoUpdate=false;if(M)g.matrix.copy(M);
+  g.add(timber(L,'y',V3(0,0,0),29+Math.round(L)%17));return g;}
+function ghostMesh(L,M,next){const g=new THREE.Group();g.matrixAutoUpdate=false;g.matrix.copy(M);
+  const geo=new THREE.BoxGeometry(60,L,60);g.add(new THREE.Mesh(geo,next?GHOST_NEXT:GHOST_MAT));
+  g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo),new THREE.LineBasicMaterial({color:0x3fdf8f,transparent:true,opacity:next?0.9:0.35})));
+  return g;}
+/* a member at scene pose W as a box in the post-centred CAD frame; shrinkLen lets its ends meet a joint */
+function obbOf(W,L,shrinkLen=0,shr=0){
+  const e=W.elements,cad=(x,y,z)=>[x,-z,y],ax=i=>{const v=V3(e[i*4],e[i*4+1],e[i*4+2]).normalize();return cad(v.x,v.y,v.z);};
+  const o={c:cad(e[12],e[13],e[14]),u:[ax(0),ax(1),ax(2)],h:[30-shr,Math.max(2,L/2-shrinkLen),30-shr]},min=[1e9,1e9,1e9],max=[-1e9,-1e9,-1e9];
+  for(const sx of[-1,1])for(const sy of[-1,1])for(const sz of[-1,1])for(let k=0;k<3;k++){
+    const v=o.c[k]+sx*o.u[0][k]*o.h[0]+sy*o.u[1][k]*o.h[1]+sz*o.u[2][k]*o.h[2];min[k]=Math.min(min[k],v);max[k]=Math.max(max[k],v);}
+  return{obb:o,min,max,minZ:min[2]};}
+/* the scene for the bay: post B, the placed members, the ghosts still to fill, anything dropped */
+function bayRig(){
+  const top=BAY.TOP;
+  RIG.group.add(timber(top,'y',T3(BAY.W,0,top/2),37));
+  RIG.group.add(plate(360,40,360,T3(BAY.W,0,20),CONCRETE));
+  RIG.boxes.push({name:'post B',min:[BAY.W-30,-30,0],max:[BAY.W+30,30,top]},{name:'footing B',min:[BAY.W-180,-180,-5],max:[BAY.W+180,180,40]});
+  BAY.placed.forEach(i=>{const m=bayMember(i);RIG.group.add(memberMesh(m.L,m.M));
+    RIG.boxes.push({name:BAY.plan[i].name,...obbOf(m.M,m.L,0,3)});});        // 3 mm: the claw's faces touch it when it lets go
+  BAY.plan.forEach((p,i)=>{if(!BAY.placed.includes(i)){const m=bayMember(i);RIG.group.add(ghostMesh(m.L,m.M,i===BAY.k));}});
+  if(BAY.k<BAY.plan.length){const m=bayMember(BAY.k),c=m.a.clone().add(m.b).multiplyScalar(0.5);
+    addLabel(`${BAY.k+1} · ${BAY.plan[BAY.k].name}`,'acc',()=>T3(c.x,c.y,c.z+60),'rig');}
+  addLabel('POST B','',()=>T3(BAY.W,0,top+40),'rig');
+  BAY.drops.forEach(d=>RIG.group.add(d));
+}
+/* The CONCEPT wrist has two turns: wrist, about the frame's normal (CAD y) whatever the arm's pitch and
+   slew, and roll, about the held member's own axis. Head = Ry(wrist) · arm · Rx(roll). */
+function applyWrist(){
+  if(!bayOn()&&!BAY.forced)return;
+  const arm=RB.bodies.find(b=>b.role==='arm');applyArm();poseState(R);
+  const A=new THREE.Quaternion().setFromRotationMatrix(arm.world);
+  R.q.wrist=A.clone().invert().multiply(new THREE.Quaternion().setFromAxisAngle(V3(0,1,0),BAY.wrist*DEG)).multiply(A)
+    .multiply(new THREE.Quaternion().setFromAxisAngle(V3(1,0,0),BAY.roll*DEG));
+  poseState(R);
+}
+function headWorld(){syncRobotObjects();RB.root.updateMatrixWorld(true);return clawBody().obj.matrixWorld.clone();}
+/* what the claw or the member it holds would pass into, or null */
+function bayBlocked(){
+  if(groupHit('arm',POST_A))return'the claw hit post A';
+  const h=BAY.held;if(!h)return null;
+  const W=headWorld().multiply(h.S),ax=V3(0,1,0).transformDirection(W),sn=Math.max(0.2,Math.hypot(ax.x,ax.z)),cs=Math.abs(ax.y);
+  /* the end of a member slanting into a post at angle θ reaches (r + r·cosθ)/sinθ along itself before it is clear */
+  const bx=obbOf(W,h.L,Math.max(SG.D*0.9,(SG.D/2)*(1+cs)/sn+2));
+  for(const o of[...RIG.boxes,POST_A])if(obbOverlap(bx,o.obb?o:{obb:obbFromAabb(o)}))return`the ${BAY.plan[BAY.k].name} hit ${o.name.startsWith('post')?o.name:'the '+o.name}`;
+  for(const g of['lower','upper','link'])for(const b of RB.group[g])if(bodyHitsBox(b,bx))return`the ${BAY.plan[BAY.k].name} hit the robot`;
+  return null;
+}
+/* A pose that seats member i, found the way the driver would. The claw head must hold the member across
+   its V with the member's front face (toward the robot) on the palm, so its turn in the world is fixed by
+   the member's direction: Ry(a)·Rx(-th). That fixes where the wrist must be; the IK gives pitch, slew and
+   height, and the wrist and roll follow. Grips along the member and both ways round are tried, and each
+   pose is checked against everything. Returns the pose and the grasp the hoist should hand over. */
+function bayPoseFor(i){
+  const m=bayMember(i),p=WRIST.point,s0=[GRIP.x,GRIP.y,GRIP.z],sv={s:R.s,a:R.armCmd,at:R.armTarget,p:R.q.slew||0,w:BAY.wrist,
+    r:BAY.roll,q:{...R.q,roll:{...R.q.roll}},held:BAY.held};
+  let best=null;BAY.forced=true;BAY.why=[];
+  try{
+    for(const g of BAY.GRIPS)for(const flip of[1,-1]){
+      if(g>m.L-60)continue;
+      const tag=`grip ${g}${flip>0?'':' flipped'}`;
+      const P=m.a.clone().addScaledVector(m.d,g),hx=m.d.clone().multiplyScalar(flip),alpha=Math.atan2(-hx.z,hx.x);
+      const Rh=new THREE.Matrix4().makeRotationY(alpha).multiply(new THREE.Matrix4().makeRotationX(-GRIP.th*DEG));
+      const Wt=P.clone().sub(V3(s0[0]-p[0],s0[1]-p[1],s0[2]-p[2]).applyMatrix4(Rh));
+      const ik=armIK({x:Wt.x,y:Wt.y,z:Wt.z});
+      if(!ik){BAY.why.push(`${tag}: out of the arm's reach`);continue;}
+      if(ik.s<S_MIN||ik.s>BAY.TOP-WHEEL_ON-2-RB.ext.upper.axleTop){BAY.why.push(`${tag}: the robot would stand at ${fx(ik.s,0)} mm`);continue;}
+      R.s=ik.s;R.armCmd=R.armTarget=ik.phi;R.q.slew=ik.psi;BAY.wrist=alpha/DEG-ik.psi;BAY.roll=-GRIP.th-ik.phi;
+      R.q.lowerHinge=R.q.upperHinge=0;R.q.clampLower=R.q.clampUpper=0;R.q.grip=GRIP.hold;R.anchor='lower';applyWrist();
+      const S=headWorld().invert().multiply(m.M);BAY.held={L:m.L,S};
+      const hit=findCollision()||bayBlocked();if(hit){BAY.why.push(`${tag}: ${hit}`);continue;}
+      const cand={g,flip,s:ik.s,phi:ik.phi,psi:ik.psi,omega:BAY.wrist,rho:BAY.roll,S,L:m.L,
+        cost:Math.abs(ik.psi)+Math.abs(BAY.wrist)/3+Math.abs(BAY.roll)/3+Math.abs(g-m.L/2)/40};
+      if(!best||cand.cost<best.cost)best=cand;}
+  }finally{
+    BAY.forced=false;R.s=sv.s;R.armCmd=sv.a;R.armTarget=sv.at;R.q.slew=sv.p;BAY.wrist=sv.w;BAY.roll=sv.r;Object.assign(R.q,sv.q);BAY.held=sv.held;
+    applyArm();poseState(R);}
+  return best;
+}
+/* how far the held member is from its ghost: centre distance and the angle between their axes */
+function bayError(){
+  const h=BAY.held;if(!h)return null;
+  const W=headWorld().multiply(h.S),T=bayMember(BAY.k).M;
+  const p=V3().setFromMatrixPosition(W),q=V3().setFromMatrixPosition(T);
+  const a=V3(0,1,0).transformDirection(W),b=V3(0,1,0).transformDirection(T);
+  return{mm:p.distanceTo(q),deg:Math.acos(Math.min(1,Math.abs(a.dot(b))))/DEG,W};
+}
+/* H: the hoist rises with the next member and hands it into the open claw */
+function bayHoist(){
+  if(BAY.done||BAY.held||BAY.hoist||BAY.anim||BAY.k>=BAY.plan.length)return;
+  if(R.latch){log('warn','Clear the latch first with R (both_attach).');return;}
+  const sol=bayPoseFor(BAY.k);
+  if(!sol){log('bad',`No clear way to seat the ${BAY.plan[BAY.k].name} from post A with this arm.`);return;}
+  BAY.sol=sol;R.gripTarget=GRIP.open;
+  const mesh=memberMesh(sol.L),mast=new THREE.Mesh(new THREE.BoxGeometry(24,1,24),HOIST_MAT);
+  scene.add(mesh,mast);BAY.hoist={t:0,mesh,mast,S:sol.S,L:sol.L};
+  log('cmd',`hoist: ${BAY.plan[BAY.k].name}, ${fx(sol.L,0)} mm  from keyboard`);
+}
+function bayGive(sol){
+  bayDropHeld();const mesh=memberMesh(sol.L);mesh.matrix.copy(sol.S);clawBody().obj.add(mesh);
+  BAY.held={L:sol.L,S:sol.S.clone(),mesh};R.q.grip=R.gripTarget=GRIP.hold;
+}
+function bayDropHeld(){if(BAY.held&&BAY.held.mesh)BAY.held.mesh.removeFromParent();BAY.held=null;}
+/* G while holding: let go. Within tolerance the member seats in its ghost, otherwise it falls. */
+function bayGrip(){
+  if(BAY.hoist||BAY.anim)return;
+  if(!BAY.held){R.gripTarget=R.gripTarget>0.5?GRIP.closed:GRIP.open;log('cmd',`grip ${R.gripTarget?'open':'close'}  from keyboard`);return;}
+  const e=bayError(),h=BAY.held;BAY.held=null;R.gripTarget=GRIP.open;log('cmd','grip open  from keyboard');
+  h.mesh.removeFromParent();h.mesh.matrix.copy(e.W);scene.add(h.mesh);
+  if(e.mm<=BAY.TOL_MM&&e.deg<=BAY.TOL_DEG){
+    BAY.anim={kind:'seat',t:0,mesh:h.mesh,from:e.W.clone(),to:bayMember(BAY.k).M.clone(),i:BAY.k};
+    log('ok',`The ${BAY.plan[BAY.k].name} seats in its joint (${fx(e.mm,1)} mm, ${fx(e.deg,1)}° off when released)`);
+  }else{
+    BAY.anim={kind:'fall',t:0,mesh:h.mesh,v:0,L:h.L,phase:0,from:null};BAY.faults++;
+    log('warn',`Dropped the ${BAY.plan[BAY.k].name}: ${fx(e.mm,0)} mm and ${fx(e.deg,1)}° off. It seats within ${BAY.TOL_MM} mm and ${BAY.TOL_DEG}°.`);
+  }
+}
+function bayTick(dt){
+  if(!bayOn()||!RB.ready)return;
+  if(!BAY.running&&!BAY.done&&(DRIVE.touched||R.pwm||gaitBusy()||BAY.hoist))BAY.running=true;
+  if(BAY.running&&!BAY.done)BAY.t+=dt;
+  if(R.latch&&!BAY.prevLatch&&BAY.running)BAY.faults++;
+  BAY.prevLatch=R.latch;
+  applyWrist();
+  /* the hoist: its member rises from the ground into the claw, then the claw closes on it */
+  const ho=BAY.hoist;
+  if(ho&&ho.t>3&&R.q.grip<0.9){ho.mesh.removeFromParent();ho.mast.removeFromParent();BAY.hoist=null;
+    log('bad','The claw cannot open here, so the hoist took the member back. Move the arm clear and press H again.');}
+  else if(ho){ho.t+=dt;const top=headWorld().multiply(ho.S),u=ease(clamp(ho.t/1.4,0,1)),W=top.clone();
+    W.elements[13]=lerp(SG.D/2+4,top.elements[13],u);ho.mesh.matrix.copy(W);ho.mesh.matrixWorldNeedsUpdate=true;
+    const c=V3().setFromMatrixPosition(W);ho.mast.scale.set(1,Math.max(1,c.y-SG.D/2),1);ho.mast.position.set(c.x+SG.D,(c.y-SG.D/2)/2,c.z);
+    if(ho.t>=1.4&&R.q.grip>0.9){ho.mesh.removeFromParent();ho.mast.removeFromParent();BAY.hoist=null;
+      bayGive({L:ho.L,S:ho.S});
+      const why=bayBlocked();
+      if(why){bayDropHeld();R.gripTarget=GRIP.open;log('bad',`No room to hand it over here: ${why}. Move the arm clear and press H again.`);}
+      else log('ok',`The ${BAY.plan[BAY.k].name} is in the claw. Line it up with ghost ${BAY.k+1}.`);}}
+  /* seating and falling */
+  const an=BAY.anim;
+  if(an&&an.kind==='seat'){an.t+=dt;const u=ease(clamp(an.t/0.35,0,1));
+    const p0=V3(),q0=new THREE.Quaternion(),p1=V3(),q1=new THREE.Quaternion(),sc=V3();an.from.decompose(p0,q0,sc);an.to.decompose(p1,q1,sc);
+    let best=q1,bd=-1;for(let k=0;k<4;k++)for(const f of[0,1]){const q=q1.clone().multiply(new THREE.Quaternion().setFromAxisAngle(V3(0,1,0),k*Math.PI/2))
+      .multiply(new THREE.Quaternion().setFromAxisAngle(V3(1,0,0),f*Math.PI));const d=Math.abs(q.dot(q0));if(d>bd){bd=d;best=q;}}
+    an.mesh.matrix.compose(p0.lerp(p1,u),q0.slerp(best,u),V3(1,1,1));an.mesh.matrixWorldNeedsUpdate=true;
+    if(an.t>=0.35){an.mesh.removeFromParent();BAY.placed.push(an.i);BAY.k++;BAY.anim=null;BAY.sol=null;BAY.wins={};buildRig();
+      if(BAY.k>=BAY.plan.length){BAY.done=true;BAY.running=false;if(R.pwm)setDrive(0,0,'auto');
+        if(!LOG.quiet&&(!BAY.best||BAY.t<BAY.best)){BAY.best=BAY.t;try{localStorage.setItem('clasp.bay.best',String(BAY.t));}catch(e){}}
+        log('ok',`Bay assembled in ${mmss(BAY.t)} with ${BAY.faults} fault${BAY.faults===1?'':'s'}`);}}}
+  if(an&&an.kind==='fall'){an.t+=dt;const W=an.mesh.matrix,p=V3(),q=new THREE.Quaternion(),sc=V3();W.decompose(p,q,sc);
+    const ax=V3(0,1,0).applyQuaternion(q),low=p.y-Math.abs(ax.y)*an.L/2-SG.D/2*Math.hypot(ax.x,ax.z);
+    if(an.phase===0){an.v+=9810*dt;const dy=Math.min(an.v*dt,Math.max(0,low));p.y-=dy;if(low-dy<=0.5){an.phase=1;an.t=0;
+      const flat=V3(ax.x,0,ax.z);if(flat.lengthSq()<1e-6)flat.set(1,0,0);an.q0=q.clone();
+      an.q1=new THREE.Quaternion().setFromUnitVectors(V3(0,1,0),flat.normalize());an.p0=p.clone();}}
+    else{const u=ease(clamp(an.t/0.4,0,1));q.copy(an.q0).slerp(an.q1,u);p.copy(an.p0);p.y=lerp(an.p0.y,SG.D/2,u);
+      if(an.t>=0.4){an.mesh.removeFromParent();an.mesh.matrix.compose(p,q,V3(1,1,1));BAY.drops.push(an.mesh);RIG.group.add(an.mesh);BAY.anim=null;return;}}
+    an.mesh.matrix.compose(p,q,V3(1,1,1));an.mesh.matrixWorldNeedsUpdate=true;}
+  /* nothing may pass into anything: undo the move and latch */
+  if(BAY.pre&&!BAY.hoist){const why=bayBlocked();
+    if(why){const v=BAY.pre;R.s=v.s;R.armCmd=v.a;R.armTarget=v.a;R.q.slew=v.p;BAY.wrist=v.w;BAY.roll=v.r;
+      R.q.lowerHinge=v.lh;R.q.upperHinge=v.uh;R.q.clampLower=v.cl;R.q.clampUpper=v.cu;R.q.grip=v.g;R.anchor=v.anchor;
+      GAIT.q.length=0;GAIT.cur=null;applyWrist();if(R.pwm)setDrive(0,0,'auto');fault('COLLISION: '+why);}}
+}
+function baySnap(){return{s:R.s,a:R.armCmd,p:R.q.slew||0,w:BAY.wrist,r:BAY.roll,lh:R.q.lowerHinge,uh:R.q.upperHinge,
+  cl:R.q.clampLower,cu:R.q.clampUpper,g:R.q.grip,anchor:R.anchor};}
+function bayClear(){
+  bayDropHeld();
+  if(BAY.hoist){BAY.hoist.mesh.removeFromParent();BAY.hoist.mast.removeFromParent();BAY.hoist=null;}
+  if(BAY.anim){BAY.anim.mesh.removeFromParent();BAY.anim=null;}
+  BAY.wrist=BAY.roll=0;if(R.q)R.q.wrist=null;setArmExt(0);
+}
+function bayReset(){
+  if(!RB.ready)return;
+  abortScript('assembly restarted');bayClear();
+  BAY.drops.forEach(d=>{d.removeFromParent();disposeTree(d);});
+  Object.assign(BAY,{k:0,placed:[],drops:[],sol:null,wrist:0,roll:0,t:0,running:false,done:false,faults:0,prevLatch:false,wins:{}});
+  Object.assign(DRIVE,{touched:false});
+  RIG.kind='bay';buildRig();resetRobot(START_S);R.q.ext=BOT.ext;setArmExt(BOT.ext);
+  R.armCmd=R.armTarget=BOT_CARRY;applyWrist();setPip(true);          // the arm tilted back, as Build carries, clears post A
+  log('info',`Assembly ready. Seat the ${BAY.plan.map(p=>p.name).join(', then the ')}. The slew, wrist, ${BOT.ext} mm arm extension and hoist are CONCEPT.`);
+  driveUI(true);
+}
+/* junctions on post A made by the members already seated */
+function bayJunctions(){
+  const hs=[...new Set(BAY.placed.flatMap(i=>[BAY.plan[i].a,BAY.plan[i].b]).filter(p=>Math.abs(p[0])<1&&Math.abs(p[1])<1).map(p=>p[2]))];
+  return hs.sort((a,b)=>a-b).map(h=>{if(!(h in BAY.wins))BAY.wins[h]=crossingWindow(RIG.boxes.filter(o=>o.max[2]>h-200&&o.min[2]<h+200&&o.min[0]<40),h);
+    return{name:`the ${h} mm joint`,h,w:BAY.wins[h]};});
+}
+function bayCoach(){
+  if(BAY.done)return[`Bay assembled in ${mmss(BAY.t)} with ${BAY.faults} fault${BAY.faults===1?'':'s'}. Press Restart to go again.`,'ok'];
+  if(R.latch)return[`${R.warn||'Safety latch set'}. Press R (both_attach) to clear it.`,'bad'];
+  if(BAY.hoist)return['The hoist is handing the member over…',''];
+  if(BAY.anim)return[BAY.anim.kind==='seat'?'Seating…':'Dropped. Press H for another.',BAY.anim.kind==='seat'?'ok':'bad'];
+  if(gaitBusy())return['Linkage moving…',''];
+  const p=BAY.plan[BAY.k];if(!p)return['Every member is seated.','ok'];
+  if(!BAY.held)return[`Press H. The hoist brings member ${BAY.k+1}, the ${p.name}.`,''];
+  const e=bayError(),sol=BAY.sol;
+  if(e.mm<=BAY.TOL_MM&&e.deg<=BAY.TOL_DEG)return[`Lined up: ${fx(e.mm,0)} mm and ${fx(e.deg,1)}° off. Press G to let go.`,'ok'];
+  if(sol){const h=H();
+    for(const j of bayJunctions())if(sol.s+h.loBot>j.h+30&&lowerBase()<j.h+30)return crossCoach(j,j.w);
+    const ds=sol.s-R.s;
+    if(Math.abs(ds)>12)return[`${fx(e.mm,0)} mm off. Drive ${ds>0?'up (W)':'down (S)'} about ${fx(Math.abs(ds),0)} mm.`,''];
+    /* slew first: pitching forward while the claw is in line with post A drives it into the post */
+    const dphi=sol.phi-R.armCmd,dpsi=sol.psi-(R.q.slew||0),dw=sol.omega-BAY.wrist,dr=sol.rho-BAY.roll,parts=[];
+    if(Math.abs(dpsi)>1.5)parts.push(`slew ${dpsi>0?'X':'Z'} ${fx(Math.abs(dpsi),0)}°`);
+    if(Math.abs(dw)>1.5)parts.push(`wrist ${dw>0?'O':'U'} ${fx(Math.abs(dw),0)}°`);
+    if(Math.abs(dr)>1.5)parts.push(`roll ${dr>0?'Y':'T'} ${fx(Math.abs(dr),0)}°`);
+    if(Math.abs(dphi)>1.5)parts.push(`pitch ${dphi>0?'D':'A'} ${fx(Math.abs(dphi),0)}°`);
+    return[`${fx(e.mm,0)} mm and ${fx(e.deg,1)}° off. ${parts.length?parts.join(', ')+'.':'Nudge with Shift held.'}`,''];}
+  return[`${fx(e.mm,0)} mm and ${fx(e.deg,1)}° off.`,''];
+}
 
 /* ======================================================================= UI: a Blender-style shell */
 const UI={sliders:[],fps:60,fpsT:0,fpsN:0,uiT:0,shade:'material',xray:false,sel:null};
@@ -3539,7 +3806,7 @@ canvas.addEventListener('pointerup',e=>{
 },true);
 
 const HINTS={robot:'<kbd>LMB</kbd> orbit  <kbd>RMB</kbd> pan  <kbd>Wheel</kbd> zoom  <kbd>Click</kbd> select a part  <kbd>Home</kbd> frame all',
-  drive:'<kbd>W</kbd><kbd>S</kbd> drive  <kbd>Shift</kbd> creep  <kbd>Q</kbd><kbd>E</kbd> clamps  <kbd>R</kbd> both_attach  <kbd>Space</kbd> estop',
+  drive:'<kbd>W</kbd><kbd>S</kbd> drive  <kbd>Shift</kbd> fine  <kbd>Q</kbd><kbd>E</kbd> clamps  <kbd>R</kbd> both_attach  <kbd>A</kbd><kbd>D</kbd> pitch  <kbd>Z</kbd><kbd>X</kbd> slew  <kbd>U</kbd><kbd>O</kbd> wrist  <kbd>T</kbd><kbd>Y</kbd> roll  <kbd>H</kbd> hoist  <kbd>G</kbd> claw  <kbd>Space</kbd> estop',
   build:'Drag between dots to draw  <kbd>Build it</kbd> runs the robot  <kbd>Click</kbd> select a member',
   checks:'Change the case in Properties. The checks update at once.'};
 function uiTick(dt){
@@ -3669,7 +3936,8 @@ function runFor(sec,until,dt=1/60){for(let t=0;t<sec;t+=dt){robotStep(dt);if(unt
 function selfTest(){
   if(!RB.ready)return{error:'robot model not loaded'};
   const out=[],ok=(name,pass,detail)=>out.push({name,pass:!!pass,detail:String(detail)});
-  const saved={kind:RIG.kind,jH:RIG.jH,jDir:RIG.jDir,mode:MODE,t:simT};
+  const saved={kind:RIG.kind,jH:RIG.jH,jDir:RIG.jDir,mode:MODE,t:simT,task:DRIVE.task};
+  bayClear();botRelease();DRIVE.task='course';
   const t0=performance.now();LOG.quiet++;
   try{
     const tu=i2cRise(4700,i2cC(5,false)),tb=i2cRise(2200,i2cC(5,true));
@@ -3734,7 +4002,7 @@ function selfTest(){
     ok('cap beam carried clear, dropped and seated level',!!bp&&lvl&&!worst&&Math.abs(bp.y)<5&&!R.latch,
       worst?'overlapped '+worst:bp?`${fx(Math.abs(bp.y),1)} mm off the post centre, ${fx(bp.z-RIG.capTarget.z,2)} mm above the plate, ${fx(RIG.capClear,1)} mm over the upper module`:'not placed');
     /* the practice course, driven by following the coach */
-    RIG.kind='course';courseReset();setPip(false);
+    DRIVE.task='course';RIG.kind='course';courseReset();setPip(false);
     for(let i=0;i<60000&&!DRIVE.done;i++){
       const t=coach()[0],m=t.match(/(\d+) mm/),d=m?+m[1]:999;
       if(/Drive up|Drive down|Back down/.test(t)){if(!R.latch)setDrive(d<60?30:150,/Drive up/.test(t)?1:-1,'test');}
@@ -3744,6 +4012,20 @@ function selfTest(){
       DRIVE.touched=true;robotStep(1/60);courseTick(1/60,true);}
     ok('practice course completed by following the coach',DRIVE.done&&DRIVE.faults===0,
       DRIVE.done?`${mmss(DRIVE.t)}, ${DRIVE.faults} faults`:'did not finish: '+coach()[0]);
+    /* assembling a bay by hand: every member has a clear pose, and letting go there seats it */
+    {const was=MODE;MODE='drive';DRIVE.task='bay';bayReset();let seated=0,why='';
+      for(let i=0;i<BAY.plan.length&&!why;i++){const sol=bayPoseFor(i);
+        if(!sol){why=`no clear pose for the ${BAY.plan[i].name}`;break;}
+        bayGive(sol);R.s=sol.s;R.armCmd=R.armTarget=sol.phi;R.q.slew=sol.psi;BAY.wrist=sol.omega;BAY.roll=sol.rho;applyWrist();
+        const e=bayError();if(e.mm>1||e.deg>0.5){why=`the ${BAY.plan[i].name} is ${fx(e.mm,1)} mm off at its pose`;break;}
+        const inClaw=obbOf(headWorld().multiply(BAY.held.S),BAY.held.L,0,0.5);
+        if(RB.group.arm.some(b=>bodyHitsBox(b,inClaw))){why=`the ${BAY.plan[i].name} passes through the claw`;break;}
+        bayGrip();for(let k=0;k<40&&BAY.anim;k++){BAY.pre=null;bayTick(1/30);}
+        if(BAY.placed.length!==i+1){why=`the ${BAY.plan[i].name} did not seat`;break;}
+        seated++;}
+      ok('a bay can be assembled by hand',seated===BAY.plan.length&&BAY.done,
+        why||`${seated} of ${BAY.plan.length} members seated from clear poses`);
+      bayClear();DRIVE.task='course';MODE=was;}
     /* the robot builds the current frame, one member at a time */
     const was=MODE;MODE='build';startBuild();let faults=0,prevL=false,overlaps=0,firstOv='';
     const pull=(o,d)=>o.obb?{obb:{c:o.obb.c,u:o.obb.u,h:o.obb.h.map(x=>Math.max(0.5,x-d))}}:{min:o.min.map(v=>v+d),max:o.max.map(v=>v-d)};
@@ -3760,10 +4042,13 @@ function selfTest(){
   }catch(err){ok('self-test ran without error',false,err.message);console.error(err);}
   finally{
     LOG.quiet--;
+    bayClear();DRIVE.task=saved.task;syncTaskUI();
     botRelease();Object.assign(RIG,{kind:saved.kind,jH:saved.jH,jDir:saved.jDir});syncRigUI();buildRig();resetRobot(START_S);
     Object.assign(DRIVE,{t:0,running:false,done:false,faults:0,crossed:0,prevLatch:false,touched:false,passed:new Set()});
     if(saved.mode==='drive')setPip(true);
-    simT=saved.t;setMode(saved.mode);setStatus('ok','ready');
+    simT=saved.t;setMode(saved.mode);if(saved.mode==='drive')driveReset();
+    if(saved.mode==='build'&&BOT.home){useChain(null);resetRobotBuild();}
+    setStatus('ok','ready');
   }
   const pass=out.filter(x=>x.pass).length;
   log(pass===out.length?'ok':'bad',`Self-test: ${pass} of ${out.length} passed in ${((performance.now()-t0)/1000).toFixed(1)} s`);
@@ -3779,7 +4064,7 @@ function frame(dtReal,render=true){
   /* fast playback runs in 0.1 s substeps so collision checks never skip past a member */
   const n=Math.max(1,Math.ceil(dt/0.1)),h=dt/n;
   for(let i=0;i<n;i++){
-    if((MODE==='robot'||MODE==='drive')&&RB.ready){teleopTick(h);robotStep(h);courseTick(h);}
+    if((MODE==='robot'||MODE==='drive')&&RB.ready){if(bayOn())BAY.pre=baySnap();teleopTick(h);robotStep(h);courseTick(h);bayTick(h);}
     if(MODE==='build')buildTick(h);}
   if((MODE==='robot'||MODE==='drive')&&RB.ready)syncRobotObjects();
   if(render){renderAll(dtReal);uiTick(dtReal);}
@@ -3816,7 +4101,7 @@ loadRobot().then(ok=>{
 window.CLASP={frame,R,RB,RIG,send,setDrive,demo,runChecks,selfTest,setMode,camera,controls,fitNow,goView,coach,DRIVE};
 window.CLASP_TEST=selfTest;
 window.CLASP.dbg={findChains,placementsFrom,armIK,toChain,nodeW,memberRigid,useChain,poseClear,chainTop,BOT,sim,model:()=>model,
-  planTravel,graspOf,heldMatrix,heldClear,withPose,wristFor,hangQ,motionClear,sMax,S_MIN:()=>S_MIN,groupHit,RIG,syncRoot,WRIST,
+  planTravel,graspOf,heldMatrix,heldClear,withPose,wristFor,hangQ,motionClear,BAY,bayPoseFor,bayGive,bayGrip,bayTick,bayReset,bayError,bayBlocked,applyWrist,DRIVE,sMax,S_MIN:()=>S_MIN,groupHit,RIG,syncRoot,WRIST,
   pickClear,lowestClear,heldBox,obbOverlap,memberBox,obstaclesFor,bodyHitsBox,R};
 
 </script>
