@@ -104,7 +104,7 @@ button,input,select{font:inherit;color:inherit}
   flex-direction:column;min-height:0}
 [data-for]{display:none}
 .app[data-mode="robot"] [data-for~="robot"],.app[data-mode="build"] [data-for~="build"],
-.app[data-mode="checks"] [data-for~="checks"]{display:block}
+.app[data-mode="checks"] [data-for~="checks"],.app[data-mode="drive"] [data-for~="drive"]{display:block}
 
 /* ===================================================================== panel content */
 .sec{padding:14px 16px;border-bottom:1px solid var(--line)}
@@ -234,6 +234,21 @@ table.ck .vd{display:inline-block;font:600 9.5px var(--mono);letter-spacing:.05e
 .lbl.acc{border-color:var(--accent);color:var(--accent-ink)}
 .lbl.bad{border-color:var(--bad);color:var(--bad)}
 
+/* drive HUD */
+.hud{left:12px;top:12px;width:min(540px,calc(100% - 320px));padding:10px 14px}
+.app[data-mode="drive"] .vp-title{display:none}
+.hud .coach{font-size:14px;font-weight:600;line-height:1.35;min-height:38px}
+.hud .coach.bad{color:var(--bad)} .hud .coach.ok{color:var(--ok)}
+.hud .row{display:flex;gap:18px;margin-top:8px;font:500 12px var(--mono);color:var(--ink-2);flex-wrap:wrap}
+.hud .row b{color:var(--ink);font-weight:500}
+.hud .track{position:relative;height:6px;border-radius:3px;background:var(--sunk);margin-top:9px;overflow:visible}
+.hud .track i{position:absolute;top:-3px;width:2px;height:12px;background:var(--warn)}
+.hud .track em{position:absolute;top:0;left:0;height:6px;border-radius:3px;background:var(--accent)}
+.keycaps{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;align-items:center;font-size:12.5px}
+.keycaps kbd{justify-self:start;min-width:28px;text-align:center;font-size:12px;padding:3px 7px}
+@media (max-width:1180px){.hud{width:calc(100% - 24px);top:56px}}
+@media (max-width:760px){.hud{top:100px}}
+
 /* ===================================================================== log */
 .log-h{display:flex;align-items:center;justify-content:space-between;padding:7px 14px;border-bottom:1px solid var(--line)}
 .log-h h2{margin:0;font:600 10.5px/1 var(--sans);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
@@ -292,6 +307,7 @@ dialog::backdrop{background:rgba(10,12,16,.45)}
   </div>
   <nav class="modes" role="tablist" aria-label="Mode">
     <button role="tab" data-mode="robot" aria-selected="true">Robot</button>
+    <button role="tab" data-mode="drive" aria-selected="false">Drive</button>
     <button role="tab" data-mode="build" aria-selected="false">Build</button>
     <button role="tab" data-mode="checks" aria-selected="false">Checks</button>
   </nav>
@@ -370,6 +386,30 @@ dialog::backdrop{background:rgba(10,12,16,.45)}
         <input type="range" id="jGrip" min="0" max="1" step="0.01" value="0"></div>
       <p class="note">Hinges and clamps only move through commands, so the safety interlock
         always applies.</p>
+    </section>
+
+    <!-- drive -->
+    <section class="sec" data-for="drive">
+      <div class="sh"><h2>Practice course</h2><span class="aux">3.2 m post, two junctions</span></div>
+      <dl class="kv" id="courseKV"></dl>
+      <button class="btn block" id="courseReset" style="margin-top:10px">Restart course</button>
+      <p class="note">Climb to the top, crossing a member across the post at 1000 mm and one behind it
+        at 1900 mm. The coach at the top of the view gives the next move.</p>
+    </section>
+    <section class="sec" data-for="drive">
+      <div class="sh"><h2>Controls</h2><span class="aux">keyboard</span></div>
+      <div class="keycaps">
+        <kbd>W</kbd><span>drive up (hold)</span><kbd>S</kbd><span>drive down (hold)</span>
+        <kbd>Shift</kbd><span>creep at PWM 30, for the crossing window</span>
+        <kbd>A</kbd><span>arm back (hold)</span><kbd>D</kbd><span>arm forward (hold)</span>
+        <kbd>Q</kbd><span>upper clamp, detach or attach</span><kbd>E</kbd><span>lower clamp, detach or attach</span>
+        <kbd>R</kbd><span>both_attach, clears the latch</span><kbd>G</kbd><span>claw open or close</span>
+        <kbd>C</kbd><span>webcam view on or off</span><kbd>Space</kbd><span>estop</span>
+      </div>
+      <div class="ctl"><label for="dPwm">Drive PWM <b><span id="dPwmV">150</span> / 255</b></label>
+        <input type="range" id="dPwm" min="40" max="255" step="1" value="150"></div>
+      <p class="note">Keys 1 to 6 send the firmware commands directly, as in the Robot tab. A DualShock works
+        here too.</p>
     </section>
 
     <!-- build -->
@@ -473,13 +513,19 @@ dialog::backdrop{background:rgba(10,12,16,.45)}
         <option value="2">2×</option><option value="4">4×</option></select>
       <span class="status ok" id="status"><i></i><span id="statusTxt">ready</span></span>
     </div>
+    <div class="ov hud" id="hud" data-for="drive">
+      <div class="coach" id="hudCoach">Press W to start climbing.</div>
+      <div class="row"><span>time <b id="hudTime">0:00.0</b></span><span>height <b id="hudH">0 mm</b></span>
+        <span>speed <b id="hudV">0 mm/s</b></span><span>faults <b id="hudF">0</b></span></div>
+      <div class="track" id="hudTrack"><em id="hudBar"></em></div>
+    </div>
     <div class="ov vp-msg" id="vpMsg"></div>
   </section>
 
   <!-- ================================================================== RIGHT -->
   <aside class="panel right" aria-label="Readouts">
     <!-- robot -->
-    <section class="sec" data-for="robot">
+    <section class="sec" data-for="robot drive">
       <div class="sh"><h2>Command console</h2><span class="aux">firmware vocabulary</span></div>
       <div class="grid2" id="console">
         <button class="btn" data-cmd="up_detach">up_detach</button><button class="btn" data-cmd="up_attach">up_attach</button>
@@ -488,7 +534,7 @@ dialog::backdrop{background:rgba(10,12,16,.45)}
       </div>
       <button class="btn danger block" data-cmd="estop" style="margin-top:6px">estop</button>
     </section>
-    <section class="sec" data-for="robot">
+    <section class="sec" data-for="robot drive">
       <div class="sh"><h2>Telemetry</h2><span class="aux">5 Hz, as the robot sends it</span></div>
       <div class="state" id="stateCells"></div>
       <dl class="kv" id="teleKV" style="margin-top:12px"></dl>
@@ -512,8 +558,9 @@ dialog::backdrop{background:rgba(10,12,16,.45)}
     <section class="sec" data-for="build">
       <div class="sh"><h2>Build order</h2><span class="pv con">CONCEPT</span></div>
       <dl class="kv" id="orderStats"></dl>
-      <p class="note">The robot climbs one member at a time and has no yaw joint, so it cannot roam a
-        frame. This shows the order members would go in and whether each stage stands.</p>
+      <p class="note">Build it runs the robot. It takes each member from the stock pile, climbs the members
+        already built and places it with the arm. The CAD robot has no yaw joint, so changing member at a
+        joint and the ground rail are CONCEPT.</p>
     </section>
     <section class="sec" data-for="build">
       <div class="sh"><h2>Cut list</h2></div>
@@ -565,6 +612,11 @@ dialog::backdrop{background:rgba(10,12,16,.45)}
     <h2>What is drawn but not in the CAD</h2>
     <p>The webcam mount, the ToF sensor position, the cap-beam receiver and the build-order marker are labelled
       CONCEPT. The DualShock button map is a default and should be matched to gamepad_to_pi.py.</p>
+    <h2>Drive</h2>
+    <p>The Drive tab is a practice course for the operator. W and S drive, Shift creeps, A and D move the arm,
+      Q and E detach or attach each module, R sends both_attach and Space is the estop. The coach reads the
+      robot's state and the crossing plan and tells you the next move, including the few millimetres of
+      stopping window each junction allows.</p>
     <h2>The structure analysis</h2>
     <p>Build mode solves the frame by the direct stiffness method, checks every member for crushing, Euler
       buckling and joint pull-out, and runs a progressive collapse. A frame that is a mechanism falls under
@@ -1042,12 +1094,14 @@ canvas.addEventListener('pointerup',e=>{
   downXY=null;});
 
 /* materials */
-const RMAT={
+const RMAT={                                                      // Onshape appearance colours
   pla:new THREE.MeshStandardMaterial({color:0x2f343b,roughness:0.58,metalness:0}),
-  aluminium:new THREE.MeshStandardMaterial({color:0xc8ced5,roughness:0.3,metalness:0.9}),
-  steel:new THREE.MeshStandardMaterial({color:0x939aa3,roughness:0.34,metalness:0.95}),
-  rubber:new THREE.MeshStandardMaterial({color:0x7fa6c6,roughness:0.85,metalness:0}),
-  servo:new THREE.MeshStandardMaterial({color:0x2e48c8,roughness:0.5,metalness:0}),
+  rubber:new THREE.MeshStandardMaterial({color:0x8fb6d4,roughness:0.62,metalness:0}),
+  servo:new THREE.MeshStandardMaterial({color:0x2436c8,roughness:0.45,metalness:0}),
+  aluminium:new THREE.MeshStandardMaterial({color:0xcfd4da,roughness:0.28,metalness:0.85}),
+  steel:new THREE.MeshStandardMaterial({color:0xa4aab1,roughness:0.3,metalness:0.9}),
+  black:new THREE.MeshStandardMaterial({color:0x1c1e21,roughness:0.7,metalness:0}),
+  white:new THREE.MeshStandardMaterial({color:0xe9ebed,roughness:0.5,metalness:0}),
 };
 for(const m of Object.values(RMAT)){m.polygonOffset=true;m.polygonOffsetFactor=1;m.polygonOffsetUnits=1;}
 const EDGE_MAT=new THREE.LineBasicMaterial({color:0x0b0d10,transparent:true,opacity:0.5});
@@ -1152,8 +1206,8 @@ function camTick(dt){
   if(VIEW.anim){const a=VIEW.anim;a.t+=dt;const u=ease(clamp(a.t/a.dur,0,1));
     controls.target.lerpVectors(a.t0,a.t1,u);camera.position.lerpVectors(a.p0,a.p1,u);
     if(a.t>=a.dur)VIEW.anim=null;}
-  else if(VIEW.follow&&MODE==='robot'&&RB.ready){
-    const f=robotFocus(),k=1-Math.exp(-dt*3.5);
+  else if(VIEW.follow&&RB.ready&&(MODE==='robot'||MODE==='drive'||(MODE==='build'&&sim.mode==='building'))){
+    const f=MODE==='build'?botFocus():robotFocus(),k=1-Math.exp(-dt*3.5);
     const d=f.sub(controls.target).multiplyScalar(k);
     controls.target.add(d);camera.position.add(d);}
   if(helper.animating)helper.update(dt);
@@ -1192,7 +1246,7 @@ function resize(){
 function renderAll(dt){
   resize();camTick(dt);
   renderer.render(scene,camera);
-  if(PIP.on&&MODE==='robot'&&RB.ready)renderPip();
+  if(PIP.on&&(MODE==='robot'||MODE==='drive')&&RB.ready)renderPip();
   renderer.autoClear=false;helper.render(renderer);renderer.autoClear=true;
   placeLabels();updateScaleBar();
 }
@@ -1419,6 +1473,7 @@ const RIG={kind:'post',jH:1100,jDir:'across',postTop:2400,boxes:[],group:new THR
   sPlace:1150,phi:0,beam:null,beamHome:null,placed:false,capTarget:null};
 scene.add(RIG.group);
 const PLATE=6;
+const COURSE_TOP=3200,COURSE_J=[{name:'J1',h:1000,dir:'across'},{name:'J2',h:1900,dir:'behind'}];
 const POST_DEFECTS=[{kind:'knot',at:840,size:9},{kind:'check',at:1330,size:130},{kind:'knot',at:1780,size:12}];
 function disposeTree(o){o.traverse(n=>{if(n.geometry)n.geometry.dispose();
   if(n.material&&n.material!==EDGE_MAT&&!Object.values(RMAT).includes(n.material)&&n.material!==STEEL_PLATE&&
@@ -1440,7 +1495,7 @@ function solvePlacement(){
 function buildRig(){
   disposeTree(RIG.group);RIG.group.clear();clearLabels('rig');RIG.boxes=[];
   if(RIG.beam){RIG.beam.removeFromParent();disposeTree(RIG.beam);RIG.beam=null;}
-  if(RIG.kind==='cap'&&RB.ready)solvePlacement();else RIG.postTop=2400;
+  if(RIG.kind==='cap'&&RB.ready)solvePlacement();else RIG.postTop=RIG.kind==='course'?COURSE_TOP:2400;
   const top=RIG.postTop;
   RIG.group.add(timber(top,'y',new THREE.Vector3(0,top/2,0),7,RIG.kind==='post'?POST_DEFECTS:[]));
   RIG.group.add(plate(360,40,360,new THREE.Vector3(0,20,0),CONCRETE));
@@ -1455,6 +1510,15 @@ function buildRig(){
       RIG.boxes.push({name:'crossing member',min:[-30,30,h-30],max:[30,630,h+30]});}
     addLabel('JUNCTION '+h+' mm','',()=>new THREE.Vector3(RIG.jDir==='across'?560:0,h+40,
       RIG.jDir==='behind'?600:RIG.jDir==='front'?-600:0),'rig');
+  }
+  if(RIG.kind==='course'){
+    for(const j of COURSE_J){const h=j.h;
+      if(j.dir==='across'){RIG.group.add(timber(1200,'x',new THREE.Vector3(0,h,0),11+h));
+        RIG.boxes.push({name:j.name+' member',min:[-600,-30,h-30],max:[600,30,h+30]});}
+      else{RIG.group.add(timber(600,'z',new THREE.Vector3(0,h,330),11+h));
+        RIG.boxes.push({name:j.name+' member',min:[-30,-630,h-30],max:[30,-30,h+30]});}
+      addLabel(`${j.name} · ${h} mm`,'',()=>new THREE.Vector3(j.dir==='across'?560:0,h+40,j.dir==='across'?0:600),'rig');}
+    addLabel('FINISH','acc',()=>new THREE.Vector3(0,COURSE_TOP+40,0),'rig');
   }
   if(RIG.kind==='cap'){
     RIG.group.add(plate(96,PLATE,96,new THREE.Vector3(0,top+PLATE/2,0),CONCEPT_MAT));
@@ -1708,7 +1772,7 @@ function refreshRobotUI(force){
   chip('chipUp','upper');chip('chipDown','lower');
   const L=$('chipLatch');L.className='chip '+(R.latch?'bad':'');
   L.lastChild.textContent=R.latch?(R.warn||'LATCHED'):'LATCH CLEAR';
-  if(MODE!=='robot')return;
+  if(MODE!=='robot'&&MODE!=='drive')return;
   const cell=(t,v,c)=>`<div class="cell ${c}"><span>${t}</span><b>${esc(v)}</b></div>`;
   $('stateCells').innerHTML=
     cell('Upper',st('upper'),cls(st('upper')))+cell('Lower',st('lower'),cls(st('lower')))+
@@ -1735,15 +1799,26 @@ function refreshRobotUI(force){
 const KEYS=new Set();
 const KEYMAP={Digit1:'up_detach',Digit2:'up_attach',Digit3:'down_detach',Digit4:'down_attach',
   Digit5:'both_attach',Digit6:'both_detach'};
-const teleOn=()=>$('teleOn').checked&&MODE==='robot';
+const teleOn=()=>($('teleOn').checked&&MODE==='robot')||MODE==='drive';
+const HOLD=['KeyW','KeyS','ArrowUp','ArrowDown','KeyJ','KeyL','KeyA','KeyD','ShiftLeft','ShiftRight'];
+function toggleModule(m,src){
+  const st=R.mod[m].state;
+  send((m==='upper'?'up':'down')+(st==='attached'?'_detach':'_attach'),src);
+}
 window.addEventListener('keydown',e=>{
   const t=e.target;
   if(!teleOn()||(t instanceof Element&&t.closest('input[type=number],input[type=text],select,textarea,dialog')))return;
-  if(e.repeat&&!['KeyW','KeyS','ArrowUp','ArrowDown','KeyJ','KeyL'].includes(e.code))return;
+  if(e.repeat&&!HOLD.includes(e.code))return;
+  if(MODE==='drive'){
+    if(e.code==='KeyQ'){toggleModule('upper','key');e.preventDefault();return;}
+    if(e.code==='KeyE'){toggleModule('lower','key');e.preventDefault();return;}
+    if(e.code==='KeyR'){send('both_attach','key');e.preventDefault();return;}
+    if(e.code==='KeyC'){setPip(!PIP.on);return;}
+    DRIVE.touched=true;}
   if(KEYMAP[e.code]){send(KEYMAP[e.code],'key');e.preventDefault();return;}
   if(e.code==='Space'){send('estop','key');e.preventDefault();return;}
   if(e.code==='KeyG'){R.gripTarget=R.gripTarget>0.5?0:1;log('cmd',`grip ${R.gripTarget?'open':'close'}  from keyboard`);return;}
-  if(['KeyW','KeyS','ArrowUp','ArrowDown','KeyJ','KeyL'].includes(e.code)){KEYS.add(e.code);e.preventDefault();}
+  if(HOLD.includes(e.code)){KEYS.add(e.code);e.preventDefault();}
 });
 window.addEventListener('keyup',e=>KEYS.delete(e.code));
 window.addEventListener('blur',()=>KEYS.clear());
@@ -1758,8 +1833,9 @@ function teleopTick(dt){
   if(!teleOn()||!RB.ready)return;
   let pwm=0,dir=0,arm=0,src='key';
   const up=KEYS.has('KeyW')||KEYS.has('ArrowUp'),dn=KEYS.has('KeyS')||KEYS.has('ArrowDown');
-  if(up!==dn){pwm=+$('pwm').value;dir=up?1:-1;}
-  if(KEYS.has('KeyJ'))arm-=1;if(KEYS.has('KeyL'))arm+=1;
+  const kp=KEYS.has('ShiftLeft')||KEYS.has('ShiftRight')?30:MODE==='drive'?+$('dPwm').value:+$('pwm').value;
+  if(up!==dn){pwm=kp;dir=up?1:-1;}
+  if(KEYS.has('KeyJ')||KEYS.has('KeyA'))arm-=1;if(KEYS.has('KeyL')||KEYS.has('KeyD'))arm+=1;
   let gp=null;try{gp=PAD.idx!==null&&navigator.getGamepads?navigator.getGamepads()[PAD.idx]:null;}catch(e){PAD.idx=null;}
   if(gp){
     const b=i=>gp.buttons[i]&&gp.buttons[i].pressed;
@@ -2081,6 +2157,7 @@ function rebuildStructureMeshes(){
   SG.ghost=new THREE.Mesh(unitGeo(),ghostMat);SG.ghost.visible=false;
   SG.group.add(SG.mem,SG.deb,SG.joints,SG.feet,SG.ghost);
   addLabel('CONCEPT placement','acc',()=>SG.ghost.visible?SG.ghost.position.clone().add(new THREE.Vector3(0,SG.D,0)):null,'build');
+  if(RB.ready)buildBotScene();
   shadowBox(SG.radius*1.2);
   syncStructure();
 }
@@ -2270,8 +2347,8 @@ function tickCollapse(dt){
   physStep(sim.phys,dt);
 }
 function resetSim(){
-  Object.assign(sim,{mode:'idle',phys:null,collapse:null,ghost:-1,k:0,t:0,gu:0,
-    visible:new Set(model.members.map((_,i)=>i))});
+  Object.assign(sim,{mode:'idle',paused:false,phys:null,collapse:null,ghost:-1,k:0,t:0,gu:0,
+    visible:new Set(model.members.map((_,i)=>i))});BOT.phase='park';
   $('breakBtn').textContent='Test to failure';
   runAnalysis(true);
   if(sim.mode!=='collapsing')setStatus('ok','ready');
@@ -2280,10 +2357,13 @@ function resetSim(){
 function startBuild(){
   if(!sim.order.length)return;
   if(sim.mode==='collapsing')resetSim();
-  Object.assign(sim,{mode:'building',k:0,t:0,visible:new Set(),ghost:sim.order[0],gu:0});
+  Object.assign(sim,{mode:'building',paused:false,k:0,t:0,visible:new Set(),ghost:RB.ready?-1:sim.order[0],gu:0});
+  if(RB.ready){if(!BOT.rail)buildBotScene();botStart();botStatus('taking a member from the stock pile');}
   syncTransport();
 }
 function buildTick(dt){
+  if(sim.mode==='building'&&sim.paused){syncStructure();syncBot();return;}
+  if(sim.mode==='building'&&RB.ready){botTick(dt);syncStructure();syncBot();return;}
   if(sim.mode==='building'){
     sim.t+=dt;sim.gu=clamp(sim.t/STEP_T,0,1);
     if(sim.t>=STEP_T){
@@ -2294,25 +2374,289 @@ function buildTick(dt){
       if(sim.k>=sim.order.length){sim.mode='idle';sim.ghost=-1;setStatus('ok',`built, ${sim.order.length} members`);syncTransport();}
       else sim.ghost=sim.order[sim.k];}}
   if(sim.mode==='collapsing')tickCollapse(dt);
-  syncStructure();
+  syncStructure();syncBot();
 }
 function showStep(k){
   if(sim.mode==='collapsing')return;
-  Object.assign(sim,{mode:'idle',visible:new Set(sim.order.slice(0,k+1)),ghost:sim.order[k],gu:1});
+  Object.assign(sim,{mode:'idle',paused:false,visible:new Set(sim.order.slice(0,k+1)),ghost:sim.order[k],gu:1});BOT.phase='park';
   const st=state.steps[k];
   if(st)setStatus(st.worst,`member ${k+1} of ${sim.order.length}`+(st.issues.length?', '+st.issues[0].t:''));
   syncStructure();syncTransport();
 }
+/* ======================================================================= BUILD: the robot builds the frame
+   It starts on a raised rail beside a stock pile, takes one member in its claw, climbs the members
+   already built along the shortest route, swings the member into place with the arm, then goes back
+   for the next. Changing member at a joint needs a yaw joint the CAD robot does not have, and the
+   rail is not part of the design, so both are CONCEPT. */
+const BOT_V=560,BOT_XFER=0.6,BOT_LOAD=1.5,BOT_PLACE=2.2,BOT_REACH=330,RAIL_Y=90,BOT_CARRY=-10;
+const BOT={legs:[],leg:0,t:0,phase:'park',after:null,mi:-1,go:null,stance:null,noted:false,
+  st:{q:{lowerHinge:0,upperHinge:0,armBase:0,clampLower:0,clampUpper:0,grip:0,roll:{lower:0,upper:0}},anchor:'lower',s:0},
+  group:new THREE.Group(),carry:null,pile:[],rail:null,park:new THREE.Matrix4(),frame:new THREE.Matrix4()};
+scene.add(BOT.group);BOT.group.visible=false;
+const carryMat=new THREE.MeshStandardMaterial({roughness:0.78,metalness:0});
+const nodeW=i=>{const n=model.nodes[i];return new THREE.Vector3(n.x+SG.off.x,n.y,n.z+SG.off.z);};
+function memberFrame(dir){
+  const Z=dir.clone().normalize();if(Z.y<-1e-6||(Math.abs(Z.y)<1e-6&&Z.x<0))Z.negate();
+  const Y=new THREE.Vector3(0,0,-1);Y.addScaledVector(Z,-Y.dot(Z));
+  if(Y.lengthSq()<0.09){Y.set(-1,0,0);Y.addScaledVector(Z,-Y.dot(Z));}
+  Y.normalize();return{X:new THREE.Vector3().crossVectors(Y,Z).normalize(),Y,Z};
+}
+const RAIL_F={X:new THREE.Vector3(0,0,-1),Y:new THREE.Vector3(0,1,0),Z:new THREE.Vector3(1,0,0)};
+const frameAt=(F,p,out=new THREE.Matrix4())=>out.makeBasis(F.X,F.Y,F.Z).setPosition(p);
+const railPt=x=>new THREE.Vector3(x,RAIL_Y,BOT.rail.z);
+function buildBotScene(){
+  disposeTree(BOT.group);BOT.group.clear();clearLabels('build-bot');BOT.pile=[];
+  const md=model;if(!md.nodes.length)return;
+  let x0=1e9,x1=-1e9,z0=1e9;
+  md.nodes.forEach((n,i)=>{const w=nodeW(i);x0=Math.min(x0,w.x);x1=Math.max(x1,w.x);z0=Math.min(z0,w.z);});
+  const L=md.step,rail={x0:x0-Math.max(900,L*1.6),x1:x1+450,z:z0-SG.D/2-240};
+  BOT.rail=rail;BOT.parkX=rail.x0+90;
+  const len=rail.x1-rail.x0;
+  BOT.group.add(timber(len,'x',new THREE.Vector3((rail.x0+rail.x1)/2,RAIL_Y,rail.z),31));
+  for(let x=rail.x0+120;x<=rail.x1-60;x+=Math.max(500,len/6))
+    BOT.group.add(plate(90,RAIL_Y-30,120,new THREE.Vector3(x,(RAIL_Y-30)/2,rail.z),CONCRETE));
+  frameAt(RAIL_F,railPt(BOT.parkX),BOT.park);
+  /* the pile sits where the claw can reach it from the parked pose */
+  const claw=clawMatrix(BOT.park,BOT_CARRY).elements;
+  BOT.pileX=claw[12];
+  const Ls=Math.min(L,1100),D=SG.D;
+  for(let k=0;k<4;k++){const m=new THREE.Mesh(unitGeo(),memMat.clone());
+    m.material.color.setRGB(mat.rgb[0]/255,mat.rgb[1]/255,mat.rgb[2]/255,THREE.SRGBColorSpace);
+    m.scale.set(D,Ls,D);m.rotation.x=Math.PI/2;m.position.set(BOT.pileX+(k%2?D*1.05:0)-D*0.5,D/2+Math.floor(k/2)*D,rail.z-Ls/2-150);
+    m.castShadow=m.receiveShadow=true;BOT.group.add(m);BOT.pile.push(m);}
+  BOT.carry=new THREE.Mesh(unitGeo(),carryMat);BOT.carry.matrixAutoUpdate=false;BOT.carry.castShadow=true;BOT.carry.visible=false;
+  carryMat.color.setRGB(mat.rgb[0]/255,mat.rgb[1]/255,mat.rgb[2]/255,THREE.SRGBColorSpace);
+  BOT.group.add(BOT.carry);
+  addLabel('STOCK','',()=>BOT.pile[0]?BOT.pile[0].position.clone().add(new THREE.Vector3(0,D*2.2,0)):null,'build-bot');
+  addLabel('CONCEPT rail','acc',()=>railPt(rail.x0+60).add(new THREE.Vector3(0,70,0)),'build-bot');
+  /* frame the rail and pile too */
+  const cx=(rail.x0+x1)/2;SG.center.set(cx,SG.center.y,(rail.z+0)/2);
+  SG.radius=Math.max(SG.radius,Math.hypot(x1-rail.x0,SG.center.y*2,Math.abs(rail.z)*2+Ls)/2+200);
+  BOT.phase='park';BOT.legs=[];BOT.mi=-1;
+}
+/* where a member held in the claw sits, for a robot frame and arm angle */
+const _cm=new THREE.Matrix4(),_cq=new THREE.Quaternion();
+function clawMatrix(frame,armDeg,out=new THREE.Matrix4()){
+  const st=BOT.st;st.q.armBase=armDeg;st.q.lowerHinge=st.q.upperHinge=0;poseState(st);
+  const arm=RB.bodies.find(b=>b.role==='arm');
+  _cm.multiplyMatrices(frame,arm.world);
+  const hold=new THREE.Matrix4().compose(new THREE.Vector3(GRIP.x,GRIP.y,GRIP.z),
+    _cq.setFromAxisAngle(new THREE.Vector3(0,0,1),-Math.PI/2),new THREE.Vector3(1,1,1));
+  return out.multiplyMatrices(_cm,hold);
+}
+function memberMatrix(mi,out=new THREE.Matrix4()){const m=model.members[mi];
+  return barMatrix(model.nodes[m.a],model.nodes[m.b],SG.D,out);}
+function withLength(M,L,D,out=new THREE.Matrix4()){
+  const p=new THREE.Vector3(),q=new THREE.Quaternion(),sc=new THREE.Vector3();M.decompose(p,q,sc);
+  return out.compose(p,q,new THREE.Vector3(D,L,D));}
+function blendM(A,B,u,lift=0,out=new THREE.Matrix4()){
+  const pa=new THREE.Vector3(),qa=new THREE.Quaternion(),sa=new THREE.Vector3(),pb=new THREE.Vector3(),qb=new THREE.Quaternion(),sb=new THREE.Vector3();
+  A.decompose(pa,qa,sa);B.decompose(pb,qb,sb);
+  pa.lerp(pb,u);pa.y+=Math.sin(Math.PI*u)*lift;
+  return out.compose(pa,qa.slerp(qb,u),sa.lerp(sb,u));}
+/* shortest climb from the rail to a node, over members already built */
+function routeTo(target){
+  const md=model,n=md.nodes.length,dist=new Array(n).fill(Infinity),prev=new Array(n).fill(-1),done=new Array(n).fill(false);
+  const adj=Array.from({length:n},()=>[]);
+  md.members.forEach((m,i)=>{if(!sim.visible.has(i))return;
+    const L=nodeW(m.a).distanceTo(nodeW(m.b));adj[m.a].push([m.b,L]);adj[m.b].push([m.a,L]);});
+  md.nodes.forEach((nd,i)=>{if(nd.support&&adj[i].length){dist[i]=Math.abs(nodeW(i).x-BOT.parkX)+400;prev[i]=-2;}});
+  for(;;){let u=-1,best=Infinity;for(let i=0;i<n;i++)if(!done[i]&&dist[i]<best){best=dist[i];u=i;}
+    if(u<0)break;done[u]=true;for(const[v,L]of adj[u])if(dist[u]+L<dist[v]){dist[v]=dist[u]+L;prev[v]=u;}}
+  if(!isFinite(dist[target]))return null;
+  const path=[];for(let v=target;v>=0;v=prev[v])path.unshift(v);
+  return{path,cost:dist[target]};
+}
+function planTrip(mi){
+  const m=model.members[mi],ra=routeTo(m.a),rb=routeTo(m.b);
+  let r=ra&&rb?(ra.cost<=rb.cost?ra:rb):(ra||rb),T;
+  const legs=[];let cur=railPt(BOT.parkX),curM=BOT.park.clone();
+  const move=(F,A,B)=>{legs.push({type:'move',F,A:A.clone(),B:B.clone(),dur:A.distanceTo(B)/BOT_V});curM=frameAt(F,B);};
+  const xfer=M1=>{legs.push({type:'xfer',M0:curM.clone(),M1:M1.clone(),dur:BOT_XFER});curM=M1.clone();};
+  if(!r){ /* nothing built to climb: work from the rail */
+    const lo=model.nodes[m.a].y<=model.nodes[m.b].y?m.a:m.b;T=nodeW(lo);
+    const x=clamp(T.x-BOT_REACH,BOT.rail.x0+70,BOT.rail.x1-260);move(RAIL_F,cur,railPt(x));
+  }else{
+    const p=r.path;T=nodeW(p[p.length-1]);
+    move(RAIL_F,cur,railPt(nodeW(p[0]).x));cur=railPt(nodeW(p[0]).x);
+    if(p.length===1){ /* the target is a support: reach it from the rail */
+      const x=clamp(T.x-BOT_REACH,BOT.rail.x0+70,BOT.rail.x1-260);legs.pop();curM=BOT.park.clone();move(RAIL_F,railPt(BOT.parkX),railPt(x));
+    }
+    for(let i=0;i+1<p.length;i++){
+      const a=nodeW(p[i]),b=nodeW(p[i+1]),dir=b.clone().sub(a),len=dir.length();dir.normalize();
+      const F=memberFrame(dir),A=a.clone().addScaledVector(dir,i===0&&model.nodes[p[i]].support?Math.min(120,len*0.3):0);
+      let B=b.clone();
+      if(i+2===p.length){const want=T.clone().addScaledVector(F.Z,-BOT_REACH);
+        const t=clamp(want.clone().sub(a).dot(dir)/len,A.distanceTo(a)/len,1);B=a.clone().addScaledVector(dir,t*len);}
+      xfer(frameAt(F,A));move(F,A,B);
+    }
+  }
+  return{legs,stance:curM.clone()};
+}
+function reverseLegs(legs){return legs.slice().reverse().map(L=>L.type==='move'?{...L,A:L.B,B:L.A}:{...L,M0:L.M1,M1:L.M0});}
+function botStart(){
+  BOT.noted||log('info','The robot changes member at joints in this animation. The CAD robot has no yaw joint, so that step is CONCEPT, like the rail.');
+  BOT.noted=true;
+  Object.assign(BOT,{phase:'load',t:0,legs:[],leg:0,mi:sim.order[0]});
+}
+function botTick(dt){
+  let rem=dt;
+  for(let guard=0;guard<40&&rem>1e-9&&sim.mode==='building';guard++){
+    if(BOT.phase==='legs'){
+      const L=BOT.legs[BOT.leg];
+      if(!L){BOT.phase=BOT.after;BOT.t=0;continue;}
+      const h=Math.min(rem,Math.max(0,L.dur-BOT.t));BOT.t+=h;rem-=h;
+      if(L.type==='move'){BOT.st.q.roll.lower+=h*BOT_V/(WHEEL_D/2)/DEG;BOT.st.q.roll.upper=BOT.st.q.roll.lower;}
+      if(BOT.t>=L.dur-1e-9){BOT.leg++;BOT.t=0;}
+      continue;}
+    if(BOT.phase==='load'||BOT.phase==='place'){
+      const dur=BOT.phase==='load'?BOT_LOAD:BOT_PLACE,h=Math.min(rem,dur-BOT.t);BOT.t+=h;rem-=h;
+      if(BOT.t<dur-1e-9)break;
+      if(BOT.phase==='load'){
+        const trip=planTrip(BOT.mi);BOT.go=trip.legs;BOT.stance=trip.stance;
+        Object.assign(BOT,{phase:'legs',legs:trip.legs,leg:0,t:0,after:'place'});
+        botStatus('climbing to its joint');
+      }else{
+        sim.visible.add(BOT.mi);const st=state.steps[sim.k];$('step').value=sim.k;
+        if(st)setStatus(st.worst,`member ${sim.k+1} of ${sim.order.length} placed`+(st.issues.length?', '+st.issues[0].t:''));
+        sim.k++;
+        const last=sim.k>=sim.order.length;
+        Object.assign(BOT,{phase:'legs',legs:reverseLegs(BOT.go),leg:0,t:0,after:last?'done':'load'});
+        if(!last)BOT.mi=sim.order[sim.k];
+      }
+      continue;}
+    if(BOT.phase==='done'){sim.mode='idle';BOT.phase='park';setStatus('ok',`built, ${sim.order.length} members`);syncTransport();break;}
+    break;
+  }
+}
+function botStatus(what){if(sim.k<sim.order.length)setStatus('warn',`member ${sim.k+1} of ${sim.order.length}, ${what}`);}
+function syncBot(){
+  const show=RB.ready&&MODE==='build'&&sim.mode!=='collapsing'&&!!BOT.rail;
+  BOT.group.visible=!!BOT.rail&&MODE==='build';RB.root.visible=show;
+  if(!show){if(BOT.carry)BOT.carry.visible=false;return;}
+  const q=BOT.st.q;let arm=BOT_CARRY,frame=BOT.park,carry=null;
+  q.clampUpper=q.clampLower=0;q.grip=GRIP.closed;
+  const ph=sim.mode==='building'?BOT.phase:'park',u=BOT.t;
+  const L=member=>{const m=model.members[member],a=model.nodes[m.a],b=model.nodes[m.b];return Math.hypot(b.x-a.x,b.y-a.y,b.z-a.z);};
+  if(ph==='legs'){const Lg=BOT.legs[BOT.leg];
+    if(Lg){const v=Lg.dur>0?clamp(BOT.t/Lg.dur,0,1):1;
+      if(Lg.type==='move')frame=frameAt(Lg.F,Lg.A.clone().lerp(Lg.B,v));
+      else{frame=blendM(Lg.M0,Lg.M1,ease(v));q.clampUpper=0.8*Math.sin(Math.PI*v);}}
+    else frame=BOT.after==='place'?BOT.stance:BOT.park;
+    if(BOT.after==='place'){q.grip=GRIP.hold;carry=withLength(clawMatrix(frame,arm),L(BOT.mi),SG.D);}}
+  if(ph==='load'){const v=u/BOT_LOAD;arm=BOT_CARRY+32*Math.sin(Math.PI*clamp(v/0.9,0,1));
+    q.grip=v<0.45?GRIP.open:GRIP.hold;
+    const pile=withLength(BOT.pile[Math.min(3,Math.max(0,sim.order.length-sim.k-1))].matrixWorld,L(BOT.mi),SG.D);
+    const c=withLength(clawMatrix(frame,arm),L(BOT.mi),SG.D);
+    carry=blendM(pile,c,ease(clamp((v-0.25)/0.55,0,1)),160);}
+  if(ph==='place'){frame=BOT.stance;const v=u/BOT_PLACE;
+    arm=v<0.55?lerp(BOT_CARRY,28,ease(v/0.55)):v<0.8?28:lerp(28,BOT_CARRY,ease((v-0.8)/0.2));
+    q.grip=v<0.78?GRIP.hold:GRIP.open;
+    if(v<0.8){const c=withLength(clawMatrix(frame,arm),L(BOT.mi),SG.D);
+      carry=blendM(c,memberMatrix(BOT.mi),ease(clamp((v-0.2)/0.58,0,1)),60);}
+    if(v<0.02)botStatus('placing it');}
+  const left=sim.mode==='building'?sim.order.length-sim.k-(ph==='load'&&u/BOT_LOAD>0.25?1:0)-(ph==='legs'&&BOT.after==='place'||ph==='place'?1:0):4;
+  BOT.pile.forEach((m,k)=>m.visible=k<Math.min(4,left));
+  q.armBase=arm;poseState(BOT.st);syncRobotObjects();
+  RB.root.matrixAutoUpdate=false;RB.root.matrix.copy(frame);RB.root.matrixWorldNeedsUpdate=true;
+  BOT.frame.copy(frame);
+  if(carry){BOT.carry.matrix.copy(carry);BOT.carry.matrixWorldNeedsUpdate=true;BOT.carry.visible=true;}
+  else BOT.carry.visible=false;
+}
+function botRelease(){RB.root.matrixAutoUpdate=true;RB.root.position.set(0,0,0);RB.root.rotation.set(-Math.PI/2,0,0);
+  RB.root.updateMatrix();RB.root.visible=true;}
+function botFocus(){const p=new THREE.Vector3().setFromMatrixPosition(BOT.frame);
+  return p.addScaledVector(new THREE.Vector3().setFromMatrixColumn(BOT.frame,2),200);}
+
 function setMat(w){mat=MATS[w];
   $('mPine').setAttribute('aria-pressed',String(w==='pine'));$('mBamboo').setAttribute('aria-pressed',String(w==='bamboo'));
   $('matNote').textContent=mat.note;$('lgMat').style.background=`rgb(${mat.rgb.join(',')})`;rebuild();}
 function setTool(t){tool=t;
   $('tDraw').setAttribute('aria-pressed',String(t==='draw'));$('tErase').setAttribute('aria-pressed',String(t==='erase'));}
 
+/* ======================================================================= DRIVE: practice course with the keyboard */
+const DRIVE={saved:null,t:0,running:false,done:false,faults:0,crossed:0,prevLatch:false,touched:false,
+  best:null,wins:[],lastUI:0,passed:new Set()};
+try{DRIVE.best=+localStorage.getItem('clasp.drive.best')||null;}catch(e){}
+const mmss=t=>`${Math.floor(t/60)}:${(t%60).toFixed(1).padStart(4,'0')}`;
+function courseReset(){
+  if(!RB.ready)return;
+  abortScript('course restarted');buildRig();resetRobot(START_S);setPip(true);
+  Object.assign(DRIVE,{t:0,running:false,done:false,faults:0,crossed:0,prevLatch:false,touched:false,passed:new Set()});
+  DRIVE.wins=COURSE_J.map(j=>{const box=RIG.boxes.find(b=>b.name===j.name+' member');
+    return crossingWindow([box],j.h);});
+  log('info','Practice course ready. Two junctions, finish at the top of the post.');
+  driveUI(true);
+}
+function enterDrive(){
+  DRIVE.saved={kind:RIG.kind,jH:RIG.jH,jDir:RIG.jDir};
+  RIG.kind='course';courseReset();
+}
+function leaveDrive(){
+  if(!DRIVE.saved)return;
+  Object.assign(RIG,DRIVE.saved);DRIVE.saved=null;syncRigUI();buildRig();resetRobot(START_S);
+}
+/* the next thing to do, read from the robot's state and the crossing plan */
+function coach(){
+  if(!RB.ready)return['Loading the robot…',''];
+  if(DRIVE.done)return[`Course complete in ${mmss(DRIVE.t)} with ${DRIVE.faults} fault${DRIVE.faults===1?'':'s'}. Press Restart to go again.`,'ok'];
+  if(R.latch)return[`${R.warn||'Safety latch set'}. Press R (both_attach) to clear it.`,'bad'];
+  if(gaitBusy())return['Linkage moving…',''];
+  const h=H(),s=R.s,up=R.mod.upper.state,lo=R.mod.lower.state;
+  const k=COURSE_J.findIndex((j,i)=>!DRIVE.passed.has(i));
+  if(k<0){const togo=COURSE_TOP-10-h.upTop-s;
+    return togo>150?[`Both junctions crossed. Drive up ${fx(togo,0)} mm to the top.`,'']:['Nearly there.',''];}
+  const j=COURSE_J[k],w=DRIVE.wins[k],s1=j.h-30-CLEAR-h.upTop,s3=j.h+30+CLEAR-h.loBot;
+  if(!w)return[`${j.name} cannot be crossed with this CAD.`,'bad'];
+  if(up==='attached'&&lo==='attached'){
+    if(s<s1-4)return[`Drive up (W). Stop ${fx(s1-s,0)} mm higher, just under ${j.name}.`,''];
+    if(s<=s1+4)return[`Under ${j.name}. Press Q to open the upper clamp and swing it clear.`,''];
+    if(s>=w.lo-0.5&&s<=w.hi+0.5)return[`${j.name} sits between the modules. Press E to swing the lower module clear.`,''];
+    if(s>=s3-4)return[`Past ${j.name}.`,'ok'];
+    return[`Drive down (S) ${fx(s-s1,0)} mm to just under ${j.name}.`,''];}
+  if(up!=='attached'){
+    if(s<w.lo)return[`Drive up (W) ${fx(w.lo-s,0)} mm to the crossing window. It is ${fx(w.width,1)} mm wide, so creep with Shift.`,''];
+    if(s<=w.hi)return['In the window. Press Q to swing the upper module back and clamp.','ok'];
+    return[`Too far. Back down (S) ${fx(s-w.hi,0)} mm into the window.`,'bad'];}
+  if(s<s3-2)return[`Drive up (W) ${fx(s3-s,0)} mm until the lower module clears ${j.name}.`,''];
+  return['Clear. Press E to swing the lower module back and clamp.','ok'];
+}
+function courseTick(dt,force){
+  if((MODE!=='drive'&&!force)||!RB.ready)return;
+  if(!DRIVE.running&&!DRIVE.done&&(DRIVE.touched||R.pwm||gaitBusy()))DRIVE.running=true;
+  if(DRIVE.running&&!DRIVE.done)DRIVE.t+=dt;
+  if(R.latch&&!DRIVE.prevLatch&&DRIVE.running)DRIVE.faults++;
+  DRIVE.prevLatch=R.latch;
+  const lb=lowerBase();
+  COURSE_J.forEach((j,i)=>{if(!DRIVE.passed.has(i)&&lb>j.h+30&&nHolding()===2){DRIVE.passed.add(i);DRIVE.crossed++;
+    log('ok',`${j.name} crossed at ${mmss(DRIVE.t)}`);}});
+  if(!DRIVE.done&&DRIVE.passed.size===COURSE_J.length&&nHolding()===2&&R.s+H().upTop>=COURSE_TOP-160){
+    DRIVE.done=true;DRIVE.running=false;if(R.pwm)setDrive(0,0,'auto');
+    if(!LOG.quiet&&(!DRIVE.best||DRIVE.t<DRIVE.best)){DRIVE.best=DRIVE.t;try{localStorage.setItem('clasp.drive.best',String(DRIVE.t));}catch(e){}}
+    log('ok',`Course complete in ${mmss(DRIVE.t)} with ${DRIVE.faults} fault${DRIVE.faults===1?'':'s'}`);}
+  driveUI(false);
+}
+function driveUI(force){
+  const now=performance.now();if(!force&&now-DRIVE.lastUI<100)return;DRIVE.lastUI=now;
+  const[c,cls]=coach();const el=$('hudCoach');el.textContent=c;el.className='coach '+cls;
+  $('hudTime').textContent=mmss(DRIVE.t);$('hudF').textContent=DRIVE.faults;
+  if(RB.ready){const lb=lowerBase();$('hudH').textContent=fx(lb,0)+' mm';
+    $('hudV').textContent=fx(R.pwm/255*VMAX*R.dir,0)+' mm/s';
+    $('hudBar').style.width=clamp((lb-START_S+54)/(COURSE_TOP-H().upTop-START_S),0,1)*100+'%';}
+  const tr=$('hudTrack');
+  if(!tr.dataset.marks){tr.dataset.marks='1';
+    COURSE_J.forEach(j=>{const i=document.createElement('i');i.style.left=clamp((j.h-START_S)/(COURSE_TOP-START_S),0,1)*100+'%';tr.appendChild(i);});}
+  $('courseKV').innerHTML=[['Time',mmss(DRIVE.t)],['Junctions crossed',`${DRIVE.passed.size} / ${COURSE_J.length}`],
+    ['Faults',DRIVE.faults,DRIVE.faults?'warn':''],['Best time',DRIVE.best?mmss(DRIVE.best):'none yet']]
+    .map(([k,v,c])=>`<dt>${k}</dt><dd class="${c||''}">${v}</dd>`).join('');
+}
+$('courseReset').onclick=()=>{courseReset();canvas.focus();};
+$('dPwm').oninput=()=>{$('dPwmV').textContent=$('dPwm').value;};
+
 /* ======================================================================= MODES */
 function focusBox(){
   if(MODE==='build')return{center:SG.center.clone(),radius:SG.radius};
-  if(RB.ready)return{center:robotFocus(),radius:RIG.kind==='cap'||RIG.kind==='junction'?640:480};
+  if(RB.ready)return{center:robotFocus(),radius:MODE==='drive'?520:RIG.kind==='cap'||RIG.kind==='junction'?640:480};
   return{center:new THREE.Vector3(0,600,0),radius:900};
 }
 function fitNow(k='iso'){
@@ -2328,26 +2672,31 @@ function updateTitle(){
     :RB.error?'<b>Robot model missing</b><span>Build mode still works</span>':'<b>Loading robot…</b><span>reading the CAD export</span>';
   if(MODE==='build')t.innerHTML=`<b>Frame · ${mat.key==='pine'?'pine 60 × 60':'bamboo Ø60'}</b>
     <span>${model.members.length} members · direct stiffness solve · colour shows utilisation</span>`;
+  if(MODE==='drive')t.innerHTML=`<b>Drive · practice course</b><span>keyboard teleop · WASD, Q E R, Space</span>`;
   if(MODE==='checks')t.innerHTML=`<b>Checks · ${$('cPose').selectedOptions[0].text.split(',')[0]}</b>
     <span>red: centre of mass the hinge carries · blue: whole robot</span>`;
 }
 function syncTransport(){
   const b=MODE==='build';
   $('step').hidden=!b;$('breakBtn').hidden=!b;
-  $('playBtn').hidden=$('stopBtn').hidden=MODE==='checks';
+  $('playBtn').hidden=$('stopBtn').hidden=MODE==='checks'||MODE==='drive';
   if(MODE==='robot'){$('playBtn').textContent='Reset';$('stopBtn').textContent='Stop';}
-  if(b){$('playBtn').textContent=sim.mode==='building'?'Pause':'Build it';$('stopBtn').textContent='Reset';}
+  if(b){$('playBtn').textContent=sim.mode==='building'?(sim.paused?'Resume':'Pause'):'Build it';$('stopBtn').textContent='Reset';}
 }
 function setMode(m){
-  const prev=MODE;MODE=m;$('app').dataset.mode=m;
+  const prev=MODE;
+  if(prev==='drive'&&m!=='drive')leaveDrive();
+  MODE=m;$('app').dataset.mode=m;
   document.querySelectorAll('.modes [data-mode]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.mode===m)));
-  RB.root.visible=RIG.group.visible=m!=='build';SG.group.visible=m==='build';CK.group.visible=m==='checks';
+  RIG.group.visible=m!=='build';SG.group.visible=m==='build';CK.group.visible=m==='checks';
+  if(m==='build'){if(RB.ready&&!BOT.rail)buildBotScene();syncBot();}else{botRelease();BOT.group.visible=false;}
   if(RIG.beam)RIG.beam.visible=m!=='build';
   $('vpMsg').classList.toggle('on',m!=='build'&&!!RB.error);
-  if(m!=='robot'){if(SCRIPT.name)abortScript('mode changed');if(RB.ready&&R.pwm)setDrive(0,0,'auto');}
+  if(m!==prev){if(SCRIPT.name)abortScript('mode changed');if(RB.ready&&R.pwm)setDrive(0,0,'auto');}
+  if(m==='drive'&&prev!=='drive'&&RB.ready)enterDrive();
   if(m==='build'){drawGrid();shadowBox(SG.radius*1.2);}else shadowBox(900);
   if(m==='checks')runChecks();
-  if(m==='robot'&&RB.ready){poseState(R);syncRobotObjects();}
+  if((m==='robot'||m==='drive')&&RB.ready){poseState(R);syncRobotObjects();}
   if(prev!==m)fitNow();
   updateTitle();syncTransport();refreshRobotUI(true);
 }
@@ -2383,7 +2732,7 @@ $('followBtn').onclick=()=>{VIEW.follow=!VIEW.follow;syncFollowBtn();};
 controls.addEventListener('start',()=>{if(VIEW.anim)VIEW.anim=null;});
 $('playBtn').onclick=()=>{
   if(MODE==='robot'){if(!RB.ready)return;abortScript('reset');buildRig();resetRobot(START_S);setStatus('ok','ready');}
-  if(MODE==='build'){if(sim.mode==='building'){sim.mode='idle';setStatus('ok','paused');syncTransport();}else startBuild();}};
+  if(MODE==='build'){if(sim.mode==='building'){sim.paused=!sim.paused;if(sim.paused)setStatus('ok','paused');syncTransport();}else startBuild();}};
 $('stopBtn').onclick=()=>{
   if(MODE==='robot'&&RB.ready){abortScript('stopped by the operator');if(R.pwm)setDrive(0,0,'ui');}
   if(MODE==='build')resetSim();};
@@ -2472,10 +2821,29 @@ function selfTest(){
     setRig('cap');demoPlace();runFor(60,()=>!SCRIPT.name);
     const e=RIG.placed?beamCentreCad().distanceTo(RIG.capTarget):Infinity;
     ok('cap beam seated within 1 mm',e<1,fx(e,3)+' mm');
+    /* the practice course, driven by following the coach */
+    RIG.kind='course';courseReset();setPip(false);
+    for(let i=0;i<60000&&!DRIVE.done;i++){
+      const t=coach()[0],m=t.match(/(\d+) mm/),d=m?+m[1]:999;
+      if(/Drive up|Drive down|Back down/.test(t)){if(!R.latch)setDrive(d<60?30:150,/Drive up/.test(t)?1:-1,'test');}
+      else{if(R.pwm)setDrive(0,0,'test');
+        if(/Press Q/.test(t))toggleModule('upper','test');else if(/Press E/.test(t))toggleModule('lower','test');
+        else if(/Press R/.test(t))send('both_attach','test');}
+      DRIVE.touched=true;robotStep(1/60);courseTick(1/60,true);}
+    ok('practice course completed by following the coach',DRIVE.done&&DRIVE.faults===0,
+      DRIVE.done?`${mmss(DRIVE.t)}, ${DRIVE.faults} faults`:'did not finish: '+coach()[0]);
+    /* the robot builds the current frame, one member at a time */
+    const was=MODE;MODE='build';startBuild();
+    for(let i=0;i<40000&&sim.mode==='building';i++)botTick(0.05);
+    const built=sim.visible.size===model.members.length&&sim.mode==='idle';
+    ok('robot places every member of the frame',built,`${sim.visible.size} of ${model.members.length} members`);
+    MODE=was;resetSim();
   }catch(err){ok('self-test ran without error',false,err.message);console.error(err);}
   finally{
     LOG.quiet--;
     Object.assign(RIG,{kind:saved.kind,jH:saved.jH,jDir:saved.jDir});syncRigUI();buildRig();resetRobot(START_S);
+    Object.assign(DRIVE,{t:0,running:false,done:false,faults:0,crossed:0,prevLatch:false,touched:false,passed:new Set()});
+    if(saved.mode==='drive')setPip(true);
     simT=saved.t;setMode(saved.mode);setStatus('ok','ready');
   }
   const pass=out.filter(x=>x.pass).length;
@@ -2487,11 +2855,11 @@ function selfTest(){
 
 /* ======================================================================= main loop */
 let lastT=performance.now();
-function frame(dtReal){
+function frame(dtReal,render=true){
   const dt=Math.min(dtReal,0.05)*(+$('speed').value);
-  if(MODE==='robot'&&RB.ready){teleopTick(dt);robotStep(dt);syncRobotObjects();}
+  if((MODE==='robot'||MODE==='drive')&&RB.ready){teleopTick(dt);robotStep(dt);courseTick(dt);syncRobotObjects();}
   if(MODE==='build')buildTick(dt);
-  renderAll(dtReal);
+  if(render)renderAll(dtReal);
 }
 function loop(now){
   const dt=(now-lastT)/1000;lastT=now;
@@ -2521,7 +2889,7 @@ loadRobot().then(ok=>{
   log('info',`Detach swing from CAD: ${fx(RB.detach.up)}° up, ${fx(RB.detach.down)}° down`);
   setStatus('ok','ready');
 });
-window.CLASP={frame,R,RB,RIG,send,setDrive,demo,runChecks,selfTest,setMode,camera,controls,fitNow,goView};
+window.CLASP={frame,R,RB,RIG,send,setDrive,demo,runChecks,selfTest,setMode,camera,controls,fitNow,goView,coach,DRIVE};
 window.CLASP_TEST=selfTest;
 
 </script>
