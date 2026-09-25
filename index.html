@@ -583,9 +583,12 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
             <div class="sh"><h2>Build order</h2><span class="pv con">CONCEPT</span></div>
             <div class="sb">
               <dl class="kv" id="orderStats"></dl>
-              <p class="note">Build it runs the robot. Posts go up first at each level, then beams, then braces. The robot
-                carries each member rigidly in its claw, climbs its post with the real gait and places the member with a
-                CONCEPT slew and wrist. The hoist, the hand moves and the crane are CONCEPT too.</p>
+              <div class="ctl"><label for="armExt">Arm extension (CONCEPT) <b><span id="armExtV">160</span> mm</b></label>
+                <input type="range" id="armExt" min="0" max="240" step="10" value="160"></div>
+              <p class="note">Build it runs the robot. Posts go up first at each level, then beams, then braces. The claw
+                holds each member in its V, as the CAD claw does, climbs its post with the real gait and places the member
+                with a CONCEPT slew and wrist. At the CAD arm length (0 mm) the claw cannot reach over the robot's own
+                upper module, so the robot places nothing. The hoist, the hand moves and the crane are CONCEPT too.</p>
             </div>
           </section>
           <section class="sec" data-for="build" data-tab="order">
@@ -1208,6 +1211,7 @@ const RMAT={                                                      // Onshape app
   steel:new THREE.MeshStandardMaterial({color:0xa4aab1,roughness:0.3,metalness:0.9}),
   black:new THREE.MeshStandardMaterial({color:0x1c1e21,roughness:0.7,metalness:0}),
   white:new THREE.MeshStandardMaterial({color:0xe9ebed,roughness:0.5,metalness:0}),
+  acrylic:new THREE.MeshStandardMaterial({color:0x4fc3ff,roughness:0.12,metalness:0,transparent:true,opacity:0.42,depthWrite:false}),
 };
 for(const m of Object.values(RMAT)){m.polygonOffset=true;m.polygonOffsetFactor=1;m.polygonOffsetUnits=1;}
 const EDGE_MAT=new THREE.LineBasicMaterial({color:0x0b0d10,transparent:true,opacity:0.5});
@@ -1386,6 +1390,140 @@ const RB={ready:false,bodies:[],byId:new Map(),order:[],group:{lower:[],upper:[]
 RB.root.rotation.x=-Math.PI/2;
 scene.add(RB.root);
 
+/* CONCEPT wrist. The CAD arm is one rigid body. To give it the submission's wrist, the body is cut
+   across its hex tube, 15 mm below the claw bracket, and the claw head (upper tube, palm, servo mount and
+   finger linkage) turns about WRIST.point. Triangles and edges that cross the cut are clipped. */
+const WRIST={point:null,axis:null};
+function clipMesh(P,N,I,E,p0,n){
+  const nv=P.length/3,d=new Float32Array(nv);
+  for(let i=0;i<nv;i++)d[i]=(P[i*3]-p0[0])*n[0]+(P[i*3+1]-p0[1])*n[1]+(P[i*3+2]-p0[2])*n[2];
+  const S=[0,1].map(()=>({map:new Int32Array(nv).fill(-1),x:new Map(),P:[],N:[],I:[],E:[]}));
+  const vid=(s,i)=>{if(s.map[i]<0){s.map[i]=s.P.length/3;s.P.push(P[i*3],P[i*3+1],P[i*3+2]);s.N.push(N[i*3],N[i*3+1],N[i*3+2]);}
+    return s.map[i];};
+  const xid=(s,a,b)=>{const key=a<b?a*nv+b:b*nv+a;if(s.x.has(key))return s.x.get(key);
+    const t=d[a]/(d[a]-d[b]),k=s.P.length/3;
+    for(let q=0;q<3;q++)s.P.push(P[a*3+q]+t*(P[b*3+q]-P[a*3+q]));
+    const nn=[0,1,2].map(q=>N[a*3+q]+t*(N[b*3+q]-N[a*3+q])),l=Math.hypot(...nn)||1;s.N.push(nn[0]/l,nn[1]/l,nn[2]/l);
+    s.x.set(key,k);return k;};
+  const side=i=>d[i]>=0?1:0;
+  for(let i=0;i<I.length;i+=3){const v=[I[i],I[i+1],I[i+2]],u=v.map(side);
+    if(u[0]===u[1]&&u[1]===u[2]){const s=S[u[0]];s.I.push(vid(s,v[0]),vid(s,v[1]),vid(s,v[2]));continue;}
+    let r=0;while(!(u[r]!==u[(r+1)%3]&&u[r]!==u[(r+2)%3]))r++;
+    const a=v[r],b=v[(r+1)%3],c=v[(r+2)%3],A=S[u[r]],B=S[1-u[r]];
+    A.I.push(vid(A,a),xid(A,a,b),xid(A,a,c));
+    B.I.push(vid(B,b),vid(B,c),xid(B,a,c),vid(B,b),xid(B,a,c),xid(B,a,b));}
+  for(let i=0;i<E.length;i+=2){const a=E[i],b=E[i+1];
+    if(side(a)===side(b)){const s=S[side(a)];s.E.push(vid(s,a),vid(s,b));continue;}
+    const sa=S[side(a)],sb=S[side(b)];sa.E.push(vid(sa,a),xid(sa,a,b));sb.E.push(xid(sb,a,b),vid(sb,b));}
+  const arr=(a,n)=>n>65535?new Uint32Array(a):new Uint16Array(a);
+  return S.map(s=>({P:new Float32Array(s.P),N:new Float32Array(s.N),I:arr(s.I,s.P.length/3),E:arr(s.E,s.P.length/3)}));
+}
+function meshInto(body,part,material){
+  const g=new THREE.BufferGeometry(),pos=new THREE.BufferAttribute(part.P,3);
+  g.setAttribute('position',pos);g.setAttribute('normal',new THREE.BufferAttribute(part.N,3));
+  g.setIndex(new THREE.BufferAttribute(part.I,1));g.computeBoundingSphere();
+  const mesh=new THREE.Mesh(g,material);mesh.castShadow=true;mesh.receiveShadow=true;mesh.userData.body=body;
+  const eg=new THREE.BufferGeometry();eg.setAttribute('position',pos);eg.setIndex(new THREE.BufferAttribute(part.E,1));
+  const lines=new THREE.LineSegments(eg,EDGE_MAT);lines.raycast=()=>{};
+  body.obj.add(mesh,lines);body.meshes.push(mesh);body.verts.push(part.P);body.tri.push({P:part.P,I:part.I});
+}
+function splitArmHead(){
+  const arm=RB.bodies.find(b=>b.role==='arm');if(!arm)return;
+  const ti=arm.meshes.findIndex(m=>m.material===RMAT.aluminium);if(ti<0)return;
+  /* tube axis: principal direction of the tube's vertices */
+  const T=arm.tri[ti].P,nv=T.length/3,c=[0,0,0],C=[[0,0,0],[0,0,0],[0,0,0]];
+  for(let i=0;i<T.length;i+=3)for(let a=0;a<3;a++)c[a]+=T[i+a]/nv;
+  for(let i=0;i<T.length;i+=3)for(let a=0;a<3;a++)for(let b=0;b<3;b++)C[a][b]+=(T[i+a]-c[a])*(T[i+b]-c[b]);
+  let v=[0,0,1];
+  for(let it=0;it<50;it++){const w=[0,1,2].map(a=>C[a][0]*v[0]+C[a][1]*v[1]+C[a][2]*v[2]),l=Math.hypot(...w);v=w.map(x=>x/l);}
+  if(v[2]<0)v=v.map(x=>-x);
+  const along=(x,y,z)=>(x-c[0])*v[0]+(y-c[1])*v[1]+(z-c[2])*v[2];
+  let t0=1e9,t1=-1e9;for(let i=0;i<T.length;i+=3){const t=along(T[i],T[i+1],T[i+2]);t0=Math.min(t0,t);t1=Math.max(t1,t);}
+  /* the claw bracket starts where the other parts resume above the longest bare stretch of tube */
+  const ts=[];
+  arm.tri.forEach((m,k)=>{if(k===ti)return;const P=m.P,I=m.I;
+    for(let i=0;i<I.length;i+=3){const a=I[i]*3,b=I[i+1]*3,e=I[i+2]*3;
+      const t=along((P[a]+P[b]+P[e])/3,(P[a+1]+P[b+1]+P[e+1])/3,(P[a+2]+P[b+2]+P[e+2])/3);if(t>t0&&t<t1)ts.push(t);}});
+  ts.sort((a,b)=>a-b);let gap=0,top=null;
+  for(let i=1;i<ts.length;i++)if(ts[i]-ts[i-1]>gap){gap=ts[i]-ts[i-1];top=ts[i];}
+  if(top===null||gap<30)return;
+  const p0=c.map((x,a)=>x+v[a]*(top-15));
+  const head={id:99,role:'head',group:'arm',parent:arm.id,joint:{type:'wrist',point:p0,axis:v},
+    centroid:new THREE.Vector3(),volume:0,fk:new THREE.Matrix4(),world:new THREE.Matrix4(),
+    obj:new THREE.Group(),verts:[],tri:[],pts:null,mass:0,meshes:[]};
+  head.obj.matrixAutoUpdate=false;
+  const old=arm.meshes.map((mesh,k)=>({mesh,lines:arm.obj.children[2*k+1]}));
+  arm.obj.clear();arm.meshes=[];arm.verts=[];arm.tri=[];
+  for(const{mesh,lines}of old){
+    const g=mesh.geometry,Nq=g.attributes.normal.array,N=new Float32Array(Nq.length);
+    for(let i=0;i<Nq.length;i++)N[i]=Math.max(-1,Nq[i]/127);
+    const[lo,hi]=clipMesh(g.attributes.position.array,N,g.index.array,lines.geometry.index.array,p0,v);
+    if(lo.I.length)meshInto(arm,lo,mesh.material);if(hi.I.length)meshInto(head,hi,mesh.material);
+    g.dispose();lines.geometry.dispose();}
+  for(const b of RB.bodies)if(b.parent===arm.id&&b.role==='gripper')b.parent=head.id;
+  let n=0;for(const P of head.verts)for(let i=0;i<P.length;i+=3,n++)head.centroid.add(V3(P[i],P[i+1],P[i+2]));
+  head.centroid.divideScalar(Math.max(1,n));
+  RB.bodies.push(head);RB.byId.set(head.id,head);RB.group.arm.push(head);RB.root.add(head.obj);RB.head=head;
+  const e2=[0,-v[2],v[1]];let a0=1e9,a1=-1e9,b0=1e9,b1=-1e9;
+  for(let i=0;i<T.length;i+=3){const d=[T[i]-c[0],T[i+1]-c[1],T[i+2]-c[2]],u1=d[0],u2=d[0]*e2[0]+d[1]*e2[1]+d[2]*e2[2];
+    a0=Math.min(a0,u1);a1=Math.max(a1,u1);b0=Math.min(b0,u2);b1=Math.max(b1,u2);}
+  WRIST.point=p0;WRIST.axis=v;WRIST.section={e2,x:[a0+c[0]-p0[0],a1+c[0]-p0[0]],y:[b0,b1]};
+  RB.tris=RB.bodies.reduce((a,b)=>a+b.tri.reduce((x,m)=>x+m.I.length/3,0),0);
+}
+const clawBody=()=>RB.head||RB.bodies.find(b=>b.role==='arm');
+const ACRYLIC_EDGE=new THREE.LineBasicMaterial({color:0x9adfff,transparent:true,opacity:0.28,depthWrite:false});
+/* The C-link is a stack of acrylic plates. They are found as the slab between the outermost of its large
+   flat faces across x, and drawn clear blue. Motors, servos and bolts in the same body stay as they are.
+   Only the drawing changes; collisions still use every triangle. */
+function acrylicLink(){
+  const b=RB.bodies.find(x=>x.role==='clink');if(!b)return;
+  b.meshes.slice().forEach((mesh,k)=>{
+    if(mesh.material!==RMAT.pla)return;
+    const P=b.tri[k].P,I=b.tri[k].I,area=new Map();
+    for(let i=0;i<I.length;i+=3){const a=I[i]*3,c=I[i+1]*3,d=I[i+2]*3;
+      const u=[P[c]-P[a],P[c+1]-P[a+1],P[c+2]-P[a+2]],v=[P[d]-P[a],P[d+1]-P[a+1],P[d+2]-P[a+2]];
+      const nx=u[1]*v[2]-u[2]*v[1],ny=u[2]*v[0]-u[0]*v[2],nz=u[0]*v[1]-u[1]*v[0],A=Math.hypot(nx,ny,nz)/2;
+      if(A>0&&Math.abs(nx)/(2*A)>0.995){const x=Math.round(P[a]*2)/2;area.set(x,(area.get(x)||0)+A);}}
+    const Amax=Math.max(0,...area.values()),faces=[...area].filter(([,A])=>A>Amax*0.3&&A>2000).map(([x])=>x);
+    if(faces.length<2)return;
+    const x0=Math.min(...faces)-0.4,x1=Math.max(...faces)+0.4,keep=[],clear=[];
+    for(let i=0;i<I.length;i+=3){const inSlab=[0,1,2].every(j=>{const x=P[I[i+j]*3];return x>=x0&&x<=x1;});
+      (inSlab?clear:keep).push(I[i],I[i+1],I[i+2]);}
+    const g=mesh.geometry,arr=a=>P.length/3>65535?new Uint32Array(a):new Uint16Array(a);
+    g.setIndex(new THREE.BufferAttribute(arr(keep),1));
+    /* the plates' own edges are drawn faint blue, so the stack of outlines does not read as a dark lattice */
+    const lines=b.obj.children[2*k+1],E=lines.geometry.index.array,eKeep=[],eClear=[];
+    for(let i=0;i<E.length;i+=2){const inSlab=[0,1].every(j=>{const x=P[E[i+j]*3];return x>=x0&&x<=x1;});(inSlab?eClear:eKeep).push(E[i],E[i+1]);}
+    lines.geometry.setIndex(new THREE.BufferAttribute(arr(eKeep),1));
+    const lg=new THREE.BufferGeometry();lg.setAttribute('position',g.attributes.position);lg.setIndex(new THREE.BufferAttribute(arr(eClear),1));
+    const l2=new THREE.LineSegments(lg,ACRYLIC_EDGE);l2.userData.mat=ACRYLIC_EDGE;l2.raycast=()=>{};b.obj.add(l2);
+    const g2=new THREE.BufferGeometry();g2.setAttribute('position',g.attributes.position);g2.setAttribute('normal',g.attributes.normal);
+    g2.setIndex(new THREE.BufferAttribute(arr(clear),1));g2.computeBoundingSphere();
+    const m2=new THREE.Mesh(g2,RMAT.acrylic);m2.receiveShadow=true;m2.userData.body=b;b.obj.add(m2);b.meshes.push(m2);
+  });
+}
+/* CONCEPT arm extension for Build: a spacer of E mm between the lower tube and the wrist. It is a body of
+   the arm group, so the collision checks see it. E = 0 removes it. */
+function setArmExt(E){
+  if(!WRIST.point||!RB.ready)return;
+  const arm=RB.bodies.find(b=>b.role==='arm');let b=RB.byId.get(98);
+  if(!b){b={id:98,role:'extension',group:'arm',parent:arm.id,joint:{type:'fixed'},centroid:V3(),volume:0,
+      fk:new THREE.Matrix4(),world:new THREE.Matrix4(),obj:new THREE.Group(),verts:[],tri:[],pts:new Float32Array(0),mass:0,meshes:[],bc:[1e6,1e6,1e6],br:0};
+    b.obj.matrixAutoUpdate=false;RB.bodies.push(b);RB.byId.set(98,b);RB.group.arm.push(b);RB.order.push(b);RB.root.add(b.obj);}
+  disposeTree(b.obj);b.obj.clear();b.meshes=[];b.verts=[];b.tri=[];b.grid=null;b.pts=new Float32Array(0);b.bc=[1e6,1e6,1e6];b.br=0;
+  if(RB.markers&&RB.markers[1])RB.markers[1].position.set(...WRIST.point.map((x,i)=>x+E*WRIST.axis[i]));
+  if(E<=0)return;
+  const a=V3(...WRIST.axis),e1=V3(1,0,0),e2=V3(...WRIST.section.e2),sx=WRIST.section.x,sy=WRIST.section.y;
+  const g=new THREE.BoxGeometry(sx[1]-sx[0],E,sy[1]-sy[0]);
+  const c=V3(...WRIST.point).addScaledVector(a,E/2).addScaledVector(e1,(sx[0]+sx[1])/2).addScaledVector(e2,(sy[0]+sy[1])/2);
+  g.applyMatrix4(new THREE.Matrix4().makeBasis(e1,a,e2).setPosition(c));
+  const mesh=new THREE.Mesh(g,CONCEPT_MAT);mesh.castShadow=true;mesh.userData.body=b;
+  const lines=new THREE.LineSegments(new THREE.EdgesGeometry(g),EDGE_MAT);lines.raycast=()=>{};
+  b.obj.add(mesh,lines);b.meshes.push(mesh);
+  const P=g.attributes.position.array;b.verts=[P];b.tri=[{P,I:g.index.array}];b.pts=P;
+  b.centroid.copy(c);b.bc=c.toArray();b.br=Math.hypot(sx[1]-sx[0],E,sy[1]-sy[0])/2+1;
+}
+
 /* the model: robot.json plus a gzipped binary of quantised positions, int8 normals,
    16-bit indices and the CAD feature edges (tools/cad_export.py, format version 2) */
 async function fetchMesh(name){
@@ -1443,6 +1581,8 @@ async function loadRobot(){
     }
     RB.bodies.push(b);RB.byId.set(b.id,b);RB.group[b.group].push(b);RB.root.add(b.obj);
   }
+  acrylicLink();
+  RB.cad=RB.bodies.length;splitArmHead();
   /* parents before children */
   const kids=new Map();RB.bodies.forEach(b=>{if(!kids.has(b.parent))kids.set(b.parent,[]);kids.get(b.parent).push(b);});
   const walk=p=>{for(const c of kids.get(p)||[]){RB.order.push(c);walk(c.id);}};walk(-1);
@@ -1515,6 +1655,13 @@ function localMotion(b,q,out){
     if(j.name==='armBase'&&q.slew){rotAbout(_S,[0,1,0],j.point,q.slew);out.premultiply(_S);}
     return out;}
   if(j.type==='spin')return rotAbout(out,j.axis,j.point,(q.roll&&q.roll[b.group])||0);
+  if(j.type==='wrist'){const E=q.ext||0;if(!q.wrist&&!E)return out.identity();
+    /* the wrist turns the head about the cut; a CONCEPT extension of E mm lifts it along the tube first */
+    if(q.wrist)out.makeRotationFromQuaternion(q.wrist);else out.identity();
+    const p=j.point,a=j.axis,e=out.elements;
+    e[12]=p[0]+E*a[0]-(e[0]*p[0]+e[4]*p[1]+e[8]*p[2]);e[13]=p[1]+E*a[1]-(e[1]*p[0]+e[5]*p[1]+e[9]*p[2]);
+    e[14]=p[2]+E*a[2]-(e[2]*p[0]+e[6]*p[1]+e[10]*p[2]);
+    return out;}
   const u=q[j.param]||0;rotAbout(out,j.axis,j.point,u*j.angle);
   const s=u*(j.slide||0);out.elements[12]+=j.axis[0]*s;out.elements[13]+=j.axis[1]*s;out.elements[14]+=j.axis[2]*s;
   return out;
@@ -1742,8 +1889,7 @@ function buildRig(){
 }
 function attachBeam(){
   if(!RIG.beam||!RB.ready)return;
-  const arm=RB.bodies.find(b=>b.role==='arm');
-  arm.obj.add(RIG.beam);
+  clawBody().obj.add(RIG.beam);
   RIG.beam.position.set(GRIP.x,GRIP.y,GRIP.z);
   RIG.beam.rotation.set(GRIP.th*DEG,0,0);
   RIG.placed=false;FALL.on=false;FALL.st=null;
@@ -2283,8 +2429,7 @@ function hingeMoment(st,memberKg){
     const p=b.centroid.clone().applyMatrix4(b.world);all.addScaledVector(p,b.mass);
     if(b.group===st.anchor)continue;
     M+=b.mass*(p.y-hy);m+=b.mass;cm.addScaledVector(p,b.mass);}
-  if(memberKg){const arm=RB.bodies.find(b=>b.role==='arm');
-    const g=new THREE.Vector3(GRIP.x,GRIP.y,GRIP.z).applyMatrix4(arm.world);
+  if(memberKg){const g=new THREE.Vector3(GRIP.x,GRIP.y,GRIP.z).applyMatrix4(clawBody().world);
     M+=memberKg*(g.y-hy);m+=memberKg;cm.addScaledVector(g,memberKg);all.addScaledVector(g,memberKg);}
   cm.divideScalar(m);all.divideScalar(RB.totalMass+memberKg);
   return{kgcm:Math.abs(M)/10,arm:cm.y-hy,freeCoM:cm,allCoM:all,hinge:new THREE.Vector3(0,hy,hz),freeMass:m};
@@ -2293,8 +2438,7 @@ function armMoment(phi,memberKg){
   const st=checksPoseState('parallel');st.q.armBase=phi;poseState(st);
   const H=RB.armJoint.point,hy=H[1]-RB.post.y;let M=0;
   for(const b of RB.group.arm){const p=b.centroid.clone().applyMatrix4(b.world);M+=b.mass*(p.y-hy);}
-  const arm=RB.bodies.find(b=>b.role==='arm');
-  const g=new THREE.Vector3(GRIP.x,GRIP.y,GRIP.z).applyMatrix4(arm.world);
+  const g=new THREE.Vector3(GRIP.x,GRIP.y,GRIP.z).applyMatrix4(clawBody().world);
   M+=memberKg*(g.y-hy);
   return Math.abs(M)/10;
 }
@@ -2677,8 +2821,8 @@ function showStep(k){
    collision checks as the demos. CONCEPT additions, all labelled on screen: a material hoist that lifts
    each member into the claw, a slew and a wrist on the arm (the submission's multi-axis arm), a hand
    move between posts, and a crane for members the robot cannot place. */
-const BOT_PWM=210,BOT_CARRY=-10,BOT_PICK_PSI=60,BOT_GRIPS=[50,65,80,100,125,150],SLEW_RATE=45,WRIST_T=1.3;
-const BOT={chains:[],chain:null,home:null,group:new THREE.Group(),held:null,moveFrame:null,
+const BOT_PWM=210,BOT_CARRY=-10,BOT_PICK_PSI=60,SLEW_RATE=45,WRIST_T=1.3;
+const BOT={ext:160,chains:[],chain:null,home:null,group:new THREE.Group(),held:null,moveFrame:null,
   hoist:null,crane:null,stats:{robot:0,hand:0},clear:new Map(),noted:false,phase:''};
 scene.add(BOT.group);BOT.group.visible=false;
 const V3=(x,y,z)=>new THREE.Vector3(x,y,z);
@@ -2733,12 +2877,12 @@ function useChain(ch){
   RIG.boxes=obstaclesFor(ch);RIG.postTop=chainTop(ch);
 }
 const S_MIN=24+62;                                              // lower module above the footing
-const sMax=ch=>chainTop(ch)-H().upTop-4;
+const sMax=ch=>chainTop(ch)-WHEEL_ON-2-RB.ext.upper.axleTop;   // wheels stay on the post
 /* is this pose clear of the frame? cached per chain and 1 mm step until something is built */
 function poseClear(s,free=null){
   const key=`${free||'p'}${Math.round(s)}`;if(BOT.clear.has(key))return BOT.clear.get(key);
   const sv={s:R.s,q:{...R.q,roll:R.q.roll},anchor:R.anchor,mu:R.mod.upper.state,ml:R.mod.lower.state};
-  R.s=Math.round(s);R.q.clampLower=R.q.clampUpper=0;R.q.lowerHinge=R.q.upperHinge=0;
+  R.s=Math.round(s);R.q.clampLower=R.q.clampUpper=0;R.q.lowerHinge=R.q.upperHinge=0;R.q.wrist=BOT.qCarry||null;
   R.mod.upper.state=R.mod.lower.state='attached';R.anchor='lower';
   if(free==='upper'){R.q.lowerHinge=R.q.upperHinge=RB.detach.up;R.q.clampUpper=1;R.mod.upper.state='detached';}
   if(free==='lower'){R.q.lowerHinge=R.q.upperHinge=RB.detach.down;R.q.clampLower=1;R.mod.lower.state='detached';R.anchor='upper';}
@@ -2786,12 +2930,16 @@ function planTravel(ch,from,to){
   return{ok:false,why:'too many joints'};
 }
 
-/* ---- the concept arm: CAD pitch hinge, plus a slew about the arm base and a wrist at the claw.
-   CONCEPT: it holds a member by one end at this point under the arm head, with the concept wrist setting
-   the member's direction. The CAD claw holds a member across its V instead (GRIP), as in the Robot demo. */
-const BOT_GRIP={y:55,z:355,hold:0.3};
-function armIK(t){
-  const Hp=RB.armJoint.point,gx=GRIP.x-Hp[0],vy=BOT_GRIP.y-Hp[1],vz=BOT_GRIP.z-Hp[2];
+/* ---- the concept arm: CAD pitch hinge, a slew about the arm base and a wrist under the claw head.
+   The claw holds each member across its V, exactly as in the Robot demo (GRIP). The CONCEPT wrist turns the
+   whole claw head, so the member keeps its seat while the head lines it up with its place. */
+const INSERT_Y=110;                                   // mm in front of the frame where the member is lined up
+const BOT_GRIP_AT=[70,80,90,110,140];                    // mm from either end where the claw may take a member, or its middle
+/* the wrist's place on the arm, above the CONCEPT extension */
+const wristArm=()=>WRIST.point.map((x,i)=>x+(R.q.ext||0)*WRIST.axis[i]);
+/* arm pitch, slew and robot height that put the arm-frame point pt at t (chain coordinates) */
+function armIK(t,pt=wristArm()){
+  const Hp=RB.armJoint.point,gx=pt[0]-Hp[0],vy=pt[1]-Hp[1],vz=pt[2]-Hp[2];
   const Wy=t.y+RB.post.y-Hp[1],A=vy,B=-vz,Rr=Math.hypot(A,B);
   if(Math.abs(Wy)>Rr*0.999)return null;
   const base=Math.atan2(B,A),dl=Math.acos(Wy/Rr);
@@ -2805,34 +2953,47 @@ function armIK(t){
   const s=t.z-(Hp[2]-gx*Math.sin(psi*DEG)+wz*Math.cos(psi*DEG));
   return{phi,psi,s};
 }
-/* the claw's frame in the world, for the current robot pose */
-const _claw=new THREE.Matrix4();
-function clawWorld(out=_claw){
-  const arm=RB.bodies.find(b=>b.role==='arm');
-  RB.root.updateMatrixWorld(true);
-  return out.multiplyMatrices(arm.obj.matrixWorld,new THREE.Matrix4().makeTranslation(GRIP.x,BOT_GRIP.y,BOT_GRIP.z));
-}
 function robotFrame(){return BOT.moveFrame||(BOT.chain?BOT.chain.F:BOT.home.F);}
 function syncRoot(){RB.root.matrixAutoUpdate=false;RB.root.matrix.copy(robotFrame());RB.root.matrixWorldNeedsUpdate=true;
   poseState(R);syncRobotObjects();}
-/* world transform of member mi with no scale, and its grip point in member coordinates */
+/* world transform of member mi with no scale; its local y runs along the member */
 function memberRigid(mi){
   const m=model.members[mi],a=nodeW(m.a),b=nodeW(m.b),d=b.clone().sub(a),L=d.length();
   return{M:new THREE.Matrix4().compose(a.clone().add(b).multiplyScalar(0.5),new THREE.Quaternion().setFromUnitVectors(V3(0,1,0),d.normalize()),V3(1,1,1)),L,a,b};}
-function heldTransforms(mi,plan){
-  const{M,L}=memberRigid(mi),yg=plan.end==='a'?-L/2+plan.g:L/2-plan.g;
-  const flip=plan.end==='a'?new THREE.Quaternion():new THREE.Quaternion().setFromAxisAngle(V3(0,0,1),Math.PI);
-  return{L,yg,qCarry:flip,M};
+/* the claw head's axes: x along a held member, u and w the normals of the two faces the palm touches */
+const X_H=V3(1,0,0),U_H=()=>V3(0,Math.cos(GRIP.th*DEG),Math.sin(GRIP.th*DEG)),W_H=()=>V3(0,-Math.sin(GRIP.th*DEG),Math.cos(GRIP.th*DEG));
+function armWorld(){RB.root.updateMatrixWorld(true);return RB.bodies.find(b=>b.role==='arm').obj.matrixWorld;}
+/* the wrist turn that gives the claw head the scene pose Hw, at the current arm pose */
+function wristTo(Hw){return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().copy(armWorld()).invert().multiply(Hw));}
+/* How the claw takes member mi: g mm from end a, in the V, with the member's front face (toward the robot)
+   on the palm, so the palm pushes it in and the wrist stays in front of the frame. flip picks which of the
+   member's side faces the palm also touches. Hn is the claw head's pose once the member is in place. */
+function gripsOf(L){const out=[L/2];for(const g of BOT_GRIP_AT)if(g<L/2-20)out.push(g,L-g);return out;}
+function graspOf(mi,g,flip){
+  const{M,L,a,b}=memberRigid(mi),d=b.clone().sub(a).normalize(),Y=V3(0,0,-1);   // Y: chain +y in the scene
+  if(Math.abs(d.dot(Y))>0.01)return null;
+  const X=d.clone().multiplyScalar(flip),U=Y.clone(),W=X.clone().cross(U);
+  const f=g/L;
+  const Rw=new THREE.Matrix4().makeBasis(X,U,W).multiply(new THREE.Matrix4().makeBasis(X_H,U_H(),W_H()).invert());
+  const P=a.clone().addScaledVector(d,f*L),seat=V3(GRIP.x,GRIP.y,GRIP.z).applyMatrix4(Rw);
+  const Hn=Rw.clone().setPosition(P.clone().sub(seat));
+  return{mi,L,f,P,Hn,S:Hn.clone().invert().multiply(M)};
 }
-/* member pose while held: claw frame times wrist rotation, grip point on the claw */
-function heldMatrix(held,q,out=new THREE.Matrix4()){
-  const t=V3(0,-held.yg,0).applyQuaternion(q);
-  const rel=new THREE.Matrix4().compose(t,q,V3(1,1,1));
-  return out.multiplyMatrices(clawWorld(new THREE.Matrix4()),rel);
+/* the held member's scene pose: the claw head's pose times the grasp */
+function heldMatrix(held,out=new THREE.Matrix4()){
+  RB.root.updateMatrixWorld(true);return out.multiplyMatrices(clawBody().obj.matrixWorld,held.S);}
+/* the wrist turn that keeps the member square to its place, y mm in front of it */
+function wristFor(held,y=0){const Hw=held.Hn.clone();Hw.elements[14]-=y;return wristTo(Hw);}
+/* the wrist turn that hangs a member level under the claw with the V opening down, to take it off the hoist */
+function hangQ(){
+  const up=V3(0,1,0),X=X_H.clone().transformDirection(armWorld());
+  X.addScaledVector(up,-X.dot(up)).normalize();const c=U_H().add(W_H()).normalize();
+  return wristTo(new THREE.Matrix4().makeBasis(X,up,X.clone().cross(up))
+    .multiply(new THREE.Matrix4().makeBasis(X_H,c,X_H.clone().cross(c)).invert()));
 }
 /* oriented box of the held member, in chain coordinates, for collision checks */
-function heldBox(held,q,ch,shrink=SG.D*0.6){
-  const W=heldMatrix(held,q),inv=new THREE.Matrix4().copy(ch?ch.F:robotFrame()).invert(),C=inv.multiply(W);
+function heldBox(held,ch,shrink=SG.D*0.6){
+  const W=heldMatrix(held),inv=new THREE.Matrix4().copy(ch?ch.F:robotFrame()).invert(),C=inv.multiply(W);
   const c=V3(0,0,0).applyMatrix4(C),u=[V3(1,0,0),V3(0,1,0),V3(0,0,1)].map(v=>v.transformDirection(C).toArray());
   const h=[SG.D/2-1,Math.max(2,held.L/2-shrink),SG.D/2-1],min=[],max=[];
   for(let k=0;k<3;k++){const e=Math.abs(u[0][k])*h[0]+Math.abs(u[1][k])*h[1]+Math.abs(u[2][k])*h[2];
@@ -2847,14 +3008,17 @@ function obbOverlap(A,B){
     if(Math.abs(T[0]*ax[0]+T[1]*ax[1]+T[2]*ax[2])>pr(a)+pr(b))return false;}
   return true;
 }
-/* does the held member touch the frame or the robot (claw and arm excepted, they hold it)? */
-function heldClear(held,q){
-  const bx=heldBox(held,q,BOT.chain,SG.D*0.9);
+/* does the held member touch the frame or the robot (the claw holds it, so the arm group is excepted)? */
+function heldClear(held){
+  const bx=heldBox(held,BOT.chain,SG.D*0.9);
   for(const o of RIG.boxes){if(o.mi===held.mi)continue;if(obbOverlap(bx,o.obb?o:{obb:obbFromAabb(o)}))return false;}
   if(BOT.chain)for(const ci of BOT.chain.members)if(sim.visible.has(ci)&&obbOverlap(bx,memberBox(ci,BOT.chain)))return false;
   for(const g of['lower','upper','link'])for(const b of RB.group[g])if(bodyHitsBox(b,bx))return false;
   return true;
 }
+/* a member once placed, as an obstacle the open claw must slide off, faces pulled in 1.5 mm */
+function placedBox(mi,ch){const b=memberBox(mi,ch,SG.D),h=b.obb.h;
+  return{name:'placed member',obb:{c:b.obb.c,u:b.obb.u,h:[h[0]-1.5,h[1],h[2]-1.5]},min:b.min,max:b.max};}
 /* try a pose: set arm, slew and stance, run fn, put everything back */
 function withPose(s,phi,psi,fn){
   const sv={s:R.s,a:R.armCmd,p:R.q.slew||0,q:{...R.q,roll:R.q.roll}};
@@ -2863,40 +3027,67 @@ function withPose(s,phi,psi,fn){
   R.s=sv.s;R.armCmd=sv.a;Object.assign(R.q,sv.q);R.q.slew=sv.p;applyArm();syncRoot();
   return r;
 }
-/* every way the robot could place member mi from this chain, best first. The claw first reaches a
-   point straight in front of the grip point with the member clear of the frame, then pushes straight in. */
+/* Every motion of a placement, checked against the frame with the exact CAD triangles: swing from carry
+   to the line-up point, turn the wrist, push straight in, open, back straight out, swing back to carry.
+   Returns null when clear, or what went wrong. */
+function motionClear(c){
+  const held=c.held,qc=BOT.qCarry;
+  const pose=(s,phi,psi,q,g)=>{R.s=s;R.armCmd=phi;R.q.slew=psi;R.q.wrist=q;R.q.grip=g;applyArm();syncRoot();};
+  const clawHit=extra=>RIG.boxes.some(o=>groupHit('arm',o))||(extra&&groupHit('arm',extra));
+  const anyHit=()=>RIG.boxes.some(o=>groupHit('arm',o)||groupHit('upper',o)||groupHit('lower',o)||groupHit('link',o));
+  return withPose(c.s0,BOT_CARRY,0,()=>{
+    for(let k=1;k<=10;k++){const u=k/10;pose(c.s0,lerp(BOT_CARRY,c.phi0,u),lerp(0,c.psi0,u),qc,GRIP.hold);
+      if(clawHit()||!heldClear(held))return'the arm cannot bring it in front of its place';}
+    pose(c.s0,c.phi0,c.psi0,null,GRIP.hold);const qa=wristFor(held,INSERT_Y);
+    for(let k=1;k<=8;k++){pose(c.s0,c.phi0,c.psi0,qc.clone().slerp(qa,k/8),GRIP.hold);
+      if(clawHit()||!heldClear(held))return'the claw cannot turn it square to its place';}
+    const qs=[];
+    for(let k=0;k<c.path.length;k++){const p=c.path[k],y=lerp(INSERT_Y,0,k/(c.path.length-1));
+      pose(p.s,p.phi,p.psi,null,GRIP.hold);const q=wristFor(held,y);qs.push(q);pose(p.s,p.phi,p.psi,q,GRIP.hold);
+      if(anyHit()||!heldClear(held))return'the arm cannot bring it in without hitting the frame';}
+    /* let go: open, then back the claw off straight out, or out along the V's opening */
+    const placed=placedBox(c.mi,BOT.chain),ch=BOT.chain;let back=null;
+    for(const dir of retreatDirs(held)){const poses=[];
+      for(let k=0;k<=6;k++){const d=INSERT_Y*k/6,ik=armIK({x:c.t.x+dir[0]*d,y:c.t.y+dir[1]*d,z:c.t.z+dir[2]*d});
+        if(ik&&c.fixed)ik.s=c.s;
+        if(!ik||ik.s<S_MIN||ik.s>sMax(ch))break;
+        pose(ik.s,ik.phi,ik.psi,null,GRIP.open);const q=wristFor(held);pose(ik.s,ik.phi,ik.psi,q,GRIP.open);
+        if(clawHit(placed)||RIG.boxes.some(o=>groupHit('upper',o)||groupHit('lower',o)||groupHit('link',o)))break;
+        poses.push({...ik,q});}
+      if(poses.length===7){back={dir,poses};break;}}
+    if(!back)return'the open claw cannot slide off it';
+    c.back=back;const p=back.poses[6];
+    for(let k=1;k<=8;k++){const u=k/8;pose(p.s,lerp(p.phi,BOT_CARRY,u),lerp(p.psi,0,u),p.q.clone().slerp(qc,u),GRIP.open);
+      if(clawHit(placed))return'the arm cannot swing back past it';}
+    return null;});
+}
+/* the ways the open claw may back off a placed member, in chain coordinates: a fan from straight out
+   toward the robot to sideways along the frame, on the side the V opens to. 45° is the V's own opening. */
+function retreatDirs(held){
+  const c=U_H().add(W_H()).normalize().transformDirection(held.Hn),side=V3(c.x,0,c.y).normalize();
+  return[45,30,60,15,75,0,90].map(a=>{const r=a*DEG;return[side.x*Math.sin(r),Math.cos(r),side.z*Math.sin(r)];});
+}
+/* every way the robot could place member mi from this chain, best first */
 const HAND_REACH=2300,INSERT_T=1.0;                           // a person on a stepladder
 function lowestClear(ch){for(let t=S_MIN;t<=sMax(ch);t+=6)if(poseClear(t))return Math.round(t);return null;}
 function placementsFrom(ch,mi,startS,mounting){
-  const out=[],m=model.members[mi],{L}=memberRigid(mi);out.why=new Set();
-  if(chainTop(ch)<=0)return out;
+  const out=[];out.why=new Set();
+  if(chainTop(ch)<=0||!WRIST.point)return out;
   const prevChain=BOT.chain;useChain(ch);
-  for(const end of['a','b'])for(const g of BOT_GRIPS){
-    if(g>L/2)continue;
-    const E=nodeW(end==='a'?m.a:m.b),O=nodeW(end==='a'?m.b:m.a),P=E.clone().add(O.clone().sub(E).normalize().multiplyScalar(g));
-    const t=toChain(P,ch);if(Math.abs(t.y)>1)continue;
-    const y0=g+36,ikF=armIK(t);if(!ikF)continue;
+  for(const g of gripsOf(memberRigid(mi).L))for(const flip of[1,-1]){
+    const held=graspOf(mi,g,flip);if(!held||Math.abs(toChain(held.P,ch).y)>1)continue;
+    const t=toChain(V3(...WRIST.point).applyMatrix4(held.Hn),ch),ikF=armIK(t);if(!ikF)continue;
     let plan=null;
     for(const fixed of[true,false]){
       /* fixed: the robot stays put and the arm alone brings the member in; otherwise it also drives */
-      const path=[];for(let k=0;k<=6;k++){const ik=armIK({x:t.x,y:lerp(y0,0,k/6),z:t.z});if(!ik)break;if(fixed)ik.s=ikF.s;path.push(ik);}
+      const path=[];for(let k=0;k<=6;k++){const ik=armIK({x:t.x,y:t.y+lerp(INSERT_Y,0,k/6),z:t.z});if(!ik)break;if(fixed)ik.s=ikF.s;path.push(ik);}
       if(path.length<7||path.some(p=>p.s<S_MIN||p.s>sMax(ch))||!poseClear(path[0].s))continue;
-      const cand={chain:ch,mi,end,g,tx:t.x,tz:t.z,y0,fixed,phi0:path[0].phi,psi0:path[0].psi,s0:path[0].s,phi:ikF.phi,psi:ikF.psi,s:ikF.s};
-      const held={...heldTransforms(mi,cand),mi};
-      const hitsFrame=()=>RIG.boxes.some(o=>groupHit('arm',o)||groupHit('upper',o)||groupHit('lower',o)||groupHit('link',o));
-      const ok=withPose(cand.s0,BOT_CARRY,0,()=>{
-        for(let k=1;k<=10;k++){const u=k/10;R.armCmd=lerp(BOT_CARRY,cand.phi0,u);R.q.slew=lerp(0,cand.psi0,u);applyArm();syncRoot();
-          if(RIG.boxes.some(o=>groupHit('arm',o))||!heldClear(held,held.qCarry))return false;}
-        for(const p of path){R.s=p.s;R.armCmd=p.phi;R.q.slew=p.psi;applyArm();syncRoot();
-          if(hitsFrame()||!heldClear(held,held.qCarry))return false;}
-        const qf=finalWristQ(held);
-        for(let k=1;k<=8;k++){const q=held.qCarry.clone().slerp(qf,k/8);if(k<7&&!heldClear(held,q))return false;}
-        return true;});
-      if(ok){plan=cand;break;}
+      const cand={chain:ch,mi,held,t,fixed,path,phi0:path[0].phi,psi0:path[0].psi,s0:path[0].s,phi:ikF.phi,psi:ikF.psi,s:ikF.s};
+      const why=motionClear(cand);
+      if(why){out.why.add(why);continue;}
+      plan=cand;break;
     }
-    if(!plan){out.why.add('the arm cannot bring it in without hitting the frame');continue;}
-    const held={...heldTransforms(mi,plan),mi},ok=true;
-    if(!ok)continue;
+    if(!plan)continue;
     let pickS=startS,travel;
     if(mounting){
       pickS=plan.s0<=HAND_REACH?plan.s0:lowestClear(ch);
@@ -2905,21 +3096,27 @@ function placementsFrom(ch,mi,startS,mounting){
     }else travel=planTravel(ch,startS,plan.s0);
     if(!travel.ok){out.why.add(travel.why);continue;}
     if(!pickClear(held,pickS)){out.why.add('the hoist cannot hand it over there');continue;}
-    out.push({...plan,pickS,travel,cost:travel.cost+Math.abs(plan.psi)/40});
+    if(!carryClear(held,pickS,plan.s0)){out.why.add('the member it carries would hit the frame on the way');continue;}
+    out.push({...plan,pickS,travel,cost:travel.cost+Math.abs(plan.psi)/40+Math.abs(plan.held.f-0.5)*4});
   }
   useChain(prevChain);
   return out.sort((a,b)=>a.cost-b.cost);
 }
-/* the wrist rotation that lays the held member exactly on its final pose */
-function finalWristQ(held){
-  const cw=clawWorld(new THREE.Matrix4()).invert().multiply(held.M);
-  const p=V3(),q=new THREE.Quaternion(),sc=V3();cw.decompose(p,q,sc);return q;
-}
-/* check the pick: the member rising on the hoist into the claw, then the slew back to carry */
+/* the pick: the slew back from the hoist with the member hanging in the claw */
 function pickClear(held,s){
-  return withPose(s,BOT_CARRY,BOT_PICK_PSI,()=>{
-    for(let k=0;k<=10;k++){const u=k/10;R.q.slew=lerp(BOT_PICK_PSI,0,u);applyArm();syncRoot();
-      if(!heldClear(held,held.qCarry))return false;}
+  const clawHit=()=>RIG.boxes.some(o=>groupHit('arm',o));
+  return withPose(s,BOT_CARRY,BOT_PICK_PSI,()=>{const qp=hangQ();
+    for(let k=0;k<=10;k++){const u=k/10;R.q.slew=lerp(0,BOT_PICK_PSI,u);R.q.wrist=BOT.qCarry.clone().slerp(qp,u);R.q.grip=GRIP.open;
+      applyArm();syncRoot();if(clawHit())return false;}
+    for(let k=0;k<=10;k++){const u=k/10;R.q.slew=lerp(BOT_PICK_PSI,0,u);R.q.wrist=qp.clone().slerp(BOT.qCarry,u);R.q.grip=GRIP.hold;
+      applyArm();syncRoot();if(clawHit()||!heldClear(held))return false;}
+    return true;});
+}
+/* the climb with the member hanging in the claw */
+function carryClear(held,s0,s1){
+  return withPose(s0,BOT_CARRY,0,()=>{R.q.wrist=BOT.qCarry;R.q.grip=GRIP.hold;
+    for(let s=Math.min(s0,s1);s<=Math.max(s0,s1)+1;s+=40){R.s=Math.min(s,Math.max(s0,s1));applyArm();syncRoot();
+      if(!heldClear(held))return false;}
     return true;});
 }
 
@@ -2960,11 +3157,12 @@ function addConceptMarkers(){
   const link=RB.bodies.find(b=>b.role==='clink'),arm=RB.bodies.find(b=>b.role==='arm'),Hp=RB.armJoint.point;
   const ring=new THREE.Mesh(new THREE.CylinderGeometry(24,24,8,32),CONCEPT_MAT);
   ring.position.set(Hp[0],Hp[1]+40,Hp[2]);link.obj.add(ring);
-  const wrist=new THREE.Mesh(new THREE.BoxGeometry(22,22,22),CONCEPT_MAT);
-  wrist.position.set(GRIP.x,BOT_GRIP.y+14,BOT_GRIP.z+22);arm.obj.add(wrist);
-  RB.markers=[ring,wrist];RB.markers.forEach(m=>m.visible=false);
+  RB.markers=[ring];
+  if(WRIST.point){const wrist=new THREE.Mesh(new THREE.CylinderGeometry(34,34,10,32),CONCEPT_MAT);
+    wrist.position.set(...WRIST.point);wrist.quaternion.setFromUnitVectors(V3(0,1,0),V3(...WRIST.axis));arm.obj.add(wrist);RB.markers.push(wrist);}RB.markers.forEach(m=>m.visible=false);
 }
 function botRelease(){
+  setArmExt(0);
   RB.root.matrixAutoUpdate=true;RB.root.position.set(0,0,0);RB.root.rotation.set(-Math.PI/2,0,0);RB.root.updateMatrix();
   RB.root.visible=true;if(RB.markers)RB.markers.forEach(m=>m.visible=false);R.q.slew=0;
 }
@@ -2974,20 +3172,26 @@ function botFocus(){return V3(0,0,0).applyMatrix4(robotFrame()).add(V3(0,R.s+200
 const Timed=(dur,fn,done)=>({start(){this.t=0;fn(0);return true;},update(){this.t=Math.min(dur,this.t+DT.last);fn(this.t/dur);
   if(this.t>=dur){done&&done();return true;}return false;}});
 const DT={last:0};
-const ArmTo=(phi,psi)=>({start(){R.armTarget=phi;R.slewTarget=psi;return true;},
-  update:()=>Math.abs(R.armTarget-R.armCmd)<1e-3&&Math.abs((R.slewTarget||0)-(R.q.slew||0))<1e-3});
+/* arm, slew and wrist move together, along the path the planner checked */
+const ArmTo=(phi,psi,qget)=>({start(){this.a0=R.armCmd;this.p0=R.q.slew||0;this.q0=R.q.wrist||new THREE.Quaternion();
+    this.q1=qget?qget():this.q0;this.t=0;const turn=2*Math.acos(Math.min(1,Math.abs(this.q0.dot(this.q1))))/DEG;
+    this.dur=Math.max(Math.abs(phi-this.a0)/ARM_RATE,Math.abs(psi-this.p0)/SLEW_RATE,turn/90*WRIST_T,0.05);return true;},
+  update(){this.t=Math.min(this.dur,this.t+DT.last);const u=ease(this.t/this.dur);
+    R.armCmd=R.armTarget=lerp(this.a0,phi,u);R.q.slew=R.slewTarget=lerp(this.p0,psi,u);
+    R.q.wrist=this.q0.clone().slerp(this.q1,u);applyArm();return this.t>=this.dur;}});
 const Say=t=>Do(()=>{BOT.phase=t;setStatus('warn',`member ${sim.k+1} of ${sim.order.length}, ${t}`);});
 function hoistSteps(mi,plan){
-  const held={...heldTransforms(mi,plan),mi};let top=null,bottom=null;
+  const held=plan.held;let top=null,bottom=null;
   const place=u=>{const M=top.clone();M.elements[13]=lerp(bottom,top.elements[13],u);
     BOT.held={...held,world:M};hoistAt(M,held);};
-  return[Say('the hoist brings the next member'),ArmTo(BOT_CARRY,BOT_PICK_PSI),Grip(GRIP.open),
-    Do(()=>{top=heldMatrix(held,held.qCarry);bottom=SG.D;BOT.hoist.visible=true;BOT.hoist.group.visible=true;}),
+  return[Say('the hoist brings the next member'),
+    ArmTo(BOT_CARRY,BOT_PICK_PSI,()=>withPose(R.s,BOT_CARRY,BOT_PICK_PSI,hangQ)),Grip(GRIP.open),
+    Do(()=>{syncRoot();top=heldMatrix(held);bottom=SG.D;BOT.hoist.visible=true;BOT.hoist.group.visible=true;}),
     Timed(1.8,u=>place(ease(u))),
-    Grip(BOT_GRIP.hold),Do(()=>{BOT.held={...held,q:held.qCarry.clone()};}),
+    Grip(GRIP.hold),Do(()=>{BOT.held={...held};}),
     Timed(1.2,u=>{const M=top.clone();M.elements[13]-=ease(u)*(top.elements[13]-bottom);hoistAt(M,held,true);}),
     Do(()=>{BOT.hoist.visible=false;BOT.hoist.group.visible=false;}),
-    ArmTo(BOT_CARRY,0)];
+    ArmTo(BOT_CARRY,0,()=>BOT.qCarry)];
 }
 /* draw the hoist so its cradle sits under the far half of the member */
 function hoistAt(M,held,empty){
@@ -2997,18 +3201,23 @@ function hoistAt(M,held,empty){
   hz.mast.scale.set(1,Math.max(1,far.y+60),1);hz.mast.position.set(far.x+SG.D*1.2,(far.y+60)/2,far.z);
   if(!empty)BOT.held={...held,world:M};
 }
-const Insert=(plan,outward)=>Timed(INSERT_T,u=>{
-  const y=outward?lerp(0,plan.y0,ease(u)):lerp(plan.y0,0,ease(u)),ik=armIK({x:plan.tx,y,z:plan.tz});
-  if(!ik)return;if(plan.fixed)ik.s=plan.s;const ds=ik.s-R.s;R.s=ik.s;R.q.roll.lower+=ds/(WHEEL_D/2)/DEG;R.q.roll.upper=R.q.roll.lower;
-  R.armCmd=R.armTarget=ik.phi;R.q.slew=R.slewTarget=ik.psi;applyArm();});
-function placeSteps(mi,plan){
-  let qf=null,q0=null;
-  return[Say('climbing to its joint'),...plan.travel.steps,
-    Say('bringing the member in front of its place'),ArmTo(plan.phi0,plan.psi0),
-    Say('pushing it straight in'),Insert(plan,false),
-    Do(()=>{qf=finalWristQ(BOT.held);q0=BOT.held.q.clone();}),
-    Say('turning the wrist to lay it in place'),Timed(WRIST_T,u=>{BOT.held.q=q0.clone().slerp(qf,ease(u));}),
-    Grip(GRIP.open),Do(()=>commit(mi,'robot')),Insert(plan,true),ArmTo(BOT_CARRY,0),Grip(GRIP.closed)];
+/* push the member straight in (or back the claw straight out), the wrist keeping it square to its place */
+const Insert=(c,outward)=>Timed(INSERT_T,u=>{
+  const y=outward?lerp(0,INSERT_Y,ease(u)):lerp(INSERT_Y,0,ease(u)),ik=armIK({x:c.t.x,y:c.t.y+y,z:c.t.z});
+  if(!ik)return;if(c.fixed)ik.s=c.s;const ds=ik.s-R.s;R.s=ik.s;R.q.roll.lower+=ds/(WHEEL_D/2)/DEG;R.q.roll.upper=R.q.roll.lower;
+  R.armCmd=R.armTarget=ik.phi;R.q.slew=R.slewTarget=ik.psi;applyArm();syncRoot();R.q.wrist=wristFor(c.held,y);applyArm();});
+/* back the open claw off the placed member along the direction the planner cleared */
+const Retreat=c=>Timed(INSERT_T,u=>{
+  const d=INSERT_Y*ease(u),dir=c.back.dir,ik=armIK({x:c.t.x+dir[0]*d,y:c.t.y+dir[1]*d,z:c.t.z+dir[2]*d});if(!ik)return;if(c.fixed)ik.s=c.s;
+  const ds=ik.s-R.s;R.s=ik.s;R.q.roll.lower+=ds/(WHEEL_D/2)/DEG;R.q.roll.upper=R.q.roll.lower;
+  R.armCmd=R.armTarget=ik.phi;R.q.slew=R.slewTarget=ik.psi;applyArm();syncRoot();R.q.wrist=wristFor(c.held);applyArm();});
+function placeSteps(mi,c){
+  return[Say('climbing to its joint'),...c.travel.steps,
+    Say('bringing the member in front of its place'),ArmTo(c.phi0,c.psi0,()=>BOT.qCarry),
+    Say('turning the wrist to line it up'),ArmTo(c.phi0,c.psi0,()=>{syncRoot();return wristFor(c.held,INSERT_Y);}),
+    Say('pushing it straight in'),Insert(c,false),
+    Grip(GRIP.open),Do(()=>commit(mi,'robot')),Say('backing the claw off'),Retreat(c),
+    Say('straightening the wrist'),ArmTo(BOT_CARRY,0,()=>BOT.qCarry),Grip(GRIP.closed)];
 }
 function commit(mi,by){
   sim.visible.add(mi);BOT.held=null;BOT.stats[by]++;
@@ -3079,16 +3288,17 @@ function planNext(){
 }
 function lowestClearCur(){return BOT.chain?lowestClear(BOT.chain):null;}
 function botStart(){
-  if(!BOT.noted)log('info','The robot builds from the posts. The hoist, the arm slew and wrist, moves between posts and the crane are CONCEPT.');
+  if(!BOT.noted)log('info',`The robot builds from the posts, holding each member in the claw's V. CONCEPT: the hoist, the arm slew and wrist, a ${BOT.ext} mm arm extension, moves between posts and the crane.`);
   BOT.noted=true;BOT.stats={robot:0,hand:0};
   buildBotScene();useChain(null);R.s=180;resetRobotBuild();
+  BOT.qCarry=new THREE.Quaternion();                    // carried with the wrist straight, as in the Robot demo
   if(RB.markers)RB.markers.forEach(m=>m.visible=true);
   Object.assign(SCRIPT,{name:'Build',steps:[],i:0,cur:null,t:0,expectLatch:false,done:()=>{sim.mode='idle';
     setStatus('ok',`built: ${BOT.stats.robot} members by the robot, ${BOT.stats.hand} by hand`);syncTransport();}});
   planNext();
 }
 function resetRobotBuild(){
-  Object.assign(R,freshState(180));R.q.slew=0;R.slewTarget=0;R.armCmd=R.armTarget=BOT_CARRY;
+  Object.assign(R,freshState(180));R.q.slew=0;R.slewTarget=0;R.armCmd=R.armTarget=BOT_CARRY;R.q.ext=BOT.ext;setArmExt(BOT.ext);
   GAIT.q.length=0;GAIT.cur=null;applyArm();syncRoot();
 }
 function botTick(dt){
@@ -3104,7 +3314,7 @@ function syncBot(){
   if(RB.markers)RB.markers.forEach(m=>m.visible=true);
   syncRoot();
   const h=BOT.held;
-  if(h){const W=h.world&&(!h.q)?h.world:heldMatrix(h,h.q||h.qCarry);
+  if(h){const W=h.world?h.world:heldMatrix(h);
     BOT.heldMesh.matrix.copy(W).multiply(new THREE.Matrix4().makeScale(SG.D,h.L,SG.D));
     BOT.heldMesh.matrixWorldNeedsUpdate=true;BOT.heldMesh.visible=true;}
   else BOT.heldMesh.visible=false;
@@ -3249,7 +3459,7 @@ function applyShading(){
 }
 document.querySelectorAll('[data-shade]').forEach(b=>b.onclick=()=>{UI.shade=b.dataset.shade;applyShading();});
 $('ovXray').onchange=()=>{UI.xray=$('ovXray').checked;applyShading();};
-$('ovEdges').onchange=()=>{EDGE_MAT.visible=$('ovEdges').checked;};
+$('ovEdges').onchange=()=>{EDGE_MAT.visible=ACRYLIC_EDGE.visible=$('ovEdges').checked;};
 $('ovGrid').onchange=()=>{grid.visible=AXES.visible=$('ovGrid').checked;};
 $('ovLabels').onchange=()=>{$('labels').hidden=!$('ovLabels').checked;};
 $('ovShadows').onchange=()=>{sun.castShadow=$('ovShadows').checked;ground.visible=$('ovShadows').checked;};
@@ -3275,7 +3485,7 @@ function applyHidden(){
 const EDGE_SEL=new THREE.LineBasicMaterial({color:0xffa53a});
 const ray=new THREE.Raycaster();
 function clearSelection(){
-  if(RB.ready)for(const b of RB.bodies)b.obj.children.forEach(c=>{if(c.isLineSegments)c.material=EDGE_MAT;});}
+  if(RB.ready)for(const b of RB.bodies)b.obj.children.forEach(c=>{if(c.isLineSegments)c.material=c.userData.mat||EDGE_MAT;});}
 function select(sel){
   UI.sel=sel;clearSelection();
   if(sel&&(sel.type==='body'||sel.type==='group')&&RB.ready){
@@ -3286,7 +3496,8 @@ function select(sel){
 }
 function bodyName(b){
   const G={lower:'Lower module',upper:'Upper module',link:'C-link',arm:'Arm'}[b.group];
-  const j=b.joint;let part=b.role==='module'?'frame':b.role==='clink'?'link plate':b.role==='arm'?'arm':b.role==='gripper'?'claw part':'part';
+  const j=b.joint;let part=b.role==='module'?'frame':b.role==='clink'?'link plate':b.role==='arm'?'arm':b.role==='gripper'?'claw part':
+    b.role==='head'?'claw head':b.role==='extension'?'CONCEPT extension':'part';
   if(j.type==='spin')part='wheel or axle';if(j.type==='screw'&&j.param&&j.param.startsWith('clamp'))part='clamp linkage';
   return`${G} · ${part}`;
 }
@@ -3295,11 +3506,12 @@ function renderObject(){
   if(!s){el.innerHTML='';return;}
   const row=(k,v)=>`<dt>${k}</dt><dd>${v}</dd>`;
   if(s.type==='body'){const b=s.b,j=b.joint,mats=[...new Set(b.meshes.map(m=>(m.userData.mat||m.material).color?Object.keys(RMAT).find(k=>RMAT[k]===(m.userData.mat||m.material)):''))].filter(Boolean);
-    const val=j.type==='hinge'?fx(R.q[j.name]||0)+'°':j.type==='screw'?`${fx((R.q[j.param]||0)*100,0)}% of travel`:j.type==='spin'?'free':'fixed';
+    const val=j.type==='hinge'?fx(R.q[j.name]||0)+'°':j.type==='screw'?`${fx((R.q[j.param]||0)*100,0)}% of travel`:j.type==='spin'?'free':
+      j.type==='wrist'?(R.q.wrist?fx(2*Math.acos(Math.min(1,Math.abs(R.q.wrist.w)))/DEG)+'° turned':'straight'):'fixed';
     const c=b.centroid.clone().applyMatrix4(b.world);
     el.innerHTML=`<div class="ptitle">${esc(bodyName(b))}</div><dl class="kv">${
-      row('Body',b.id)+row('Joint',j.type==='hinge'?`${j.type} ${j.name}`:j.type==='screw'?`linkage, ${j.param}`:j.type)+row('Now',val)+
-      row('Material',mats.join(', ')||'pla')+row('Mass',fx(b.mass*1000,0)+' g')+row('Triangles',b.tri.reduce((a,m)=>a+m.I.length/3,0).toLocaleString())+
+      row('Body',b.id)+row('Joint',j.type==='hinge'?`${j.type} ${j.name}`:j.type==='screw'?`linkage, ${j.param}`:j.type==='wrist'?'CONCEPT wrist':j.type)+row('Now',val)+
+      row('Material',mats.join(', ')||'pla')+row('Mass',b.role==='head'?'counted with the arm':b.role==='extension'?'concept, not in the BOM':fx(b.mass*1000,0)+' g')+row('Triangles',b.tri.reduce((a,m)=>a+m.I.length/3,0).toLocaleString())+
       row('Centre',`${fx(c.x,0)}, ${fx(c.y,0)}, ${fx(c.z,0)} mm`)}</dl>
       <p class="note">Mass is the ${b.group==='arm'?'submission arm mass':'BOM group mass'} shared out by volume.</p>`;return;}
   if(s.type==='group'){const g=s.g,list=RB.group[g];
@@ -3334,7 +3546,7 @@ function uiTick(dt){
   UI.fpsN++;UI.fpsT+=dt;if(UI.fpsT>=0.5){UI.fps=UI.fpsN/UI.fpsT;UI.fpsN=0;UI.fpsT=0;}
   UI.uiT+=dt;if(UI.uiT<0.1)return;UI.uiT=0;
   UI.sliders.forEach(f=>f());
-  $('sbStats').textContent=`CLASP · ${RB.ready?RB.bodies.length+' bodies · '+RB.tris.toLocaleString()+' tris':'loading'}${MODE==='build'?' · '+model.members.length+' members':''} · ${Math.round(UI.fps)} fps`;
+  $('sbStats').textContent=`CLASP · ${RB.ready?RB.cad+' bodies · '+RB.tris.toLocaleString()+' tris':'loading'}${MODE==='build'?' · '+model.members.length+' members':''} · ${Math.round(UI.fps)} fps`;
 }
 function uiMode(){$('sbHints').innerHTML=HINTS[MODE]||'';renderPanels();applyHidden();
   document.querySelector('.chips').style.display=MODE==='robot'||MODE==='drive'?'':'none';}
@@ -3421,6 +3633,11 @@ $('playBtn').onclick=()=>{
 $('stopBtn').onclick=()=>{
   if(MODE==='robot'&&RB.ready){abortScript('stopped by the operator');if(R.pwm)setDrive(0,0,'ui');}
   if(MODE==='build')resetSim();};
+$('armExt').oninput=()=>{$('armExtV').textContent=$('armExt').value;};
+$('armExt').onchange=()=>{BOT.ext=+$('armExt').value;
+  if(MODE!=='build'||!RB.ready||!BOT.home)return;
+  if(sim.mode==='building'){SCRIPT.name=null;SCRIPT.steps=[];resetSim();}
+  useChain(null);resetRobotBuild();log('info',`Arm extension set to ${BOT.ext} mm (CONCEPT). Build it again to see what the robot can place.`);};
 $('breakBtn').onclick=()=>{if(sim.mode==='collapsing')resetSim();
   else{sim.mode='idle';if(!startCollapse(true))setStatus('ok','survived the load ramp without failing');}};
 $('step').oninput=()=>showStep(+$('step').value);
@@ -3528,11 +3745,17 @@ function selfTest(){
     ok('practice course completed by following the coach',DRIVE.done&&DRIVE.faults===0,
       DRIVE.done?`${mmss(DRIVE.t)}, ${DRIVE.faults} faults`:'did not finish: '+coach()[0]);
     /* the robot builds the current frame, one member at a time */
-    const was=MODE;MODE='build';startBuild();let faults=0,prevL=false;
-    for(let i=0;i<60000&&sim.mode==='building';i++){botTick(0.1);if(R.latch&&!prevL)faults++;prevL=R.latch;}
-    const built=sim.visible.size===model.members.length&&sim.mode==='idle'&&faults===0;
+    const was=MODE;MODE='build';startBuild();let faults=0,prevL=false,overlaps=0,firstOv='';
+    const pull=(o,d)=>o.obb?{obb:{c:o.obb.c,u:o.obb.u,h:o.obb.h.map(x=>Math.max(0.5,x-d))}}:{min:o.min.map(v=>v+d),max:o.max.map(v=>v-d)};
+    for(let i=0;i<60000&&sim.mode==='building';i++){botTick(0.1);if(R.latch&&!prevL)faults++;prevL=R.latch;
+      /* the claw and the member it holds never pass into the frame */
+      if(i%4||!BOT.chain||BOT.moveFrame)continue;
+      syncRoot();const h=BOT.held;
+      if(RIG.boxes.some(o=>groupHit('arm',pull(o,1.5)))||(h&&!h.world&&!heldClear(h))){overlaps++;firstOv=firstOv||BOT.phase;}}
+    const built=sim.visible.size===model.members.length&&sim.mode==='idle'&&faults===0&&overlaps===0;
     ok('the robot builds the frame without a collision',built,
-      `${sim.visible.size} of ${model.members.length} members, ${BOT.stats.robot} by the robot, ${BOT.stats.hand} by hand, ${faults} faults`);
+      `${sim.visible.size} of ${model.members.length} members, ${BOT.stats.robot} by the robot, ${BOT.stats.hand} by hand, ${faults} faults, `+
+      `${overlaps} overlaps${firstOv?' (first while '+firstOv+')':''}`);
     MODE=was;botRelease();resetSim();
   }catch(err){ok('self-test ran without error',false,err.message);console.error(err);}
   finally{
@@ -3586,14 +3809,14 @@ requestAnimationFrame(loop);
 loadRobot().then(ok=>{
   if(!ok){setStatus('bad','robot model missing');updateTitle();return;}
   solvePlacement();buildRig();resetRobot(START_S);applyShading();setMode(MODE);if(MODE==='robot')fitNow();
-  log('ok',`Robot loaded: ${RB.bodies.length} bodies, ${Math.round(RB.tris/1000)}k triangles, hinge spacing ${fx(RB.spacing,1)} mm`);
+  log('ok',`Robot loaded: ${RB.cad} bodies, ${Math.round(RB.tris/1000)}k triangles, hinge spacing ${fx(RB.spacing,1)} mm`);
   log('info',`Detach swing from CAD: ${fx(RB.detach.up)}° up, ${fx(RB.detach.down)}° down`);
   setStatus('ok','ready');
 });
 window.CLASP={frame,R,RB,RIG,send,setDrive,demo,runChecks,selfTest,setMode,camera,controls,fitNow,goView,coach,DRIVE};
 window.CLASP_TEST=selfTest;
 window.CLASP.dbg={findChains,placementsFrom,armIK,toChain,nodeW,memberRigid,useChain,poseClear,chainTop,BOT,sim,model:()=>model,
-  planTravel,heldTransforms,heldClear,withPose,finalWristQ,sMax,S_MIN:()=>S_MIN,groupHit,RIG,clawWorld,syncRoot,
+  planTravel,graspOf,heldMatrix,heldClear,withPose,wristFor,hangQ,motionClear,sMax,S_MIN:()=>S_MIN,groupHit,RIG,syncRoot,WRIST,
   pickClear,lowestClear,heldBox,obbOverlap,memberBox,obstaclesFor,bodyHitsBox,R};
 
 </script>
