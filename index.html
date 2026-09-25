@@ -5,307 +5,368 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CLASP Studio</title>
 <meta name="description" content="Digital twin of the CLASP climbing robot: the real CAD mechanism climbing, crossing junctions and placing members, a structural analysis of timber frames, and the engineering checks behind them.">
-<meta name="theme-color" content="#15181d">
+<meta name="theme-color" content="#232323">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2315181d'/%3E%3Cpath d='M11 7h4v4h-2v10h2v4h-4zM21 7v4h-2v10h2v4h4V7z' fill='%23fff'/%3E%3Ccircle cx='16' cy='16' r='2.4' fill='%235b8cff'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
             "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
 </script>
 <style>
-/* ===================================================================== tokens */
+/* ===================================================================== tokens: Blender dark, with a light variant */
 :root{
-  --bg:#eceef1; --panel:#ffffff; --panel-2:#f7f8fa; --sunk:#f1f3f6; --hover:#f0f2f5;
-  --ink:#15181d; --ink-2:#39404a; --muted:#6b7380; --faint:#9aa1ab;
-  --line:#e3e6ea; --line-2:#cfd4db;
-  --accent:#2f6fed; --accent-soft:#e8effd; --accent-ink:#1d4fc4;
-  --ok:#168a55; --ok-soft:#e4f4ec; --warn:#b77300; --warn-soft:#fbf1dc; --bad:#cf3b3b; --bad-soft:#fbe8e8;
-  --pv-cad:#4a5563; --pv-sub:#5a48cf; --pv-calc:#0d8383; --pv-con:#a86b10;
-  --tension:#2f6fb3; --compression:#b3372c;
-  --vp-a:#f8f9fb; --vp-b:#dfe3e8;
-  --shadow:0 1px 2px rgba(16,20,26,.06),0 6px 18px rgba(16,20,26,.08);
-  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
-  --r:6px;
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-  --bg:#0e1014; --panel:#15181e; --panel-2:#1a1e25; --sunk:#12151a; --hover:#1f242c;
-  --ink:#e6e9ee; --ink-2:#c3c8d0; --muted:#8c95a3; --faint:#687180;
-  --line:#252a32; --line-2:#333a44;
-  --accent:#5b8cff; --accent-soft:#1c2740; --accent-ink:#8fb0ff;
-  --ok:#3fbf7f; --ok-soft:#14261d; --warn:#e0a23a; --warn-soft:#2b2214; --bad:#f06464; --bad-soft:#2d1818;
-  --pv-cad:#9aa4b2; --pv-sub:#a497ff; --pv-calc:#4fc4c4; --pv-con:#e0a23a;
+  --gap:#161616; --bg:#1d1d1d; --panel:#2b2b2b; --panel-2:#333333; --box:#3a3a3a; --head:#232323; --sunk:#1f1f1f;
+  --widget:#545454; --widget-2:#5f5f5f; --widget-hi:#6a6a6a; --field:#1d1d1d; --field-hi:#262626; --hover:#3d3d3d;
+  --ink:#e6e6e6; --ink-2:#c2c2c2; --muted:#9a9a9a; --faint:#707070;
+  --line:#1a1a1a; --line-2:#444444; --edge:#3f3f3f;
+  --accent:#4772b3; --accent-2:#5680c2; --accent-soft:#2d4466; --accent-ink:#9ab8e8; --active:#ffa53a; --select:#f08a24;
+  --ok:#5fbf6f; --ok-soft:#24352a; --warn:#e8a53a; --warn-soft:#3a3020; --bad:#ec5b5b; --bad-soft:#3d2222;
+  --pv-cad:#a9b1bc; --pv-sub:#a497ff; --pv-calc:#4fc4c4; --pv-con:#f0a33a;
   --tension:#5a9be0; --compression:#e0685c;
-  --vp-a:#1a1e24; --vp-b:#0f1216;
-  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
-    color-scheme:dark;
-  }
-}
-:root[data-theme="dark"]{
-  --bg:#0e1014; --panel:#15181e; --panel-2:#1a1e25; --sunk:#12151a; --hover:#1f242c;
-  --ink:#e6e9ee; --ink-2:#c3c8d0; --muted:#8c95a3; --faint:#687180;
-  --line:#252a32; --line-2:#333a44;
-  --accent:#5b8cff; --accent-soft:#1c2740; --accent-ink:#8fb0ff;
-  --ok:#3fbf7f; --ok-soft:#14261d; --warn:#e0a23a; --warn-soft:#2b2214; --bad:#f06464; --bad-soft:#2d1818;
-  --pv-cad:#9aa4b2; --pv-sub:#a497ff; --pv-calc:#4fc4c4; --pv-con:#e0a23a;
-  --tension:#5a9be0; --compression:#e0685c;
-  --vp-a:#1a1e24; --vp-b:#0f1216;
-  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  --vp:#393939; --vp-a:#4b4b4b; --vp-b:#2b2b2b; --axis-x:#ff3352; --axis-y:#8bdc00;
+  --shadow:0 2px 10px rgba(0,0,0,.45);
+  --sans:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --r:4px;
   color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --gap:#a8a8a8; --bg:#bdbdbd; --panel:#d6d6d6; --panel-2:#cfcfcf; --box:#c6c6c6; --head:#c2c2c2; --sunk:#e6e6e6;
+  --widget:#f0f0f0; --widget-2:#e8e8e8; --widget-hi:#ffffff; --field:#f5f5f5; --field-hi:#ffffff; --hover:#c9c9c9;
+  --ink:#141414; --ink-2:#2e2e2e; --muted:#555555; --faint:#7a7a7a;
+  --line:#9e9e9e; --line-2:#b0b0b0; --edge:#b8b8b8;
+  --accent:#4772b3; --accent-2:#3d68a8; --accent-soft:#b9cbe8; --accent-ink:#1f4d8f; --active:#d97b00; --select:#d97b00;
+  --ok:#2f8a3e; --ok-soft:#cfe6d3; --warn:#9a6400; --warn-soft:#f1e3c6; --bad:#c23636; --bad-soft:#f0d0d0;
+  --pv-cad:#4a5563; --pv-sub:#5a48cf; --pv-calc:#0d8383; --pv-con:#a86b10;
+  --vp:#a7a7a7; --vp-a:#cdcdcd; --vp-b:#9c9c9c;
+  --shadow:0 2px 10px rgba(0,0,0,.18);
+  color-scheme:light;
 }
 
 /* ===================================================================== base */
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{margin:0;height:100%}
-body{display:flex;flex-direction:column}
-body{background:var(--bg);color:var(--ink);font:13px/1.45 var(--sans);-webkit-font-smoothing:antialiased;
-  overflow:hidden}
+body{display:flex;flex-direction:column;background:var(--gap);color:var(--ink);font:12px/1.4 var(--sans);
+  -webkit-font-smoothing:antialiased;overflow:hidden}
 button,input,select{font:inherit;color:inherit}
 .num,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
-:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+:focus-visible{outline:1px solid var(--accent-2);outline-offset:1px}
+::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:var(--widget);border-radius:5px;border:2px solid var(--panel)}
+::-webkit-scrollbar-track{background:transparent}
 
 /* ===================================================================== top bar */
-.bar{flex:none;height:46px;display:flex;align-items:center;gap:18px;padding:0 14px;background:var(--panel);
-  border-bottom:1px solid var(--line);position:relative;z-index:5}
-.brand{display:flex;align-items:center;gap:9px;font-weight:600;letter-spacing:.01em;white-space:nowrap}
-.brand svg{width:22px;height:22px}
-.brand small{font-weight:400;color:var(--muted);font-size:12px}
-.modes{display:flex;height:100%;margin-left:8px}
-.modes button{border:0;background:none;padding:0 14px;height:100%;cursor:pointer;color:var(--muted);
-  font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px}
-.modes button:hover{color:var(--ink)}
-.modes button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
-.chips{display:flex;gap:6px;margin-left:auto}
-.chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px;border:1px solid var(--line);
-  border-radius:12px;font:500 11px/1 var(--mono);letter-spacing:.02em;color:var(--ink-2);background:var(--panel-2);
-  white-space:nowrap}
+.topbar{flex:none;height:30px;display:flex;align-items:center;gap:4px;padding:0 6px;background:var(--head);
+  border-bottom:1px solid var(--line);position:relative;z-index:20}
+.logo{display:flex;align-items:center;gap:7px;padding:0 8px 0 2px;font-weight:600;white-space:nowrap}
+.logo svg{width:18px;height:18px;color:var(--active)}
+.logo small{font-weight:400;color:var(--muted)}
+.menus{display:flex}
+.menu{position:relative}
+.mbtn{border:0;background:none;padding:4px 9px;border-radius:var(--r);cursor:pointer;color:var(--ink-2)}
+.mbtn:hover,.menu.open .mbtn{background:var(--hover);color:var(--ink)}
+.mdrop{position:absolute;top:100%;left:0;min-width:210px;background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--r);box-shadow:var(--shadow);padding:4px;display:none;margin-top:2px;z-index:30}
+.menu.open .mdrop{display:block}
+.mdrop button{display:flex;justify-content:space-between;gap:16px;width:100%;border:0;background:none;text-align:left;
+  padding:5px 8px;border-radius:3px;cursor:pointer;color:var(--ink)}
+.mdrop button:hover{background:var(--accent)}
+.mdrop button kbd{color:var(--muted);font:11px var(--mono);border:0;background:none;padding:0}
+.mdrop hr{border:0;border-top:1px solid var(--line-2);margin:4px 2px}
+.workspaces{display:flex;height:100%;align-items:flex-end;margin-left:10px;gap:1px}
+.workspaces button{border:0;background:none;height:24px;padding:0 14px;cursor:pointer;color:var(--muted);
+  border-radius:5px 5px 0 0;font-weight:500}
+.workspaces button:hover{color:var(--ink);background:var(--hover)}
+.workspaces button[aria-selected="true"]{background:var(--panel);color:var(--ink)}
+.chips{display:flex;gap:4px;margin-left:auto}
+.chip{display:inline-flex;align-items:center;gap:6px;height:20px;padding:0 8px;border-radius:10px;
+  font:500 10.5px/1 var(--mono);color:var(--ink-2);background:var(--box);white-space:nowrap}
 .chip i{width:7px;height:7px;border-radius:50%;background:var(--faint)}
 .chip.ok i{background:var(--ok)} .chip.warn i{background:var(--warn)} .chip.bad i{background:var(--bad)}
-.chip.bad{border-color:color-mix(in srgb,var(--bad) 45%,var(--line));color:var(--bad)}
-.bar-r{display:flex;gap:6px}
-.iconbtn{height:28px;min-width:28px;padding:0 9px;border:1px solid var(--line);border-radius:var(--r);
-  background:var(--panel);cursor:pointer;color:var(--ink-2);display:inline-flex;align-items:center;gap:6px}
-.iconbtn:hover{background:var(--hover)}
+.chip.bad{color:var(--bad)}
 
-/* ===================================================================== layout */
-.app{flex:1;min-height:0;display:grid;grid-template-columns:300px minmax(0,1fr) 320px;
-  grid-template-rows:minmax(0,1fr) 148px}
-.app[data-mode="checks"]{grid-template-columns:300px minmax(0,1fr) 480px}
-.panel{background:var(--panel);overflow:auto;scrollbar-width:thin}
-.panel.left{grid-row:1/3;border-right:1px solid var(--line)}
-.panel.right{grid-column:3;grid-row:1;border-left:1px solid var(--line)}
-.viewport{grid-column:2;grid-row:1;position:relative;overflow:hidden;
-  background:linear-gradient(180deg,var(--vp-a),var(--vp-b))}
-.log{grid-column:2/4;grid-row:2;border-top:1px solid var(--line);background:var(--panel);display:flex;
-  flex-direction:column;min-height:0}
-[data-for]{display:none}
+/* ===================================================================== layout: areas like Blender editors */
+.app{flex:1;min-height:0;display:grid;gap:2px;padding:2px;background:var(--gap);
+  grid-template-columns:minmax(0,1fr) 340px;grid-template-rows:minmax(0,1fr) 168px 22px;
+  grid-template-areas:"view right" "time right" "status status"}
+.app[data-mode="checks"]{grid-template-rows:minmax(0,1fr) 46% 22px}
+.area{background:var(--panel);border-radius:6px;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+.ahead{flex:none;height:26px;display:flex;align-items:center;gap:4px;padding:0 6px;background:var(--head);
+  border-bottom:1px solid var(--line);white-space:nowrap}
+.ahead .ed{display:flex;align-items:center;gap:5px;color:var(--ink-2);font-weight:500;padding:0 6px 0 2px}
+.ahead .ed svg{width:14px;height:14px;color:var(--muted)}
+.ahead .sp{flex:1}
+.hbtn{border:0;background:var(--widget);color:var(--ink);height:20px;padding:0 8px;border-radius:var(--r);cursor:pointer;
+  display:inline-flex;align-items:center;gap:5px;font-size:11.5px;box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+.hbtn:hover{background:var(--widget-hi)}
+.hbtn[aria-pressed="true"]{background:var(--accent);color:#fff}
+.hbtn svg{width:14px;height:14px}
+.hgroup{display:inline-flex}
+.hgroup .hbtn{border-radius:0}.hgroup .hbtn:first-child{border-radius:var(--r) 0 0 var(--r)}
+.hgroup .hbtn:last-child{border-radius:0 var(--r) var(--r) 0}.hgroup .hbtn+.hbtn{margin-left:1px}
+.view-area{grid-area:view}
+.right{grid-area:right;display:flex;flex-direction:column;gap:2px;min-height:0}
+.outliner{flex:0 0 190px}
+.props{flex:1}
+.time{grid-area:time}
+.statusbar{grid-area:status;display:flex;align-items:center;justify-content:space-between;padding:0 8px;
+  color:var(--muted);font-size:11px;gap:16px;white-space:nowrap;overflow:hidden}
+.statusbar kbd{font:500 10px var(--mono);background:var(--box);border-radius:3px;padding:1px 4px;color:var(--ink-2)}
+[data-for]{display:none!important}
 .app[data-mode="robot"] [data-for~="robot"],.app[data-mode="build"] [data-for~="build"],
-.app[data-mode="checks"] [data-for~="checks"],.app[data-mode="drive"] [data-for~="drive"]{display:block}
+.app[data-mode="checks"] [data-for~="checks"],.app[data-mode="drive"] [data-for~="drive"]{display:revert!important}
 
-/* ===================================================================== panel content */
-.sec{padding:14px 16px;border-bottom:1px solid var(--line)}
-.sec:last-child{border-bottom:0}
-.sh{display:flex;align-items:baseline;justify-content:space-between;margin:0 0 10px}
-.sh h2{margin:0;font:600 10.5px/1 var(--sans);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
-.sh .aux{font-size:11px;color:var(--faint);text-align:right;margin-left:10px}
-.sh h2{white-space:nowrap}
-p.note{margin:8px 0 0;color:var(--muted);font-size:12px}
+/* ===================================================================== outliner */
+.otree{flex:1;overflow:auto;padding:3px 0;font-size:12px}
+.orow{display:flex;align-items:center;gap:5px;height:21px;padding-right:6px;cursor:pointer;color:var(--ink-2)}
+.orow:nth-child(even){background:rgba(255,255,255,.018)}
+.orow:hover{background:var(--hover)}
+.orow.sel{background:var(--accent-soft);color:var(--ink)}
+.orow .tw{width:12px;text-align:center;color:var(--muted);font-size:9px}
+.orow .ic{width:14px;height:14px;flex:none}
+.orow .nm{flex:1;overflow:hidden;text-overflow:ellipsis}
+.orow .ct{color:var(--faint);font:10.5px var(--mono)}
+.orow .eye{border:0;background:none;color:var(--muted);cursor:pointer;padding:0 2px;display:flex}
+.orow .eye svg{width:14px;height:14px}
+.orow .eye.off{opacity:.35}
+
+/* ===================================================================== properties editor */
+.pbody{flex:1;display:flex;min-height:0}
+.ptabs{flex:none;width:30px;background:var(--head);display:flex;flex-direction:column;gap:2px;padding:4px 3px;
+  border-right:1px solid var(--line)}
+.ptabs button{width:24px;height:24px;border:0;background:none;border-radius:var(--r);cursor:pointer;color:var(--muted);
+  display:flex;align-items:center;justify-content:center}
+.ptabs button svg{width:16px;height:16px}
+.ptabs button:hover{background:var(--hover);color:var(--ink)}
+.ptabs button[aria-selected="true"]{background:var(--panel);color:var(--ink);box-shadow:inset 2px 0 0 var(--accent)}
+.pcontent{flex:1;overflow:auto;padding:4px 5px 10px}
+.ptitle{font-weight:600;padding:5px 4px 6px;color:var(--ink);display:flex;align-items:center;gap:6px}
+.ptitle svg{width:14px;height:14px;color:var(--muted)}
+/* panels */
+.sec{background:var(--panel-2);border-radius:5px;margin:0 0 4px;overflow:hidden}
+.app .pcontent .sec.hide-tab{display:none!important}
+.sh{display:flex;align-items:center;gap:6px;height:25px;padding:0 8px;cursor:pointer;user-select:none;background:var(--box)}
+.sh::before{content:"";width:0;height:0;border:4px solid transparent;border-top-color:var(--muted);border-top-width:5px;
+  transform:translateY(2px);flex:none}
+.sec.closed .sh::before{border-top-color:transparent;border-left-color:var(--muted);border-left-width:5px;transform:translateX(2px)}
+.sh h2{margin:0;font:600 12px/1 var(--sans);color:var(--ink);letter-spacing:0;text-transform:none}
+.sh .aux{margin-left:auto;font-size:10.5px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sb{padding:7px 8px 9px}
+.sec.closed .sb{display:none}
+p.note{margin:7px 0 0;color:var(--muted);font-size:11.5px;line-height:1.45}
 p.note b{color:var(--ink-2);font-weight:500}
-.seg{display:flex;border:1px solid var(--line-2);border-radius:var(--r);overflow:hidden}
-.seg button{flex:1;border:0;background:var(--panel);padding:6px 4px;cursor:pointer;color:var(--ink-2);font-size:12px}
-.seg button+button{border-left:1px solid var(--line-2)}
-.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent-ink);font-weight:500}
-.btn{border:1px solid var(--line-2);background:var(--panel);border-radius:var(--r);padding:6px 10px;cursor:pointer;
-  color:var(--ink);font-size:12.5px;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:30px}
-.btn:hover{background:var(--hover)}
+/* widgets */
+.seg{display:flex;gap:1px}
+.seg button{flex:1;border:0;background:var(--widget);padding:4px 4px;cursor:pointer;color:var(--ink);font-size:11.5px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+.seg button:first-child{border-radius:var(--r) 0 0 var(--r)}.seg button:last-child{border-radius:0 var(--r) var(--r) 0}
+.seg button:hover{background:var(--widget-hi)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.btn{border:0;background:var(--widget);border-radius:var(--r);padding:4px 10px;cursor:pointer;color:var(--ink);
+  font-size:11.5px;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:22px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07)}
+.btn:hover{background:var(--widget-hi)}
+.btn:active{background:var(--accent)}
 .btn:disabled{opacity:.45;cursor:not-allowed}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-.btn.primary:hover{filter:brightness(1.06)}
-.btn.danger{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 40%,var(--line-2))}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.primary:hover{background:var(--accent-2)}
+.btn.danger{background:#7a2e2e;color:#fff}
+:root[data-theme="light"] .btn.danger{background:#e9b4b4;color:#5a1111}
 .btn.block{width:100%}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
-.stack{display:grid;gap:6px}
-.ctl{margin:10px 0 0}
-.ctl label{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-2);margin-bottom:5px}
-.ctl label b{font:500 12px var(--mono);color:var(--ink)}
-select.sel{width:100%;border:1px solid var(--line-2);border-radius:var(--r);background:var(--panel);padding:5px 8px;font-size:12.5px}
-input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:18px;background:none;margin:0}
-input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:2px;background:var(--line-2)}
-input[type=range]::-moz-range-track{height:3px;border-radius:2px;background:var(--line-2)}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;
-  background:var(--panel);border:2px solid var(--accent);margin-top:-5.5px;box-shadow:0 1px 2px rgba(0,0,0,.15)}
-input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--panel);border:2px solid var(--accent)}
-.kv{display:grid;grid-template-columns:1fr auto;row-gap:5px;column-gap:10px;font-size:12px}
-.kv dt{color:var(--muted)} .kv dd{margin:0;text-align:right;font:500 12px var(--mono);color:var(--ink)}
+.btn[aria-pressed="true"]{background:var(--accent);color:#fff}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:3px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px}
+.stack{display:grid;gap:3px}
+.ctl{margin:6px 0 0}
+.ctl>label{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-2);margin-bottom:3px}
+.ctl>label b{font:500 11.5px var(--mono);color:var(--ink)}
+select.sel,input.sel{width:100%;border:0;border-radius:var(--r);background:var(--widget);padding:3px 7px;font-size:11.5px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+input.sel{background:var(--field)}
+/* Blender number slider: dark field, blue fill, label left, value right */
+.bnum{position:relative;height:21px;border-radius:var(--r);background:var(--field);overflow:hidden;margin-top:4px}
+.bnum .fill{position:absolute;inset:0 auto 0 0;background:var(--accent);opacity:.9}
+.bnum .nl,.bnum .val{position:absolute;top:0;bottom:0;display:flex;align-items:center;font-size:11.5px;pointer-events:none;
+  text-shadow:0 1px 1px rgba(0,0,0,.35)}
+.bnum .nl{left:8px;color:var(--ink)} .bnum .val{right:8px;font:500 11px var(--mono);color:var(--ink)}
+.bnum .val b{font-weight:500}
+.bnum input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;margin:0}
+.bnum:hover{background:var(--field-hi)}
+.bnum:hover .fill{background:var(--accent-2)}
+.kv{display:grid;grid-template-columns:1fr auto;row-gap:3px;column-gap:10px;font-size:11.5px;margin:0}
+.kv dt{color:var(--muted)} .kv dd{margin:0;text-align:right;font:500 11.5px var(--mono);color:var(--ink)}
 .kv dd.ok{color:var(--ok)} .kv dd.warn{color:var(--warn)} .kv dd.bad{color:var(--bad)}
-.state{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.state .cell{border:1px solid var(--line);border-radius:var(--r);padding:7px 9px;background:var(--panel-2)}
-.state .cell span{display:block;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-.state .cell b{font:500 13px var(--mono)}
+.state{display:grid;grid-template-columns:1fr 1fr;gap:3px}
+.state .cell{border-radius:var(--r);padding:5px 7px;background:var(--field)}
+.state .cell span{display:block;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.state .cell b{font:500 12px var(--mono)}
 .state .cell.ok b{color:var(--ok)} .state .cell.warn b{color:var(--warn)} .state .cell.bad b{color:var(--bad)}
-pre.json{margin:10px 0 0;padding:8px 10px;background:var(--sunk);border:1px solid var(--line);border-radius:var(--r);
-  font:11px/1.5 var(--mono);color:var(--ink-2);white-space:pre-wrap;word-break:break-all;max-height:150px;overflow:auto}
-.keys{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:12px;margin-top:10px;align-items:center}
-.keys kbd{justify-self:start}
-kbd{font:500 11px var(--mono);padding:1px 5px;border:1px solid var(--line-2);border-bottom-width:2px;border-radius:4px;
-  background:var(--panel-2);white-space:nowrap}
-.switch{display:flex;align-items:center;justify-content:space-between;font-size:12.5px}
-.switch input{appearance:none;width:32px;height:18px;border-radius:9px;background:var(--line-2);position:relative;cursor:pointer;margin:0}
-.switch input::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;
-  transition:left .15s}
-.switch input:checked{background:var(--accent)} .switch input:checked::after{left:16px}
-.msg{margin-top:8px;padding:8px 10px;border-radius:var(--r);font-size:12px;border:1px solid var(--line);
-  background:var(--panel-2);color:var(--ink-2)}
-.msg.ok{background:var(--ok-soft);border-color:color-mix(in srgb,var(--ok) 30%,var(--line))}
-.msg.warn{background:var(--warn-soft);border-color:color-mix(in srgb,var(--warn) 30%,var(--line))}
-.msg.bad{background:var(--bad-soft);border-color:color-mix(in srgb,var(--bad) 30%,var(--line))}
+pre.json{margin:8px 0 0;padding:6px 8px;background:var(--field);border-radius:var(--r);
+  font:10.5px/1.5 var(--mono);color:var(--ink-2);white-space:pre-wrap;word-break:break-all;max-height:130px;overflow:auto}
+.keys,.keycaps{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:11.5px;margin-top:8px;align-items:center}
+kbd{font:500 10.5px var(--mono);padding:1px 5px;border-radius:3px;background:var(--widget);white-space:nowrap;
+  justify-self:start;min-width:20px;text-align:center;box-shadow:inset 0 -1px 0 rgba(0,0,0,.35)}
+.switch{display:flex;align-items:center;gap:7px;font-size:11.5px;cursor:pointer}
+.switch input{appearance:none;width:14px;height:14px;border-radius:3px;background:var(--widget);position:relative;cursor:pointer;
+  margin:0;order:-1;flex:none}
+.switch input:checked{background:var(--accent)}
+.switch input:checked::after{content:"";position:absolute;left:4px;top:1px;width:4px;height:8px;border:solid #fff;
+  border-width:0 2px 2px 0;transform:rotate(45deg)}
+.msg{margin-top:6px;padding:6px 8px;border-radius:var(--r);font-size:11.5px;background:var(--field);color:var(--ink-2);
+  border-left:3px solid var(--faint)}
+.msg.ok{border-left-color:var(--ok)} .msg.warn{border-left-color:var(--warn)} .msg.bad{border-left-color:var(--bad)}
 .msg b{color:var(--ink);font-weight:600}
-
-/* provenance tags */
-.pv{display:inline-block;font:600 9px/1 var(--mono);letter-spacing:.06em;padding:3px 5px;border-radius:3px;
+.pv{display:inline-block;font:600 9px/1 var(--mono);letter-spacing:.05em;padding:2px 4px;border-radius:3px;
   border:1px solid currentColor;vertical-align:1px;white-space:nowrap}
 .pv.cad{color:var(--pv-cad)} .pv.sub{color:var(--pv-sub)} .pv.calc{color:var(--pv-calc)} .pv.con{color:var(--pv-con)}
 .pvlegend{display:flex;flex-wrap:wrap;gap:6px 10px;font-size:11px;color:var(--muted)}
-
-/* verdict tiles (build) */
-.vt{display:grid;grid-template-columns:4px 1fr;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-top:6px}
+.vt{display:grid;grid-template-columns:3px 1fr;border-radius:var(--r);overflow:hidden;margin-top:4px;background:var(--field)}
 .vt .st{background:var(--faint)} .vt.ok .st{background:var(--ok)} .vt.warn .st{background:var(--warn)} .vt.bad .st{background:var(--bad)}
-.vt .bd{padding:8px 10px}
-.vt .tp{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
-.vt .vv{font:500 17px var(--mono);margin-top:2px}
-.vt .nn{font-size:11.5px;color:var(--muted)}
-
-/* sketch */
-#grid{width:100%;height:auto;aspect-ratio:536/400;display:block;border:1px solid var(--line);border-radius:var(--r);
-  background:var(--panel-2);touch-action:none;cursor:crosshair}
-.legend{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:10px;font-size:11px;color:var(--muted)}
+.vt .bd{padding:6px 8px}
+.vt .tp{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.vt .vv{font:500 16px var(--mono);margin-top:1px}
+.vt .nn{font-size:11px;color:var(--muted)}
+#grid{width:100%;height:auto;aspect-ratio:536/400;display:block;border-radius:var(--r);background:var(--field);touch-action:none;cursor:crosshair}
+.legend{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;font-size:11px;color:var(--muted)}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.objrows .kv{margin-top:4px}
 
-/* checks table */
-table.ck{width:100%;border-collapse:collapse;font-size:12px}
-table.ck th{font:600 10px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;
-  padding:0 6px 7px;border-bottom:1px solid var(--line)}
-table.ck td{padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
-table.ck td.v{font:500 12.5px var(--mono);text-align:right;width:132px}
-table.ck td.v small{display:block;font-weight:400;font-size:10.5px;color:var(--muted);margin:2px 0 6px;line-height:1.35}
-table.ck .t{font-weight:500;color:var(--ink)}
-table.ck .d{color:var(--muted);font-size:11.5px;margin-top:2px}
-table.ck .vd{display:inline-block;font:600 9.5px var(--mono);letter-spacing:.05em;padding:2px 6px;border-radius:3px;white-space:nowrap}
-.vd.ok{background:var(--ok-soft);color:var(--ok)} .vd.warn{background:var(--warn-soft);color:var(--warn)}
-.vd.bad{background:var(--bad-soft);color:var(--bad)} .vd.info{background:var(--sunk);color:var(--muted)}
-
-/* ===================================================================== viewport overlays */
+/* ===================================================================== viewport */
+.viewport{position:relative;flex:1;overflow:hidden;background:linear-gradient(180deg,var(--vp-a),var(--vp-b))}
 #gl{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none}
-.ov{position:absolute;background:color-mix(in srgb,var(--panel) 88%,transparent);border:1px solid var(--line);
-  border-radius:var(--r);box-shadow:var(--shadow);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-.vp-title{top:12px;left:12px;padding:8px 11px;max-width:calc(100% - 330px)}
-.vp-title b{display:block;font-size:12.5px;font-weight:600}
-.vp-title span{font-size:11.5px;color:var(--muted)}
-.vp-views{top:12px;right:12px;display:flex;padding:3px;gap:2px}
-.vp-views button{border:0;background:none;padding:5px 8px;border-radius:4px;cursor:pointer;font:500 11px var(--mono);color:var(--ink-2)}
-.vp-views button:hover{background:var(--hover)}
-.vp-views button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent-ink)}
-.vp-views .sep{width:1px;background:var(--line);margin:3px 2px}
-.vp-scale{left:12px;bottom:58px;padding:6px 9px;font:500 10.5px var(--mono);color:var(--ink-2);border-radius:4px}
-.vp-scale i{display:block;height:5px;border:1.5px solid var(--ink-2);border-top:0;margin-top:3px}
-.transport{left:12px;bottom:12px;display:flex;align-items:center;gap:8px;padding:5px 6px 5px 5px}
-.transport .btn{min-height:28px;padding:4px 10px}
-.transport .status{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-2);padding:0 6px;max-width:44ch;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.transport .status i{width:8px;height:8px;border-radius:50%;background:var(--faint);flex:none}
-.transport .status.ok i{background:var(--ok)} .transport .status.warn i{background:var(--warn)} .transport .status.bad i{background:var(--bad)}
-.transport select{border:1px solid var(--line-2);border-radius:4px;background:var(--panel);padding:3px 5px;font:500 11px var(--mono)}
-.transport input[type=range]{width:160px}
-.vp-pip{right:12px;top:56px;width:260px;height:172px;overflow:hidden;background:transparent;pointer-events:none}
-.vp-pip .cap{position:absolute;left:0;right:0;bottom:0;padding:5px 8px;font:500 10.5px var(--mono);color:#fff;
+.ov{position:absolute;background:rgba(30,30,30,.82);border-radius:6px;box-shadow:var(--shadow);color:#e6e6e6}
+:root[data-theme="light"] .ov{background:rgba(245,245,245,.9);color:#141414}
+.vp-title{top:8px;left:10px;background:none!important;box-shadow:none;color:#e8e8e8;text-shadow:0 1px 2px rgba(0,0,0,.7);
+  pointer-events:none;max-width:calc(100% - 180px)}
+:root[data-theme="light"] .vp-title{color:#141414;text-shadow:0 1px 1px rgba(255,255,255,.7)}
+.vp-title b{display:block;font-size:12px;font-weight:500}
+.vp-title span{font-size:11px;opacity:.85}
+.vp-pip{right:10px;bottom:10px;width:250px;height:165px;overflow:hidden;background:transparent;pointer-events:none;
+  border:1px solid rgba(255,255,255,.12)}
+.vp-pip .cap{position:absolute;left:0;right:0;bottom:0;padding:4px 7px;font:500 10px var(--mono);color:#fff;
   background:linear-gradient(0deg,rgba(0,0,0,.6),transparent);display:flex;justify-content:space-between}
 .vp-pip .rec{color:#ff6b6b}
-.vp-msg{left:50%;top:50%;transform:translate(-50%,-50%);padding:16px 18px;max-width:440px;text-align:center;display:none}
+.vp-scale{left:10px;bottom:10px;padding:4px 8px;font:500 10px var(--mono);border-radius:4px}
+.vp-scale i{display:block;height:5px;border:1.5px solid currentColor;border-top:0;margin-top:3px}
+.vp-msg{left:50%;top:50%;transform:translate(-50%,-50%);padding:14px 16px;max-width:440px;text-align:center;display:none}
 .vp-msg.on{display:block}
 .vp-msg b{display:block;margin-bottom:4px}
 .labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
-.lbl{position:absolute;transform:translate(-50%,-120%);font:500 10.5px var(--mono);padding:2px 6px;border-radius:3px;
-  background:var(--panel);border:1px solid var(--line-2);color:var(--ink);white-space:nowrap;box-shadow:var(--shadow)}
-.lbl.acc{border-color:var(--accent);color:var(--accent-ink)}
-.lbl.bad{border-color:var(--bad);color:var(--bad)}
-
-/* drive HUD */
-.hud{left:12px;top:12px;width:min(540px,calc(100% - 320px));padding:10px 14px}
+.lbl{position:absolute;transform:translate(-50%,-120%);font:500 10px var(--mono);padding:2px 5px;border-radius:3px;
+  background:rgba(25,25,25,.85);color:#eee;white-space:nowrap}
+.lbl.acc{background:rgba(160,95,10,.92);color:#fff}
+.lbl.bad{background:rgba(160,40,40,.92);color:#fff}
+.hud{left:10px;top:8px;width:min(540px,calc(100% - 170px));padding:9px 12px}
 .app[data-mode="drive"] .vp-title{display:none}
-.hud .coach{font-size:14px;font-weight:600;line-height:1.35;min-height:38px}
+.hud .coach{font-size:13px;font-weight:600;line-height:1.35;min-height:36px}
 .hud .coach.bad{color:var(--bad)} .hud .coach.ok{color:var(--ok)}
-.hud .row{display:flex;gap:18px;margin-top:8px;font:500 12px var(--mono);color:var(--ink-2);flex-wrap:wrap}
-.hud .row b{color:var(--ink);font-weight:500}
-.hud .track{position:relative;height:6px;border-radius:3px;background:var(--sunk);margin-top:9px;overflow:visible}
-.hud .track i{position:absolute;top:-3px;width:2px;height:12px;background:var(--warn)}
-.hud .track em{position:absolute;top:0;left:0;height:6px;border-radius:3px;background:var(--accent)}
-.keycaps{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;align-items:center;font-size:12.5px}
-.keycaps kbd{justify-self:start;min-width:28px;text-align:center;font-size:12px;padding:3px 7px}
-@media (max-width:1180px){.hud{width:calc(100% - 24px);top:56px}}
-@media (max-width:760px){.hud{top:100px}}
+.hud .row{display:flex;gap:16px;margin-top:6px;font:500 11px var(--mono);opacity:.9;flex-wrap:wrap}
+.hud .track{position:relative;height:5px;border-radius:3px;background:rgba(255,255,255,.12);margin-top:8px}
+.hud .track i{position:absolute;top:-3px;width:2px;height:11px;background:var(--warn)}
+.hud .track em{position:absolute;top:0;left:0;height:5px;border-radius:3px;background:var(--accent)}
+.navbtns{position:absolute;right:48px;top:146px;display:flex;flex-direction:column;gap:6px}
+.navbtns button{width:28px;height:28px;border-radius:50%;border:0;background:rgba(60,60,60,.7);color:#ddd;cursor:pointer;
+  display:flex;align-items:center;justify-content:center}
+.navbtns button:hover{background:rgba(90,90,90,.9)}
+.navbtns button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.navbtns svg{width:15px;height:15px}
+.overlays{position:relative}
+.overlays .mdrop{left:auto;right:0}
+.overlays label{display:flex;gap:8px;align-items:center;padding:4px 8px;cursor:pointer}
+.overlays label:hover{background:var(--hover)}
 
-/* ===================================================================== log */
-.log-h{display:flex;align-items:center;justify-content:space-between;padding:7px 14px;border-bottom:1px solid var(--line)}
-.log-h h2{margin:0;font:600 10.5px/1 var(--sans);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
-.log-h button{border:0;background:none;color:var(--muted);cursor:pointer;font-size:11.5px}
-#log{list-style:none;margin:0;padding:4px 0;overflow:auto;flex:1;font:11.5px/1.55 var(--mono);scrollbar-width:thin}
-#log li{display:grid;grid-template-columns:62px 58px 1fr;gap:8px;padding:0 14px;color:var(--ink-2)}
+/* ===================================================================== timeline + info */
+.tl-body{flex:1;display:flex;min-height:0}
+.tl-left{flex:1.4;display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--line)}
+#tlCanvas{flex:1;width:100%;min-height:0;display:block;cursor:default}
+.info{flex:1;display:flex;flex-direction:column;min-width:0}
+.info-h{display:flex;align-items:center;justify-content:space-between;height:22px;padding:0 8px;color:var(--muted);
+  font-size:11px;border-bottom:1px solid var(--line)}
+.info-h button{border:0;background:none;color:var(--muted);cursor:pointer;font-size:11px}
+#log{list-style:none;margin:0;padding:2px 0;overflow:auto;flex:1;font:11px/1.55 var(--mono)}
+#log li{display:grid;grid-template-columns:54px 46px 1fr;gap:6px;padding:0 8px;color:var(--ink-2)}
 #log li .t{color:var(--faint)}
-#log li .k{font-weight:500;text-transform:uppercase;font-size:10.5px;letter-spacing:.04em}
-#log li.cmd .k{color:var(--accent)} #log li.ok .k{color:var(--ok)} #log li.warn .k{color:var(--warn)}
+#log li .k{font-weight:500;text-transform:uppercase;font-size:10px;letter-spacing:.04em}
+#log li.cmd .k{color:var(--accent-ink)} #log li.ok .k{color:var(--ok)} #log li.warn .k{color:var(--warn)}
 #log li.bad .k{color:var(--bad)} #log li.info .k{color:var(--muted)}
 #log li.bad{background:var(--bad-soft)}
+.transport{display:flex;align-items:center;gap:4px;min-width:0;overflow:hidden}
+.app[data-mode="build"] .vp-pip,.app[data-mode="checks"] .vp-pip{display:none}
+.transport .status{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-2);padding:0 6px;
+  max-width:52ch;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.transport .status i{width:8px;height:8px;border-radius:50%;background:var(--faint);flex:none}
+.transport .status.ok i{background:var(--ok)} .transport .status.warn i{background:var(--warn)} .transport .status.bad i{background:var(--bad)}
+.transport select{border:0;border-radius:var(--r);background:var(--widget);padding:1px 4px;font:500 11px var(--mono);height:20px}
+.transport input[type=range]{width:150px;accent-color:var(--accent)}
+.sheet{flex:1;overflow:auto;padding:4px 8px 10px}
+.sheet-h{display:flex;align-items:center;gap:10px;padding:4px 2px 6px;color:var(--muted);font-size:11px}
+table.ck{width:100%;border-collapse:collapse;font-size:11.5px}
+table.ck th{font:600 10px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;
+  padding:4px 8px;background:var(--box);position:sticky;top:0}
+table.ck td{padding:6px 8px;border-bottom:1px solid var(--line-2);vertical-align:top}
+table.ck tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+table.ck td.v{font:500 12px var(--mono);text-align:right;width:150px}
+table.ck td.v small{display:block;font-weight:400;font-size:10.5px;color:var(--muted);margin:2px 0 5px;line-height:1.35}
+table.ck .t{font-weight:600;color:var(--ink)}
+table.ck .d{color:var(--muted);font-size:11px;margin-top:2px;max-width:90ch}
+table.ck .vd{display:inline-block;font:600 9.5px var(--mono);letter-spacing:.05em;padding:2px 6px;border-radius:3px;white-space:nowrap}
+.vd.ok{background:var(--ok-soft);color:var(--ok)} .vd.warn{background:var(--warn-soft);color:var(--warn)}
+.vd.bad{background:var(--bad-soft);color:var(--bad)} .vd.info{background:var(--box);color:var(--muted)}
+.app[data-mode="checks"] .tl-body{display:none}
+.app:not([data-mode="checks"]) .sheet{display:none}
 
 /* ===================================================================== about */
-dialog{border:1px solid var(--line);border-radius:10px;padding:0;max-width:680px;width:calc(100% - 40px);
-  background:var(--panel);color:var(--ink);box-shadow:var(--shadow)}
-dialog::backdrop{background:rgba(10,12,16,.45)}
-.about{padding:22px 26px;max-height:78vh;overflow:auto;font-size:13.5px;line-height:1.6}
-.about h1{font-size:18px;margin:0 0 4px} .about h2{font-size:13px;margin:18px 0 4px}
+dialog{border:0;border-radius:8px;padding:0;max-width:680px;width:calc(100% - 40px);background:var(--panel);color:var(--ink);
+  box-shadow:0 10px 40px rgba(0,0,0,.5)}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+.about{padding:20px 24px;max-height:78vh;overflow:auto;font-size:13px;line-height:1.6}
+.about h1{font-size:17px;margin:0 0 4px} .about h2{font-size:13px;margin:16px 0 4px}
 .about p{margin:6px 0;color:var(--ink-2)}
 .about .x{position:sticky;top:0;float:right}
 
-@media (max-width:1180px){
-  .app{grid-template-columns:270px minmax(0,1fr) 290px}
-  .app[data-mode="checks"]{grid-template-columns:270px minmax(0,1fr) 400px}
-  .chips{display:none}
-  .vp-title{display:none}
-}
+@media (max-width:1100px){.app{grid-template-columns:minmax(0,1fr) 300px}.chips{display:none}}
 @media (max-width:760px){
   body{overflow:auto;display:block}
-  .bar{height:auto;flex-wrap:wrap;gap:8px 12px;padding:8px 16px}
-  .brand small{display:none}
-  .modes{height:34px;margin-left:0;order:3;width:100%}
-  .modes button{flex:1}
-  .bar-r{margin-left:auto}
-  .app,.app[data-mode="checks"]{display:flex;flex-direction:column;height:auto}
-  .viewport{order:1;height:62vh;min-height:340px;flex:none}
-  .panel.left{order:2;border-right:0;border-top:1px solid var(--line);overflow:visible}
-  .panel.right{order:3;border-left:0;border-top:1px solid var(--line);overflow:visible}
-  .log{order:4;height:220px;flex:none}
-  .vp-views{left:12px;right:auto;top:12px;flex-wrap:wrap;max-width:calc(100% - 24px)}
-  .vp-pip{top:60px;width:170px;height:112px}
-  .transport{right:12px;flex-wrap:wrap}
-  .transport input[type=range]{width:100px}
-  .vp-scale{bottom:auto;top:60px}
+  .app{display:flex;flex-direction:column;height:auto}
+  .view-area{height:62vh;min-height:340px;flex:none}
+  .right,.time{flex:none}.outliner{flex:0 0 160px}.props{min-height:420px}
+  .time{height:200px}
+  .logo{font-size:0;gap:0;padding-right:4px}.logo small{display:none}
+  .mbtn{padding:4px 7px}
+  .workspaces{margin-left:4px}.workspaces button{padding:0 7px}
+  .ahead .ed{font-size:0;gap:0}.vp-views{display:none}
+  .transport .status{max-width:16ch}.transport input[type=range]{width:80px}
+  #sbHints{display:none}#sbStats{overflow:hidden;text-overflow:ellipsis}
+  .hud{width:calc(100% - 20px)}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
 
-<header class="bar">
-  <div class="brand">
+<header class="topbar">
+  <div class="logo">
     <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="currentColor"/>
-      <path d="M11 7h4v4h-2v10h2v4h-4zM21 7v4h-2v10h2v4h4V7z" fill="var(--panel)"/><circle cx="16" cy="16" r="2.4" fill="var(--accent)"/></svg>
+      <path d="M11 7h4v4h-2v10h2v4h-4zM21 7v4h-2v10h2v4h4V7z" fill="#1d1d1d"/><circle cx="16" cy="16" r="2.4" fill="#1d1d1d"/></svg>
     CLASP Studio <small>digital twin</small>
   </div>
-  <nav class="modes" role="tablist" aria-label="Mode">
+  <nav class="menus">
+    <div class="menu"><button class="mbtn">File</button><div class="mdrop">
+      <button id="mShare">Copy link to this frame</button><button id="mCsv">Cut list as CSV</button>
+    </div></div>
+    <div class="menu"><button class="mbtn">View</button><div class="mdrop">
+      <button data-mview="iso">Isometric</button><button data-mview="front">Front</button>
+      <button data-mview="side">Side</button><button data-mview="top">Top</button>
+      <hr><button id="mFit">Frame all <kbd>Home</kbd></button><button id="mFollow">Follow the robot</button>
+      <hr><button id="themeBtn">Theme <kbd id="themeLbl">Dark</kbd></button>
+    </div></div>
+    <div class="menu"><button class="mbtn">Help</button><div class="mdrop">
+      <button id="aboutBtn">About CLASP Studio</button><button id="mTest">Run the self-test</button>
+    </div></div>
+  </nav>
+  <nav class="modes workspaces" role="tablist" aria-label="Workspace">
     <button role="tab" data-mode="robot" aria-selected="true">Robot</button>
     <button role="tab" data-mode="drive" aria-selected="false">Drive</button>
     <button role="tab" data-mode="build" aria-selected="false">Build</button>
@@ -316,316 +377,389 @@ dialog::backdrop{background:rgba(10,12,16,.45)}
     <span class="chip ok" id="chipDown"><i></i>LOWER ATTACHED</span>
     <span class="chip" id="chipLatch"><i></i>LATCH CLEAR</span>
   </div>
-  <div class="bar-r">
-    <button class="iconbtn" id="themeBtn" title="Switch theme">Theme: <span id="themeLbl">Auto</span></button>
-    <button class="iconbtn" id="aboutBtn">About</button>
-  </div>
 </header>
 
 <main class="app" id="app" data-mode="robot">
 
-  <!-- ================================================================== LEFT -->
-  <aside class="panel left" aria-label="Controls">
-
-    <!-- robot -->
-    <section class="sec" data-for="robot">
-      <div class="sh"><h2>Rig</h2><span class="aux">what the robot is on</span></div>
-      <div class="seg" role="group" aria-label="Rig">
-        <button data-rig="post" aria-pressed="true">Post</button>
-        <button data-rig="junction" aria-pressed="false">Junction</button>
-        <button data-rig="cap" aria-pressed="false">Cap beam</button>
+  <!-- ================================================================== 3D VIEWPORT -->
+  <section class="area view-area">
+    <div class="ahead">
+      <span class="ed"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 1.5l6 3.2v6.6L8 14.5 2 11.3V4.7zM2 4.7l6 3.3 6-3.3M8 8v6.5"/></svg>3D Viewport</span>
+      <div class="hgroup vp-views" role="group" aria-label="View">
+        <button class="hbtn" data-view="iso" aria-pressed="true">Iso</button><button class="hbtn" data-view="front">Front</button>
+        <button class="hbtn" data-view="side">Side</button><button class="hbtn" data-view="top">Top</button>
       </div>
-      <div id="junctionCtl">
-        <div class="ctl"><label for="jDir">Crossing member</label>
-          <select id="jDir" class="sel">
-            <option value="across">Across the post (±x)</option>
-            <option value="behind">Behind, clamp side (−y)</option>
-            <option value="front">In front, C-link side (+y)</option>
-          </select></div>
-        <div class="ctl"><label for="jH">Junction height <b><span id="jHv">1100</span> mm</b></label>
-          <input type="range" id="jH" min="700" max="1600" step="25" value="1100"></div>
+      <span class="sp"></span>
+      <div class="hgroup" role="group" aria-label="Shading">
+        <button class="hbtn" data-shade="wire" title="Wireframe"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c-3 3-3 9 0 12M8 2c3 3 3 9 0 12"/></svg></button>
+        <button class="hbtn" data-shade="solid" title="Solid"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="currentColor"/></svg></button>
+        <button class="hbtn" data-shade="material" aria-pressed="true" title="Material preview"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="currentColor" opacity=".45"/><circle cx="6" cy="6" r="2.6" fill="currentColor"/></svg></button>
       </div>
-      <div class="switch" style="margin-top:12px"><span>Webcam picture-in-picture</span><input type="checkbox" id="pipOn" aria-label="Webcam view"></div>
-    </section>
-
-    <section class="sec" data-for="robot">
-      <div class="sh"><h2>Demonstrations</h2><span class="aux">firmware commands</span></div>
-      <div class="stack">
-        <button class="btn block" data-demo="climb">Climb 500 mm</button>
-        <button class="btn block" data-demo="cross">Cross the junction</button>
-        <button class="btn block" data-demo="place">Carry and place a cap beam</button>
-        <button class="btn block" data-demo="inspect">Inspection pass</button>
-        <button class="btn block" data-demo="fault">Simulate a clamp slip</button>
-      </div>
-      <p class="note">Every demo is a list of the robot's own commands. What plays here is exactly
-        what you would send it.</p>
-    </section>
-
-    <section class="sec" data-for="robot">
-      <div class="sh"><h2>Teleop</h2><span class="aux" id="padState">no gamepad</span></div>
-      <div class="switch"><span>Drive with keyboard or DualShock</span><input type="checkbox" id="teleOn" aria-label="Teleop"></div>
-      <div class="ctl"><label for="pwm">Drive PWM <b><span id="pwmV">160</span> / 255</b></label>
-        <input type="range" id="pwm" min="40" max="255" step="1" value="160"></div>
-      <div class="keys" id="keyLegend">
-        <kbd>W</kbd><span>drive up (hold)</span><kbd>S</kbd><span>drive down (hold)</span>
-        <kbd>1</kbd><span>up_detach</span><kbd>2</kbd><span>up_attach</span>
-        <kbd>3</kbd><span>down_detach</span><kbd>4</kbd><span>down_attach</span>
-        <kbd>5</kbd><span>both_attach</span><kbd>6</kbd><span>both_detach</span>
-        <kbd>J</kbd><span>arm away from the post (hold)</span><kbd>L</kbd><span>arm toward the post (hold)</span>
-        <kbd>G</kbd><span>grip open/close</span><kbd>Space</kbd><span>estop</span>
-      </div>
-      <p class="note">DualShock mapping is a default guess from §3.5.2. Match it to
-        <b>gamepad_to_pi.py</b> before quoting it.</p>
-    </section>
-
-    <section class="sec" data-for="robot">
-      <div class="sh"><h2>Joints</h2><span class="aux">direct control</span></div>
-      <div class="ctl"><label for="jArm">Arm base <b><span id="jArmV">0.0</span>°</b></label>
-        <input type="range" id="jArm" min="-60" max="60" step="0.5" value="0"></div>
-      <div class="ctl"><label for="jGrip">Gripper <b><span id="jGripV">closed</span></b></label>
-        <input type="range" id="jGrip" min="0" max="1" step="0.01" value="0"></div>
-      <p class="note">Hinges and clamps only move through commands, so the safety interlock
-        always applies.</p>
-    </section>
-
-    <!-- drive -->
-    <section class="sec" data-for="drive">
-      <div class="sh"><h2>Practice course</h2><span class="aux">3.2 m post, two junctions</span></div>
-      <dl class="kv" id="courseKV"></dl>
-      <button class="btn block" id="courseReset" style="margin-top:10px">Restart course</button>
-      <p class="note">Climb to the top, crossing a member across the post at 1000 mm and one behind it
-        at 1900 mm. The coach at the top of the view gives the next move.</p>
-    </section>
-    <section class="sec" data-for="drive">
-      <div class="sh"><h2>Controls</h2><span class="aux">keyboard</span></div>
-      <div class="keycaps">
-        <kbd>W</kbd><span>drive up (hold)</span><kbd>S</kbd><span>drive down (hold)</span>
-        <kbd>Shift</kbd><span>creep at PWM 30, for the crossing window</span>
-        <kbd>A</kbd><span>arm back (hold)</span><kbd>D</kbd><span>arm forward (hold)</span>
-        <kbd>Q</kbd><span>upper clamp, detach or attach</span><kbd>E</kbd><span>lower clamp, detach or attach</span>
-        <kbd>R</kbd><span>both_attach, clears the latch</span><kbd>G</kbd><span>claw open or close</span>
-        <kbd>C</kbd><span>webcam view on or off</span><kbd>Space</kbd><span>estop</span>
-      </div>
-      <div class="ctl"><label for="dPwm">Drive PWM <b><span id="dPwmV">150</span> / 255</b></label>
-        <input type="range" id="dPwm" min="40" max="255" step="1" value="150"></div>
-      <p class="note">Keys 1 to 6 send the firmware commands directly, as in the Robot tab. A DualShock works
-        here too.</p>
-    </section>
-
-    <!-- build -->
-    <section class="sec" data-for="build">
-      <div class="sh"><h2>Material</h2></div>
-      <div class="seg" role="group" aria-label="Material">
-        <button id="mPine" aria-pressed="true">Pine 60×60</button>
-        <button id="mBamboo" aria-pressed="false">Bamboo Ø60</button>
-      </div>
-      <p class="note" id="matNote"></p>
-    </section>
-    <section class="sec" data-for="build">
-      <div class="sh"><h2>Frame</h2><span class="aux">drag between dots</span></div>
-      <canvas id="grid" width="536" height="400" aria-label="Sketch grid"></canvas>
-      <div class="grid3" style="margin-top:8px">
-        <button class="btn" id="tDraw" aria-pressed="true">Draw</button>
-        <button class="btn" id="tErase" aria-pressed="false">Erase</button>
-        <button class="btn" id="clear">Clear</button>
-      </div>
-      <div class="grid2" style="margin-top:6px">
-        <button class="btn" data-preset="tower">Tower</button>
-        <button class="btn" data-preset="bridge">Bridge</button>
-        <button class="btn" data-preset="wall">Wall</button>
-        <button class="btn" data-preset="arch">Arch</button>
-      </div>
-      <p class="note">The bottom row is bolted to the ground. Leave a square unbraced and it will fold.</p>
-    </section>
-    <section class="sec" data-for="build">
-      <div class="sh"><h2>Dimensions and load</h2></div>
-      <div class="ctl"><label for="bay">Bay size <b><span id="bayV">450</span> mm</b></label>
-        <input type="range" id="bay" min="250" max="1200" step="25" value="450"></div>
-      <div class="ctl"><label for="depth">Depth <b><span id="depthV">1</span> frame</b></label>
-        <input type="range" id="depth" min="1" max="3" step="1" value="1"></div>
-      <div class="ctl"><label for="scale">Scale factor <b><span id="scaleV">1.0</span>×</b></label>
-        <input type="range" id="scale" min="1" max="6" step="0.5" value="1"></div>
-      <div class="ctl"><label for="load">Load on top joints <b><span id="loadV">0</span> N</b></label>
-        <input type="range" id="load" min="0" max="200" step="5" value="0"></div>
-    </section>
-
-    <!-- checks -->
-    <section class="sec" data-for="checks">
-      <div class="sh"><h2>Case</h2><span class="aux">what the checks assume</span></div>
-      <div class="ctl"><label for="cPose">Linkage pose</label>
-        <select id="cPose" class="sel">
-          <option value="up_detach">up_detach, lower module holds everything</option>
-          <option value="down_detach">down_detach, upper module holds everything</option>
-          <option value="parallel">parallel, both attached</option>
-        </select></div>
-      <div class="ctl"><label for="cMember">Carried member</label>
-        <select id="cMember" class="sel">
-          <option value="none">None</option>
-          <option value="pine">Pine 60×60×1000 (1.80 kg)</option>
-          <option value="bamboo">Bamboo Ø60×8×1000 (0.91 kg)</option>
-        </select></div>
-      <div class="ctl"><label for="cAct">C-link hinge actuator</label>
-        <select id="cAct" class="sel">
-          <option value="servo">2 × 40 kg·cm servo, 15% loss (§3.3.2)</option>
-          <option value="motor">300 rpm gearmotor, 3 kg·cm (§3.3.1)</option>
-        </select></div>
-      <div class="ctl"><label for="cDrive">Drive motors per module</label>
-        <select id="cDrive" class="sel"><option value="1">1</option><option value="2">2 (both BOM motors drive)</option></select></div>
-      <div class="ctl"><label for="cMu">Jaw friction μ <b><span id="cMuV">0.40</span></b></label>
-        <input type="range" id="cMu" min="0.15" max="0.9" step="0.01" value="0.4"></div>
-      <div class="ctl"><label for="cEta">Drive efficiency <b><span id="cEtaV">80</span>%</b></label>
-        <input type="range" id="cEta" min="50" max="95" step="1" value="80"></div>
-      <div class="ctl"><label for="cTether">Tether length <b><span id="cTetherV">5.0</span> m</b></label>
-        <input type="range" id="cTether" min="0.5" max="15" step="0.5" value="5"></div>
-      <div class="ctl"><label for="cPull">Tether-side pull-up <b><span id="cPullV">2.2</span> kΩ</b></label>
-        <input type="range" id="cPull" min="1" max="10" step="0.1" value="2.2"></div>
-    </section>
-    <section class="sec" data-for="checks">
-      <div class="sh"><h2>Where numbers come from</h2></div>
-      <div class="pvlegend">
-        <span><span class="pv cad">CAD</span> your Onshape exports</span>
-        <span><span class="pv sub">SUB</span> submission plan</span>
-        <span><span class="pv calc">CALC</span> worked out here</span>
-        <span><span class="pv con">CONCEPT</span> drawn, not in CAD</span>
-      </div>
-    </section>
-  </aside>
-
-  <!-- ================================================================== VIEWPORT -->
-  <section class="viewport" id="viewport" aria-label="3D view">
-    <canvas id="gl" tabindex="0"></canvas>
-    <div class="labels" id="labels"></div>
-    <div class="ov vp-title" id="vpTitle"><b>Loading robot…</b><span>reading your CAD</span></div>
-    <div class="ov vp-views" role="group" aria-label="Camera">
-      <button data-view="iso" aria-pressed="true">Iso</button><button data-view="front">Front</button>
-      <button data-view="side">Side</button><button data-view="top">Top</button>
-      <span class="sep"></span><button id="fitBtn">Fit</button><button id="followBtn" aria-pressed="true">Follow</button>
+      <button class="hbtn" id="xrayBtn" title="X-ray" aria-pressed="false"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="6" y="6" width="8" height="8" rx="1"/></svg></button>
+      <div class="menu overlays"><button class="hbtn mbtn2" id="ovBtn">Overlays</button><div class="mdrop">
+        <label><input type="checkbox" id="ovEdges" checked> CAD edges</label>
+        <label><input type="checkbox" id="ovGrid" checked> Floor grid</label>
+        <label><input type="checkbox" id="ovLabels" checked> Labels</label>
+        <label><input type="checkbox" id="ovShadows" checked> Shadows</label>
+      </div></div>
     </div>
-    <div class="ov vp-pip" id="pip" hidden><div class="cap"><span>WEBCAM · CONCEPT MOUNT</span><span class="rec">● LIVE</span></div></div>
-    <div class="ov vp-scale" id="scaleBar"><span id="scaleTxt">100 mm</span><i id="scaleLine" style="width:80px"></i></div>
-    <div class="ov transport" id="transport">
-      <button class="btn primary" id="playBtn">Run</button>
-      <button class="btn" id="stopBtn">Stop</button>
-      <input type="range" id="step" min="0" max="0" value="0" aria-label="Build step" hidden>
-      <button class="btn danger" id="breakBtn" hidden>Test to failure</button>
-      <select id="speed" aria-label="Playback speed">
-        <option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option>
-        <option value="2">2×</option><option value="4">4×</option></select>
-      <span class="status ok" id="status"><i></i><span id="statusTxt">ready</span></span>
+    <div class="viewport" id="viewport" aria-label="3D view">
+      <canvas id="gl" tabindex="0"></canvas>
+      <div class="labels" id="labels"></div>
+      <div class="ov vp-title" id="vpTitle"><b>User Perspective</b><span>loading the CAD model</span></div>
+      <div class="navbtns">
+        <button id="fitBtn" title="Frame all"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 5V2h3M11 2h3v3M14 11v3h-3M5 14H2v-3"/></svg></button>
+        <button id="followBtn" title="Follow the robot" aria-pressed="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="1.5" fill="currentColor"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2"/></svg></button>
+      </div>
+      <div class="ov vp-pip" id="pip" hidden><div class="cap"><span>WEBCAM · CONCEPT MOUNT</span><span class="rec">● LIVE</span></div></div>
+      <div class="ov vp-scale" id="scaleBar"><span id="scaleTxt">100 mm</span><i id="scaleLine" style="width:80px"></i></div>
+      <div class="ov hud" id="hud" data-for="drive">
+        <div class="coach" id="hudCoach">Press W to start climbing.</div>
+        <div class="row"><span>time <b id="hudTime">0:00.0</b></span><span>height <b id="hudH">0 mm</b></span>
+          <span>speed <b id="hudV">0 mm/s</b></span><span>faults <b id="hudF">0</b></span></div>
+        <div class="track" id="hudTrack"><em id="hudBar"></em></div>
+      </div>
+      <div class="ov vp-msg" id="vpMsg"></div>
     </div>
-    <div class="ov hud" id="hud" data-for="drive">
-      <div class="coach" id="hudCoach">Press W to start climbing.</div>
-      <div class="row"><span>time <b id="hudTime">0:00.0</b></span><span>height <b id="hudH">0 mm</b></span>
-        <span>speed <b id="hudV">0 mm/s</b></span><span>faults <b id="hudF">0</b></span></div>
-      <div class="track" id="hudTrack"><em id="hudBar"></em></div>
-    </div>
-    <div class="ov vp-msg" id="vpMsg"></div>
   </section>
 
-  <!-- ================================================================== RIGHT -->
-  <aside class="panel right" aria-label="Readouts">
-    <!-- robot -->
-    <section class="sec" data-for="robot drive">
-      <div class="sh"><h2>Command console</h2><span class="aux">firmware vocabulary</span></div>
-      <div class="grid2" id="console">
-        <button class="btn" data-cmd="up_detach">up_detach</button><button class="btn" data-cmd="up_attach">up_attach</button>
-        <button class="btn" data-cmd="down_detach">down_detach</button><button class="btn" data-cmd="down_attach">down_attach</button>
-        <button class="btn" data-cmd="both_attach">both_attach</button><button class="btn" data-cmd="both_detach">both_detach</button>
-      </div>
-      <button class="btn danger block" data-cmd="estop" style="margin-top:6px">estop</button>
+  <!-- ================================================================== OUTLINER + PROPERTIES -->
+  <aside class="right">
+    <section class="area outliner">
+      <div class="ahead"><span class="ed"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 3h12M4 6.5h10M4 10h10M2 13.5h12"/></svg>Outliner</span></div>
+      <div class="otree" id="outliner"></div>
     </section>
-    <section class="sec" data-for="robot drive">
-      <div class="sh"><h2>Telemetry</h2><span class="aux">5 Hz, as the robot sends it</span></div>
-      <div class="state" id="stateCells"></div>
-      <dl class="kv" id="teleKV" style="margin-top:12px"></dl>
-      <pre class="json" id="teleJSON"></pre>
-    </section>
-    <section class="sec" data-for="robot">
-      <div class="sh"><h2>Crossing check</h2></div>
-      <div id="crossCheck" class="msg">Select the Junction rig to check a crossing.</div>
-    </section>
+    <section class="area props">
+      <div class="ahead"><span class="ed"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M10 2a3 3 0 00-3 4L2.5 10.5a1.4 1.4 0 002 2L9 8a3 3 0 004-3l-2 1-1.5-1.5 1-2z"/></svg>Properties</span></div>
+      <div class="pbody">
+        <nav class="ptabs" id="ptabs" aria-label="Property tabs"></nav>
+        <div class="pcontent" id="pcontent">
+          <div class="ptitle" id="ptitle"></div>
 
-    <!-- build -->
-    <section class="sec" data-for="build">
-      <div class="sh"><h2>Structure</h2><span class="aux">direct stiffness method</span></div>
-      <div id="verdict"></div>
-      <dl class="kv" id="stats" style="margin-top:12px"></dl>
-      <div id="msgs"></div>
-      <div class="legend">
-        <span><i id="lgMat"></i>low stress</span><span><i style="background:var(--tension)"></i>tension</span>
-        <span><i style="background:var(--compression)"></i>compression</span></div>
-    </section>
-    <section class="sec" data-for="build">
-      <div class="sh"><h2>Build order</h2><span class="pv con">CONCEPT</span></div>
-      <dl class="kv" id="orderStats"></dl>
-      <p class="note">Build it runs the robot. It takes each member from the stock pile, climbs the members
-        already built and places it with the arm. The CAD robot has no yaw joint, so changing member at a
-        joint and the ground rail are CONCEPT.</p>
-    </section>
-    <section class="sec" data-for="build">
-      <div class="sh"><h2>Cut list</h2></div>
-      <dl class="kv" id="cutSummary"></dl>
-      <div class="grid2" style="margin-top:10px">
-        <button class="btn" id="cutCsv">Download CSV</button><button class="btn" id="shareBtn">Copy link</button>
-      </div>
-      <p class="note" id="shareNote">The link carries the exact frame, material and load.</p>
-    </section>
-    <section class="sec" data-for="build">
-      <div class="sh"><h2>Predicted vs measured</h2></div>
-      <div class="ctl"><label for="meas">Measured failure load <b>N</b></label>
-        <input type="number" id="meas" class="sel" placeholder="bench result" step="1"></div>
-      <p class="note" id="valid"></p>
-    </section>
+          <!-- robot: rig -->
+          <section class="sec" data-for="robot" data-tab="scene">
+            <div class="sh"><h2>Rig</h2><span class="aux">what the robot is on</span></div>
+            <div class="sb">
+              <div class="seg" role="group" aria-label="Rig">
+                <button data-rig="post" aria-pressed="true">Post</button>
+                <button data-rig="junction" aria-pressed="false">Junction</button>
+                <button data-rig="cap" aria-pressed="false">Cap beam</button>
+              </div>
+              <div id="junctionCtl">
+                <div class="ctl"><label for="jDir">Crossing member</label>
+                  <select id="jDir" class="sel">
+                    <option value="across">Across the post (±x)</option>
+                    <option value="behind">Behind, clamp side (−y)</option>
+                    <option value="front">In front, C-link side (+y)</option>
+                  </select></div>
+                <div class="ctl"><label for="jH">Junction height <b><span id="jHv">1100</span> mm</b></label>
+                  <input type="range" id="jH" min="700" max="1600" step="25" value="1100"></div>
+              </div>
+              <label class="switch" style="margin-top:9px"><input type="checkbox" id="pipOn" aria-label="Webcam view"><span>Webcam picture-in-picture</span></label>
+            </div>
+          </section>
+          <section class="sec" data-for="robot" data-tab="scene">
+            <div class="sh"><h2>Crossing check</h2></div>
+            <div class="sb"><div id="crossCheck" class="msg">Pick the Junction rig to check a crossing.</div></div>
+          </section>
 
-    <!-- checks -->
-    <section class="sec" data-for="checks">
-      <div class="sh"><h2>Engineering checks</h2><span class="aux" id="ckSummary"></span></div>
-      <div id="checksTable"></div>
+          <!-- robot: demonstrations -->
+          <section class="sec" data-for="robot" data-tab="demo">
+            <div class="sh"><h2>Demonstrations</h2><span class="aux">firmware commands</span></div>
+            <div class="sb">
+              <div class="stack">
+                <button class="btn block" data-demo="climb">Climb 500 mm</button>
+                <button class="btn block" data-demo="cross">Cross the junction</button>
+                <button class="btn block" data-demo="place">Carry and place a cap beam</button>
+                <button class="btn block" data-demo="inspect">Inspection pass</button>
+                <button class="btn block" data-demo="fault">Simulate a clamp slip</button>
+              </div>
+              <p class="note">Every demo is a list of the robot's own commands. What plays here is exactly
+                what you would send it.</p>
+            </div>
+          </section>
+
+          <!-- robot: teleop and joints -->
+          <section class="sec" data-for="robot" data-tab="teleop">
+            <div class="sh"><h2>Teleop</h2><span class="aux" id="padState">no gamepad</span></div>
+            <div class="sb">
+              <label class="switch"><input type="checkbox" id="teleOn" aria-label="Teleop"><span>Drive with keyboard or DualShock</span></label>
+              <div class="ctl"><label for="pwm">Drive PWM <b><span id="pwmV">160</span> / 255</b></label>
+                <input type="range" id="pwm" min="40" max="255" step="1" value="160"></div>
+              <div class="keys" id="keyLegend">
+                <kbd>W</kbd><span>drive up (hold)</span><kbd>S</kbd><span>drive down (hold)</span>
+               <span>up_detach</span><kbd>2</kbd><span>up_attach</span>
+               <span>down_detach</span><kbd>4</kbd><span>down_attach</span>
+                <kbd>5</kbd><span>both_attach</span><kbd>6</kbd><span>both_detach</span>
+                <kbd>J</kbd><span>arm away from the post (hold)</span><kbd>L</kbd><span>arm toward the post (hold)</span>
+                <kbd>G</kbd><span>grip open/close</span><kbd>Space</kbd><span>estop</span>
+              </div>
+              <p class="note">DualShock mapping is a default guess from §3.5.2. Match it to
+                <b>gamepad_to_pi.py</b> before quoting it.</p>
+            </div>
+          </section>
+          <section class="sec" data-for="robot" data-tab="teleop">
+            <div class="sh"><h2>Joints</h2><span class="aux">direct control</span></div>
+            <div class="sb">
+              <div class="ctl"><label for="jArm">Arm base <b><span id="jArmV">0.0</span>°</b></label>
+                <input type="range" id="jArm" min="-60" max="60" step="0.5" value="0"></div>
+              <div class="ctl"><label for="jGrip">Gripper <b><span id="jGripV">closed</span></b></label>
+                <input type="range" id="jGrip" min="0" max="1" step="0.01" value="0"></div>
+              <p class="note">Hinges and clamps only move through commands, so the safety interlock always applies.</p>
+            </div>
+          </section>
+
+          <!-- drive -->
+          <section class="sec" data-for="drive" data-tab="course">
+            <div class="sh"><h2>Practice course</h2><span class="aux">3.2 m post, two junctions</span></div>
+            <div class="sb">
+              <dl class="kv" id="courseKV"></dl>
+              <button class="btn block" id="courseReset" style="margin-top:8px">Restart course</button>
+              <p class="note">Climb to the top, crossing a member across the post at 1000 mm and one behind it
+                at 1900 mm. The coach at the top of the view gives the next move.</p>
+            </div>
+          </section>
+          <section class="sec" data-for="drive" data-tab="keys">
+            <div class="sh"><h2>Controls</h2><span class="aux">keyboard</span></div>
+            <div class="sb">
+              <div class="keycaps">
+                <kbd>W</kbd><span>drive up (hold)</span><kbd>S</kbd><span>drive down (hold)</span>
+                <kbd>Shift</kbd><span>creep at PWM 30, for the crossing window</span>
+                <kbd>A</kbd><span>arm back (hold)</span><kbd>D</kbd><span>arm forward (hold)</span>
+                <kbd>Q</kbd><span>upper clamp, detach or attach</span><kbd>E</kbd><span>lower clamp, detach or attach</span>
+                <kbd>R</kbd><span>both_attach, clears the latch</span><kbd>G</kbd><span>claw open or close</span>
+                <kbd>C</kbd><span>webcam view on or off</span><kbd>Space</kbd><span>estop</span>
+              </div>
+              <div class="ctl"><label for="dPwm">Drive PWM <b><span id="dPwmV">150</span> / 255</b></label>
+                <input type="range" id="dPwm" min="40" max="255" step="1" value="150"></div>
+              <p class="note">Keys 1 to 6 send the firmware commands directly, as in the Robot workspace. A DualShock works here too.</p>
+            </div>
+          </section>
+
+          <!-- robot + drive: commands and telemetry -->
+          <section class="sec" data-for="robot drive" data-tab="cmd">
+            <div class="sh"><h2>Command console</h2><span class="aux">firmware vocabulary</span></div>
+            <div class="sb">
+              <div class="grid2" id="console">
+                <button class="btn" data-cmd="up_detach">up_detach</button><button class="btn" data-cmd="up_attach">up_attach</button>
+                <button class="btn" data-cmd="down_detach">down_detach</button><button class="btn" data-cmd="down_attach">down_attach</button>
+                <button class="btn" data-cmd="both_attach">both_attach</button><button class="btn" data-cmd="both_detach">both_detach</button>
+              </div>
+              <button class="btn danger block" data-cmd="estop" style="margin-top:4px">estop</button>
+            </div>
+          </section>
+          <section class="sec" data-for="robot drive" data-tab="tele">
+            <div class="sh"><h2>Telemetry</h2><span class="aux">5 Hz, as the robot sends it</span></div>
+            <div class="sb">
+              <div class="state" id="stateCells"></div>
+              <dl class="kv" id="teleKV" style="margin-top:8px"></dl>
+              <pre class="json" id="teleJSON"></pre>
+            </div>
+          </section>
+
+          <!-- build -->
+          <section class="sec" data-for="build" data-tab="frame">
+            <div class="sh"><h2>Material</h2></div>
+            <div class="sb">
+              <div class="seg" role="group" aria-label="Material">
+                <button id="mPine" aria-pressed="true">Pine 60×60</button>
+                <button id="mBamboo" aria-pressed="false">Bamboo Ø60</button>
+              </div>
+              <p class="note" id="matNote"></p>
+            </div>
+          </section>
+          <section class="sec" data-for="build" data-tab="frame">
+            <div class="sh"><h2>Frame</h2><span class="aux">drag between dots</span></div>
+            <div class="sb">
+              <canvas id="grid" width="536" height="400" aria-label="Sketch grid"></canvas>
+              <div class="grid3" style="margin-top:5px">
+                <button class="btn" id="tDraw" aria-pressed="true">Draw</button>
+                <button class="btn" id="tErase" aria-pressed="false">Erase</button>
+                <button class="btn" id="clear">Clear</button>
+              </div>
+              <div class="grid2" style="margin-top:3px">
+                <button class="btn" data-preset="tower">Tower</button>
+                <button class="btn" data-preset="bridge">Bridge</button>
+                <button class="btn" data-preset="wall">Wall</button>
+                <button class="btn" data-preset="arch">Arch</button>
+              </div>
+              <p class="note">The bottom row is bolted to the ground. Leave a square unbraced and it will fold.</p>
+            </div>
+          </section>
+          <section class="sec" data-for="build" data-tab="dims">
+            <div class="sh"><h2>Dimensions and load</h2></div>
+            <div class="sb">
+              <div class="ctl"><label for="bay">Bay size <b><span id="bayV">450</span> mm</b></label>
+                <input type="range" id="bay" min="250" max="1200" step="25" value="450"></div>
+              <div class="ctl"><label for="depth">Depth <b><span id="depthV">1</span> frame</b></label>
+                <input type="range" id="depth" min="1" max="3" step="1" value="1"></div>
+              <div class="ctl"><label for="scale">Scale factor <b><span id="scaleV">1.0</span>×</b></label>
+                <input type="range" id="scale" min="1" max="6" step="0.5" value="1"></div>
+              <div class="ctl"><label for="load">Load on top joints <b><span id="loadV">0</span> N</b></label>
+                <input type="range" id="load" min="0" max="200" step="5" value="0"></div>
+            </div>
+          </section>
+          <section class="sec" data-for="build" data-tab="struct">
+            <div class="sh"><h2>Structure</h2><span class="aux">direct stiffness method</span></div>
+            <div class="sb">
+              <div id="verdict"></div>
+              <dl class="kv" id="stats" style="margin-top:8px"></dl>
+              <div id="msgs"></div>
+              <div class="legend">
+                <span><i id="lgMat"></i>low stress</span><span><i style="background:var(--tension)"></i>tension</span>
+                <span><i style="background:var(--compression)"></i>compression</span></div>
+            </div>
+          </section>
+          <section class="sec" data-for="build" data-tab="order">
+            <div class="sh"><h2>Build order</h2><span class="pv con">CONCEPT</span></div>
+            <div class="sb">
+              <dl class="kv" id="orderStats"></dl>
+              <p class="note">Build it runs the robot. Posts go up first at each level, then beams, then braces. The robot
+                carries each member rigidly in its claw, climbs its post with the real gait and places the member with a
+                CONCEPT slew and wrist. The hoist, the hand moves and the crane are CONCEPT too.</p>
+            </div>
+          </section>
+          <section class="sec" data-for="build" data-tab="order">
+            <div class="sh"><h2>Cut list</h2></div>
+            <div class="sb">
+              <dl class="kv" id="cutSummary"></dl>
+              <div class="grid2" style="margin-top:6px">
+                <button class="btn" id="cutCsv">Download CSV</button><button class="btn" id="shareBtn">Copy link</button>
+              </div>
+              <p class="note" id="shareNote">The link carries the exact frame, material and load.</p>
+            </div>
+          </section>
+          <section class="sec" data-for="build" data-tab="struct">
+            <div class="sh"><h2>Predicted vs measured</h2></div>
+            <div class="sb">
+              <div class="ctl"><label for="meas">Measured failure load <b>N</b></label>
+                <input type="number" id="meas" class="sel" placeholder="bench result" step="1"></div>
+              <p class="note" id="valid"></p>
+            </div>
+          </section>
+
+          <!-- checks -->
+          <section class="sec" data-for="checks" data-tab="case">
+            <div class="sh"><h2>Case</h2><span class="aux">what the checks assume</span></div>
+            <div class="sb">
+              <div class="ctl"><label for="cPose">Linkage pose</label>
+                <select id="cPose" class="sel">
+                  <option value="up_detach">up_detach, lower module holds everything</option>
+                  <option value="down_detach">down_detach, upper module holds everything</option>
+                  <option value="parallel">parallel, both attached</option>
+                </select></div>
+              <div class="ctl"><label for="cMember">Carried member</label>
+                <select id="cMember" class="sel">
+                  <option value="none">None</option>
+                  <option value="pine">Pine 60×60×1000 (1.80 kg)</option>
+                  <option value="bamboo">Bamboo Ø60×8×1000 (0.91 kg)</option>
+                </select></div>
+              <div class="ctl"><label for="cAct">C-link hinge actuator</label>
+                <select id="cAct" class="sel">
+                  <option value="servo">2 × 40 kg·cm servo, 15% loss (§3.3.2)</option>
+                  <option value="motor">300 rpm gearmotor, 3 kg·cm (§3.3.1)</option>
+                </select></div>
+              <div class="ctl"><label for="cDrive">Drive motors per module</label>
+                <select id="cDrive" class="sel"><option value="1">1</option><option value="2">2 (both BOM motors drive)</option></select></div>
+              <div class="ctl"><label for="cMu">Jaw friction μ <b><span id="cMuV">0.40</span></b></label>
+                <input type="range" id="cMu" min="0.15" max="0.9" step="0.01" value="0.4"></div>
+              <div class="ctl"><label for="cEta">Drive efficiency <b><span id="cEtaV">80</span>%</b></label>
+                <input type="range" id="cEta" min="50" max="95" step="1" value="80"></div>
+              <div class="ctl"><label for="cTether">Tether length <b><span id="cTetherV">5.0</span> m</b></label>
+                <input type="range" id="cTether" min="0.5" max="15" step="0.5" value="5"></div>
+              <div class="ctl"><label for="cPull">Tether-side pull-up <b><span id="cPullV">2.2</span> kΩ</b></label>
+                <input type="range" id="cPull" min="1" max="10" step="0.1" value="2.2"></div>
+            </div>
+          </section>
+          <section class="sec" data-for="checks" data-tab="case">
+            <div class="sh"><h2>Where numbers come from</h2></div>
+            <div class="sb">
+              <div class="pvlegend">
+                <span><span class="pv cad">CAD</span> your Onshape exports</span>
+                <span><span class="pv sub">SUB</span> submission plan</span>
+                <span><span class="pv calc">CALC</span> worked out here</span>
+                <span><span class="pv con">CONCEPT</span> drawn, not in CAD</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- every workspace: the selected object -->
+          <section class="sec" data-for="robot drive build checks" data-tab="object">
+            <div class="sh"><h2>Selected</h2><span class="aux">click a part in the viewport</span></div>
+            <div class="sb objrows" id="objInfo"><p class="note">Nothing selected. Click a robot part or a frame member,
+              or pick an item in the Outliner.</p></div>
+          </section>
+        </div>
+      </div>
     </section>
   </aside>
 
-  <!-- ================================================================== LOG -->
-  <footer class="log">
-    <div class="log-h"><h2>Event log</h2><button id="logClear">Clear</button></div>
-    <ol id="log" aria-live="polite"></ol>
-  </footer>
+  <!-- ================================================================== TIMELINE + INFO / SPREADSHEET -->
+  <section class="area time">
+    <div class="ahead">
+      <span class="ed" data-for="robot drive build"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>Timeline</span>
+      <span class="ed" data-for="checks"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="2.5" width="12" height="11" rx="1"/><path d="M2 6h12M2 9.5h12M6 2.5v11"/></svg>Spreadsheet · engineering checks</span>
+      <div class="transport" id="transport">
+        <button class="hbtn" id="playBtn">Run</button>
+        <button class="hbtn" id="stopBtn">Stop</button>
+        <input type="range" id="step" min="0" max="0" value="0" aria-label="Build step" hidden>
+        <button class="hbtn" id="breakBtn" hidden>Test to failure</button>
+        <select id="speed" aria-label="Playback speed">
+          <option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option>
+          <option value="2">2×</option><option value="4">4×</option><option value="8">8×</option><option value="16">16×</option></select>
+        <span class="status ok" id="status"><i></i><span id="statusTxt">ready</span></span>
+      </div>
+      <span class="sp"></span>
+      <span class="aux mono" id="ckSummary" data-for="checks"></span>
+    </div>
+    <div class="tl-body">
+      <div class="tl-left"><canvas id="tlCanvas" aria-label="Event timeline"></canvas></div>
+      <div class="info">
+        <div class="info-h"><span>Info</span><button id="logClear">Clear</button></div>
+        <ol id="log" aria-live="polite"></ol>
+      </div>
+    </div>
+    <div class="sheet"><div id="checksTable"></div></div>
+  </section>
+
+  <footer class="statusbar"><span id="sbHints"></span><span id="sbStats" class="mono"></span></footer>
 </main>
 
 <dialog id="about">
   <div class="about">
-    <button class="iconbtn x" id="aboutClose">Close</button>
+    <button class="btn x" id="aboutClose">Close</button>
     <h1>CLASP Studio</h1>
     <p>A digital twin of the CLASP climbing robot, built from the team's own Onshape assembly.</p>
     <h2>Where the robot comes from</h2>
     <p>The robot was exported from Onshape twice, once as built and once with every joint moved. The two
       exports tessellate identically, so each part's motion between them is a rigid transform, and that
-      transform gives each joint's axis exactly. Nothing about the mechanism is guessed. Posing the model
-      back reproduces the second export to within 0.1 mm.</p>
+      transform gives each joint's axis exactly. Nothing about the mechanism is guessed. Every one of the
+      872,568 CAD triangles is drawn, with the CAD feature edges, and part colours come from Onshape's own
+      shaded views of the assembly.</p>
     <h2>How it moves</h2>
     <p>Two modules clamp the member. A C-link joins them through two hinges 189.3 mm apart. To pass a
       crossing member, one module opens its clamp, the linkage swings it clear, the other module drives
       the robot past the junction, and the free module swings back and clamps. The same happens for the
       second module. One module is attached at every instant, and any command that would break that is
-      refused.</p>
-    <p>The arm is a single hinge on the C-link with a claw linkage at its head, modelled exactly as it is in CAD.
-      The simulator holds the arm upright while the linkage swings, which keeps the hinge load down.</p>
-    <h2>What is drawn but not in the CAD</h2>
-    <p>The webcam mount, the ToF sensor position, the cap-beam receiver and the build-order marker are labelled
-      CONCEPT. The DualShock button map is a default and should be matched to gamepad_to_pi.py.</p>
+      refused. Collisions are tested against every CAD triangle, so nothing passes through anything.</p>
+    <h2>Building a frame</h2>
+    <p>In the Build workspace the robot works from the posts. Each member stays rigidly in its claw from the
+      hoist to its final place, and it climbs and crosses joints with the same commands as the demos. The CAD
+      arm is one hinge, so the slew and wrist that let it lay a member in place are CONCEPT, as the submission's
+      multi-axis arm. The hoist, moves between posts by hand and the crane for out-of-reach members are CONCEPT
+      too, and every hand placement says why the robot could not do it.</p>
     <h2>Drive</h2>
-    <p>The Drive tab is a practice course for the operator. W and S drive, Shift creeps, A and D move the arm,
+    <p>The Drive workspace is a practice course for the operator. W and S drive, Shift creeps, A and D move the arm,
       Q and E detach or attach each module, R sends both_attach and Space is the estop. The coach reads the
-      robot's state and the crossing plan and tells you the next move, including the few millimetres of
-      stopping window each junction allows.</p>
+      robot's state and the crossing plan and tells you the next move.</p>
     <h2>The structure analysis</h2>
-    <p>Build mode solves the frame by the direct stiffness method, checks every member for crushing, Euler
+    <p>Build solves the frame by the direct stiffness method, checks every member for crushing, Euler
       buckling and joint pull-out, and runs a progressive collapse. A frame that is a mechanism falls under
       its own weight, driven by position-based dynamics rather than an animation.</p>
     <h2>What it does not know</h2>
     <p>Frame joints are frictionless pins, and material values are literature estimates for model-scale stock.
-      The robot is kinematic, so there is no wheel slip and no dynamics. Collisions are checked on a sample of about
-      360 points per part, so a clearance of a few millimetres is close to the model's resolution.</p>
-    <p>Run <span class="mono">CLASP_TEST()</span> in the browser console for the self-test.</p>
+      The robot is kinematic, so there is no wheel slip and no dynamics.</p>
+    <p>Help, then Run the self-test, checks the whole simulator. It is also <span class="mono">CLASP_TEST()</span> in the console.</p>
   </div>
 </dialog>
 
@@ -652,12 +786,14 @@ let simT=0;
 
 /* ======================================================================= event log */
 const LOG={quiet:0,max:500,last:{}};
+const EVENTS=[];
 const KIND={cmd:'tx',rx:'rx',ok:'ok',warn:'warn',bad:'fault',info:'info'};
 function stamp(t){const m=Math.floor(t/60),s=t-m*60;return String(m).padStart(2,'0')+':'+s.toFixed(1).padStart(4,'0');}
 function log(kind,text){
   if(LOG.quiet)return;
   const li=document.createElement('li');li.className=kind==='rx'?'info':kind;
   li.innerHTML=`<span class="t">${stamp(simT)}</span><span class="k">${KIND[kind]||kind}</span><span>${esc(text)}</span>`;
+  EVENTS.push({t:simT,kind});if(EVENTS.length>800)EVENTS.shift();
   const ol=$('log');ol.appendChild(li);
   while(ol.children.length>LOG.max)ol.firstChild.remove();
   ol.scrollTop=ol.scrollHeight;
@@ -679,7 +815,7 @@ function vpMsg(title,body){const el=$('vpMsg');
 /* Auto follows the host page: an artifact viewer stamps data-theme on the root, otherwise the OS setting.
    Light and Dark are this page's own override. */
 const THEME={pref:'auto',dark:null,listeners:[],ours:false};
-try{THEME.pref=localStorage.getItem('clasp.theme')||'auto';}catch(e){}
+THEME.pref='dark';try{THEME.pref=localStorage.getItem('clasp.theme')||'dark';}catch(e){}
 const darkMQ=matchMedia('(prefers-color-scheme: dark)');
 function resolveTheme(){
   const a=document.documentElement.getAttribute('data-theme');
@@ -689,15 +825,14 @@ function resolveTheme(){
 }
 function applyTheme(){
   const root=document.documentElement;
-  if(THEME.pref==='auto'){if(THEME.ours){root.removeAttribute('data-theme');THEME.ours=false;}}
-  else{root.setAttribute('data-theme',THEME.pref);THEME.ours=true;}
+  root.setAttribute('data-theme',THEME.pref==='auto'?(darkMQ.matches?'dark':'light'):THEME.pref);THEME.ours=true;
   $('themeLbl').textContent=THEME.pref[0].toUpperCase()+THEME.pref.slice(1);
   THEME.dark=null;resolveTheme();
 }
-darkMQ.addEventListener('change',resolveTheme);
+darkMQ.addEventListener('change',()=>{if(THEME.pref==='auto')applyTheme();});
 new MutationObserver(resolveTheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
 $('themeBtn').onclick=()=>{
-  THEME.pref={auto:'light',light:'dark',dark:'auto'}[THEME.pref];
+  THEME.pref={dark:'light',light:'auto',auto:'dark'}[THEME.pref];
   try{localStorage.setItem('clasp.theme',THEME.pref);}catch(e){}
   applyTheme();};
 /* inside an artifact viewer the page is framed: downloads are blocked and its own URL is not the shareable one */
@@ -983,17 +1118,22 @@ function debrisStep(d,h){
   for(const p of[d.a,d.b])if(p.p.y<r){p.p.y=r;p.q.x=lerp(p.q.x,p.p.x,0.5);p.q.z=lerp(p.q.z,p.p.z,0.5);}
 }
 
-/* build order: lowest connected member first */
+/* build order: level by level. At each level the posts go up first, then the beams, then the braces,
+   the way a timber frame is erected. The robot also needs it that way: once a beam is fixed at a
+   joint, its upper module cannot get close enough to the joint to extend the post above it. */
 function planBuild(md){
   const conn=new Set();
   md.nodes.forEach((n,i)=>{if(n.support)conn.add(i);});
-  const rem=md.members.map((_,i)=>i),order=[];
+  const rem=md.members.map((_,i)=>i),order=[],step=md.step||450;
+  const key=mi=>{const m=md.members[mi],a=md.nodes[m.a],b=md.nodes[m.b];
+    const vert=Math.abs(a.x-b.x)<1e-6&&Math.abs(a.z-b.z)<1e-6,horiz=Math.abs(a.y-b.y)<1e-6;
+    const level=Math.min(a.y,b.y)+(vert||horiz?0:step);
+    return level*10+(vert?0:horiz?1:2)+((a.x+b.x)/2+(a.z+b.z)/2)*1e-6;};
   while(rem.length){
     let best=-1,bs=Infinity;
-    for(const mi of rem){const m=md.members[mi],ca=conn.has(m.a),cb=conn.has(m.b);
-      if(!ca&&!cb)continue;
-      const sc=(md.nodes[m.a].y+md.nodes[m.b].y)/2+((ca&&cb)?-1e5:0);
-      if(sc<bs){bs=sc;best=mi;}}
+    for(const mi of rem){const m=md.members[mi];
+      if(!conn.has(m.a)&&!conn.has(m.b))continue;
+      const sc=key(mi);if(sc<bs){bs=sc;best=mi;}}
     if(best<0)best=rem[0];
     const m=md.members[best];conn.add(m.a);conn.add(m.b);order.push(best);
     rem.splice(rem.indexOf(best),1);}
@@ -1112,38 +1252,41 @@ const CONCEPT_MAT=new THREE.MeshStandardMaterial({color:0xd08a1c,roughness:0.5,m
 const edgesOf=(geo,deg=35)=>new THREE.LineSegments(new THREE.EdgesGeometry(geo,deg),EDGE_MAT);
 THEME.listeners.push(dark=>{
   EDGE_MAT.color.set(dark?0x000000:0x0b0d10);EDGE_MAT.opacity=dark?0.7:0.5;
-  gridMat.uniforms.uColor.value.set(dark?0x5d6673:0x8a939e);
-  gridMat.uniforms.uAlpha.value=dark?0.75:0.6;
+  gridMat.uniforms.uColor.value.set(dark?0x6a6a6a:0x6d6d6d);
+  gridMat.uniforms.uAlpha.value=dark?0.7:0.55;
   ground.material.opacity=dark?0.35:0.2;
   scene.environmentIntensity=dark?0.85:0.62;
-  RMAT.pla.color.set(dark?0x4a515b:0x2f343b);
+  RMAT.pla.color.set(dark?0x3a3f46:0x2f343b);
 });
 
 /* timber: a procedural grain texture per member, drawn once */
 function timberTexture(lenMM,seed,defects){
-  const W=64,H=clamp(Math.round(lenMM/1.4),128,2048);
+  /* about 0.25 mm per pixel across the face and 0.6 mm along it, so close-ups and the webcam stay sharp */
+  const W=256,H=clamp(Math.round(lenMM/0.6),256,4096),k=W/60,ky=H/lenMM;
   const c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
   const r=rng(seed);
-  g.fillStyle='#d2b88d';g.fillRect(0,0,W,H);
-  for(let i=0;i<9;i++){g.fillStyle=`rgba(${160+r()*40|0},${110+r()*30|0},${60+r()*20|0},0.08)`;
-    g.fillRect(r()*W,0,4+r()*14,H);}
-  for(let i=0;i<46;i++){
-    const x0=r()*W,amp=0.6+r()*2.2,ph=r()*6,fr=0.004+r()*0.01;
-    g.strokeStyle=`rgba(120,80,38,${0.06+r()*0.16})`;g.lineWidth=0.5+r()*1.3;
+  g.fillStyle='#d4ba8f';g.fillRect(0,0,W,H);
+  for(let i=0;i<10;i++){g.fillStyle=`rgba(${160+r()*40|0},${110+r()*30|0},${60+r()*20|0},0.09)`;
+    g.fillRect(r()*W,0,(1+r()*4)*k,H);}
+  for(let i=0;i<70;i++){
+    const x0=r()*W,amp=(0.2+r()*0.8)*k,ph=r()*6,fr=(0.004+r()*0.012)/ky;
+    g.strokeStyle=`rgba(118,78,36,${0.05+r()*0.16})`;g.lineWidth=(0.12+r()*0.35)*k;
     g.beginPath();g.moveTo(x0,0);
-    for(let y=0;y<=H;y+=16)g.lineTo(x0+Math.sin(y*fr+ph)*amp,y);g.stroke();}
-  const knot=(y,s)=>{const x=W*(0.25+r()*0.5);
-    const grd=g.createRadialGradient(x,y,0,x,y,s);
+    for(let y=0;y<=H;y+=12)g.lineTo(x0+Math.sin(y*fr+ph)*amp,y);g.stroke();}
+  for(let i=0;i<260;i++){g.fillStyle=`rgba(90,58,25,${0.05+r()*0.08})`;
+    g.fillRect(r()*W,r()*H,0.25*k,(1+r()*5)*ky);}
+  const knot=(y,sz)=>{const x=W*(0.25+r()*0.5),s0=sz*k*0.35;
+    const grd=g.createRadialGradient(x,y,0,x,y,s0);
     grd.addColorStop(0,'rgba(70,40,15,0.95)');grd.addColorStop(0.45,'rgba(105,64,28,0.7)');grd.addColorStop(1,'rgba(120,80,38,0)');
-    g.fillStyle=grd;g.beginPath();g.ellipse(x,y,s*0.7,s*1.4,0,0,7);g.fill();};
+    g.fillStyle=grd;g.beginPath();g.ellipse(x,y,s0*0.7,s0*1.4,0,0,7);g.fill();};
   const n=Math.floor(lenMM/900);
   for(let i=0;i<n;i++)knot(r()*H,3+r()*4);
   for(const d of defects||[]){const y=H*(1-d.at/lenMM);
     if(d.kind==='knot')knot(y,d.size);
-    if(d.kind==='check'){g.strokeStyle='rgba(40,22,8,0.85)';g.lineWidth=1.3;g.beginPath();
-      let x=W*0.55;g.moveTo(x,y);for(let k=0;k<d.size;k+=3){x+=(r()-0.5)*1.6;g.lineTo(x,y+k);}g.stroke();}}
+    if(d.kind==='check'){g.strokeStyle='rgba(40,22,8,0.85)';g.lineWidth=0.35*k;g.beginPath();
+      let x=W*0.55;g.moveTo(x,y);for(let q=0;q<d.size*ky;q+=3){x+=(r()-0.5)*0.5*k;g.lineTo(x,y+q);}g.stroke();}}
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
-  t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());return t;
+  t.anisotropy=renderer.capabilities.getMaxAnisotropy();return t;
 }
 /* a 60 × 60 timber along an axis, in three.js coordinates. Grain runs along the length. */
 function timber(len,axis,center,seed,defects){
@@ -1168,7 +1311,7 @@ const _lp=new THREE.Vector3();
 function placeLabels(){
   const w=vpEl.clientWidth,h=vpEl.clientHeight;
   for(const L of LBL){
-    const vis=L.tag===MODE||(L.tag==='rig'&&MODE!=='build');
+    const vis=L.tag===MODE||(L.tag==='rig'&&MODE!=='build')||(L.tag==='build-bot'&&MODE==='build');
     const p=vis&&L.posFn();
     if(!p){L.el.style.display='none';continue;}
     _lp.copy(p).project(camera);
@@ -1275,31 +1418,34 @@ const RB={ready:false,bodies:[],byId:new Map(),order:[],group:{lower:[],upper:[]
 RB.root.rotation.x=-Math.PI/2;
 scene.add(RB.root);
 
-/* the mesh ships as robot.bin, or as base64 text where a host will not serve binary files */
-async function fetchMesh(){
-  const br=await fetch('models/robot/robot.bin').catch(()=>null);
-  if(br&&br.ok&&!/text\/html/.test(br.headers.get('content-type')||''))return br.arrayBuffer();
-  const tr=await fetch('models/robot/robot.bin.b64.txt');
-  if(!tr.ok)throw new Error('robot.bin returned HTTP '+(br?br.status:'error'));
-  const b=atob((await tr.text()).trim()),u=new Uint8Array(b.length);
-  for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);
-  return u.buffer;
+/* the model: robot.json plus a gzipped binary of quantised positions, int8 normals,
+   16-bit indices and the CAD feature edges (tools/cad_export.py, format version 2) */
+async function fetchMesh(name){
+  const r=await fetch('models/robot/'+name);
+  if(!r.ok)throw new Error(name+' returned HTTP '+r.status);
+  let buf=await r.arrayBuffer();
+  const u=new Uint8Array(buf,0,2);
+  if(u[0]===0x1f&&u[1]===0x8b){
+    if(!('DecompressionStream' in window))throw new Error('this browser cannot unpack the model. Use a current Chrome, Edge, Firefox or Safari');
+    buf=await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();}
+  return buf;
 }
 async function loadRobot(){
   let json,buf;
   try{
     const jr=await fetch('models/robot/robot.json');
     if(!jr.ok)throw new Error('robot.json returned HTTP '+jr.status);
-    json=await jr.json();buf=await fetchMesh();
-    if(json.version!==1||!Array.isArray(json.bodies)||!json.post)throw new Error('robot.json is not a version 1 CLASP model');
-    for(const b of json.bodies)for(const m of b.meshes){
-      const ib=m.indexType==='uint32'?4:2;
-      if(m.position[0]+m.position[1]*4>buf.byteLength||m.normal[0]+m.normal[1]>buf.byteLength||
-         m.index[0]+m.index[1]*ib>buf.byteLength)throw new Error(`robot.bin is shorter than robot.json says (body ${b.id})`);}
+    json=await jr.json();
+    if(json.version!==2||!Array.isArray(json.bodies)||!json.post)throw new Error('robot.json is not a version 2 CLASP model');
+    setStatus('warn',`loading the CAD model, ${(json.triangles/1000).toFixed(0)}k triangles`);
+    buf=await fetchMesh(json.bin||'robot.bin.gz');
+    for(const b of json.bodies)for(const m of b.meshes)
+      if(m.pos+m.vcount*6>buf.byteLength||m.idx[0]+m.idx[1]*2>buf.byteLength||m.edge[0]+m.edge[1]*2>buf.byteLength)
+        throw new Error(`the mesh file is shorter than robot.json says (body ${b.id})`);
   }catch(e){
     RB.error=e.message;
     vpMsg('Could not load the robot model',`<span>${esc(e.message)}. The page reads <span class="mono">models/robot/robot.json</span>
-      and <span class="mono">robot.bin</span>, which browsers block when the file is opened straight from disk.
+      and <span class="mono">robot.bin.gz</span>, which browsers block when the file is opened straight from disk.
       Serve the folder instead, for example with <span class="mono">python3 -m http.server</span>. Build mode still works.</span>`);
     log('bad','Robot model failed to load: '+e.message);
     return false;
@@ -1309,20 +1455,23 @@ async function loadRobot(){
   for(const jb of json.bodies){
     const b={id:jb.id,role:jb.role,group:jb.group,parent:jb.parent,joint:jb.joint,
       centroid:new THREE.Vector3(...jb.centroid),volume:jb.volume,fk:new THREE.Matrix4(),world:new THREE.Matrix4(),
-      obj:new THREE.Group(),verts:[],pts:null,mass:0};
+      obj:new THREE.Group(),verts:[],tri:[],pts:null,mass:0,meshes:[]};
     b.obj.matrixAutoUpdate=false;
     for(const me of jb.meshes){
+      const Q=new Uint16Array(buf,me.pos,me.vcount*3),P=new Float32Array(me.vcount*3);
+      for(let i=0;i<P.length;i+=3)for(let k=0;k<3;k++)P[i+k]=me.qmin[k]+Q[i+k]/65535*me.qspan[k];
+      const pos=new THREE.BufferAttribute(P,3),I=new Uint16Array(buf,me.idx[0],me.idx[1]);
       const g=new THREE.BufferGeometry();
-      const P=new Float32Array(buf,me.position[0],me.position[1]);
-      g.setAttribute('position',new THREE.BufferAttribute(P,3));
-      g.setAttribute('normal',new THREE.BufferAttribute(new Int8Array(buf,me.normal[0],me.normal[1]),3,true));
-      g.setIndex(new THREE.BufferAttribute(me.indexType==='uint32'?new Uint32Array(buf,me.index[0],me.index[1])
-        :new Uint16Array(buf,me.index[0],me.index[1]),1));
-      g.computeBoundingSphere();
+      g.setAttribute('position',pos);
+      g.setAttribute('normal',new THREE.BufferAttribute(new Int8Array(buf,me.nrm,me.vcount*3),3,true));
+      g.setIndex(new THREE.BufferAttribute(I,1));g.computeBoundingSphere();
       const mesh=new THREE.Mesh(g,RMAT[me.material]||RMAT.pla);
-      mesh.castShadow=true;mesh.receiveShadow=true;
-      b.obj.add(mesh,edgesOf(g,35));
-      b.verts.push(P);RB.tris+=me.index[1]/3;
+      mesh.castShadow=true;mesh.receiveShadow=true;mesh.userData.body=b;
+      const eg=new THREE.BufferGeometry();eg.setAttribute('position',pos);
+      eg.setIndex(new THREE.BufferAttribute(new Uint16Array(buf,me.edge[0],me.edge[1]),1));
+      const lines=new THREE.LineSegments(eg,EDGE_MAT);lines.raycast=()=>{};
+      b.obj.add(mesh,lines);b.meshes.push(mesh);
+      b.verts.push(P);b.tri.push({P,I});RB.tris+=me.idx[1]/3;
     }
     RB.bodies.push(b);RB.byId.set(b.id,b);RB.group[b.group].push(b);RB.root.add(b.obj);
   }
@@ -1381,7 +1530,7 @@ function detachAngle(free){
 }
 
 /* forward kinematics. Same rules as tools/cad_ingest.py local_motion(). */
-const _L=new THREE.Matrix4(),_ax=new THREE.Vector3(),_W=new THREE.Matrix4();
+const _L=new THREE.Matrix4(),_ax=new THREE.Vector3(),_W=new THREE.Matrix4(),_S=new THREE.Matrix4();
 function rotAbout(out,axis,p,deg){
   out.makeRotationAxis(_ax.set(axis[0],axis[1],axis[2]).normalize(),deg*DEG);
   const e=out.elements;
@@ -1393,7 +1542,9 @@ function rotAbout(out,axis,p,deg){
 function localMotion(b,q,out){
   const j=b.joint;
   if(j.type==='root'||j.type==='fixed')return out.identity();
-  if(j.type==='hinge')return rotAbout(out,j.axis,j.point,q[j.name]||0);
+  if(j.type==='hinge'){rotAbout(out,j.axis,j.point,q[j.name]||0);
+    if(j.name==='armBase'&&q.slew){rotAbout(_S,[0,1,0],j.point,q.slew);out.premultiply(_S);}
+    return out;}
   if(j.type==='spin')return rotAbout(out,j.axis,j.point,(q.roll&&q.roll[b.group])||0);
   const u=q[j.param]||0;rotAbout(out,j.axis,j.point,u*j.angle);
   const s=u*(j.slide||0);out.elements[12]+=j.axis[0]*s;out.elements[13]+=j.axis[1]*s;out.elements[14]+=j.axis[2]*s;
@@ -1429,17 +1580,82 @@ function nearBox(b,box){const e=b.world.elements,c=b.bc;
   const x=e[0]*c[0]+e[4]*c[1]+e[8]*c[2]+e[12],y=e[1]*c[0]+e[5]*c[1]+e[9]*c[2]+e[13],z=e[2]*c[0]+e[6]*c[1]+e[10]*c[2]+e[14];
   const dx=Math.max(box.min[0]-x,0,x-box.max[0]),dy=Math.max(box.min[1]-y,0,y-box.max[1]),dz=Math.max(box.min[2]-z,0,z-box.max[2]);
   return dx*dx+dy*dy+dz*dz<=b.br*b.br;}
+/* Exact collision: every CAD triangle of a body against an oriented box, with a coarse grid
+   per body so only nearby triangles are tested (separating-axis test). */
+const CELL=14;
+function bodyGrid(b){
+  if(b.grid)return b.grid;
+  let nt=0;for(const m of b.tri)nt+=m.I.length/3;
+  const T=new Float32Array(nt*9);let k=0;
+  for(const m of b.tri){const P=m.P,I=m.I;
+    for(let i=0;i<I.length;i++){const v=I[i]*3;T[k++]=P[v];T[k++]=P[v+1];T[k++]=P[v+2];}}
+  const lo=[1e9,1e9,1e9],hi=[-1e9,-1e9,-1e9];
+  for(let i=0;i<T.length;i+=3)for(let a=0;a<3;a++){lo[a]=Math.min(lo[a],T[i+a]);hi[a]=Math.max(hi[a],T[i+a]);}
+  const dim=lo.map((l,a)=>Math.max(1,Math.ceil((hi[a]-l)/CELL)+1));
+  const cellRange=(t,out)=>{for(let a=0;a<3;a++){const x0=Math.min(T[t*9+a],T[t*9+3+a],T[t*9+6+a]),x1=Math.max(T[t*9+a],T[t*9+3+a],T[t*9+6+a]);
+    out[a]=Math.floor((x0-lo[a])/CELL);out[a+3]=Math.floor((x1-lo[a])/CELL);}return out;};
+  const ncell=dim[0]*dim[1]*dim[2],count=new Int32Array(ncell+1),r=new Int32Array(6);
+  for(let t=0;t<nt;t++){cellRange(t,r);
+    for(let x=r[0];x<=r[3];x++)for(let y=r[1];y<=r[4];y++)for(let z=r[2];z<=r[5];z++)count[(x*dim[1]+y)*dim[2]+z+1]++;}
+  for(let i=0;i<ncell;i++)count[i+1]+=count[i];
+  const items=new Int32Array(count[ncell]),fill=count.slice(0,ncell);
+  for(let t=0;t<nt;t++){cellRange(t,r);
+    for(let x=r[0];x<=r[3];x++)for(let y=r[1];y<=r[4];y++)for(let z=r[2];z<=r[5];z++)items[fill[(x*dim[1]+y)*dim[2]+z]++]=t;}
+  b.grid={T,nt,lo,dim,start:count,items,stamp:new Uint32Array(nt),tick:0};
+  return b.grid;
+}
+/* triangle against an axis-aligned box at the origin with half extents h (Akenine-Möller) */
+function triBox(v0,v1,v2,h){
+  const e0=[v1[0]-v0[0],v1[1]-v0[1],v1[2]-v0[2]],e1=[v2[0]-v1[0],v2[1]-v1[1],v2[2]-v1[2]],e2=[v0[0]-v2[0],v0[1]-v2[1],v0[2]-v2[2]];
+  for(const e of[e0,e1,e2])for(let a=0;a<3;a++){
+    const b=(a+1)%3,c=(a+2)%3,ax=[0,0,0];ax[b]=-e[c];ax[c]=e[b];
+    const p0=ax[0]*v0[0]+ax[1]*v0[1]+ax[2]*v0[2],p1=ax[0]*v1[0]+ax[1]*v1[1]+ax[2]*v1[2],p2=ax[0]*v2[0]+ax[1]*v2[1]+ax[2]*v2[2];
+    const rr=h[0]*Math.abs(ax[0])+h[1]*Math.abs(ax[1])+h[2]*Math.abs(ax[2]);
+    if(Math.min(p0,p1,p2)>rr||Math.max(p0,p1,p2)<-rr)return false;}
+  for(let a=0;a<3;a++)if(Math.min(v0[a],v1[a],v2[a])>h[a]||Math.max(v0[a],v1[a],v2[a])<-h[a])return false;
+  const n=[e0[1]*e1[2]-e0[2]*e1[1],e0[2]*e1[0]-e0[0]*e1[2],e0[0]*e1[1]-e0[1]*e1[0]];
+  const d=n[0]*v0[0]+n[1]*v0[1]+n[2]*v0[2],rr=h[0]*Math.abs(n[0])+h[1]*Math.abs(n[1])+h[2]*Math.abs(n[2]);
+  return Math.abs(d)<=rr;
+}
+/* a box: centre c, unit axes u[3], half extents h[3], all in the post-centred CAD frame */
+function obbFromAabb(box){
+  if(!box.obb)box.obb={c:[0,1,2].map(a=>(box.min[a]+box.max[a])/2),u:[[1,0,0],[0,1,0],[0,0,1]],
+    h:[0,1,2].map(a=>(box.max[a]-box.min[a])/2)};
+  return box.obb;}
+const _inv=new THREE.Matrix4();
+function bodyHitsBox(b,box){
+  const o=box.obb||obbFromAabb(box);
+  const dx=o.c[0]-(b.world.elements[0]*b.bc[0]+b.world.elements[4]*b.bc[1]+b.world.elements[8]*b.bc[2]+b.world.elements[12]),
+        dy=o.c[1]-(b.world.elements[1]*b.bc[0]+b.world.elements[5]*b.bc[1]+b.world.elements[9]*b.bc[2]+b.world.elements[13]),
+        dz=o.c[2]-(b.world.elements[2]*b.bc[0]+b.world.elements[6]*b.bc[1]+b.world.elements[10]*b.bc[2]+b.world.elements[14]);
+  if(Math.hypot(dx,dy,dz)>b.br+Math.hypot(o.h[0],o.h[1],o.h[2]))return false;
+  /* only the part of the box within the body's bounding sphere can touch it */
+  const cc=[...o.c],hh=[...o.h];
+  for(let a=0;a<3;a++){const u=o.u[a],d=-(dx*u[0]+dy*u[1]+dz*u[2]);
+    const lo=Math.max(-o.h[a],d-b.br),hi=Math.min(o.h[a],d+b.br);if(lo>hi)return false;
+    const mid=(lo+hi)/2;hh[a]=(hi-lo)/2;cc[0]+=u[0]*mid;cc[1]+=u[1]*mid;cc[2]+=u[2]*mid;}
+  const G=bodyGrid(b),e=_inv.copy(b.world).invert().elements;
+  /* box centre and axes in body coordinates */
+  const c=[e[0]*cc[0]+e[4]*cc[1]+e[8]*cc[2]+e[12],e[1]*cc[0]+e[5]*cc[1]+e[9]*cc[2]+e[13],e[2]*cc[0]+e[6]*cc[1]+e[10]*cc[2]+e[14]];
+  const U=o.u.map(u=>[e[0]*u[0]+e[4]*u[1]+e[8]*u[2],e[1]*u[0]+e[5]*u[1]+e[9]*u[2],e[2]*u[0]+e[6]*u[1]+e[10]*u[2]]);
+  const ext=[0,1,2].map(a=>Math.abs(U[0][a])*hh[0]+Math.abs(U[1][a])*hh[1]+Math.abs(U[2][a])*hh[2]);
+  const r0=[0,1,2].map(a=>Math.max(0,Math.floor((c[a]-ext[a]-G.lo[a])/CELL)));
+  const r1=[0,1,2].map(a=>Math.min(G.dim[a]-1,Math.floor((c[a]+ext[a]-G.lo[a])/CELL)));
+  if(r0.some((v,a)=>v>r1[a]))return false;
+  const tick=++G.tick,T=G.T,v=[[0,0,0],[0,0,0],[0,0,0]];
+  for(let x=r0[0];x<=r1[0];x++)for(let y=r0[1];y<=r1[1];y++)for(let z=r0[2];z<=r1[2];z++){
+    const cell=(x*G.dim[1]+y)*G.dim[2]+z;
+    for(let i=G.start[cell];i<G.start[cell+1];i++){const t=G.items[i];
+      if(G.stamp[t]===tick)continue;G.stamp[t]=tick;
+      for(let j=0;j<3;j++){const px=T[t*9+j*3]-c[0],py=T[t*9+j*3+1]-c[1],pz=T[t*9+j*3+2]-c[2];
+        for(let a=0;a<3;a++)v[j][a]=px*U[a][0]+py*U[a][1]+pz*U[a][2];}
+      if(triBox(v[0],v[1],v[2],hh))return true;}}
+  return false;
+}
 function groupHit(g,box){
-  for(const b of RB.group[g]){if(!nearBox(b,box))continue;const e=b.world.elements,P=b.pts;
-    for(let i=0;i<P.length;i+=3){
-      const x=e[0]*P[i]+e[4]*P[i+1]+e[8]*P[i+2]+e[12];
-      if(x<box.min[0]||x>box.max[0])continue;
-      const y=e[1]*P[i]+e[5]*P[i+1]+e[9]*P[i+2]+e[13];
-      if(y<box.min[1]||y>box.max[1])continue;
-      const z=e[2]*P[i]+e[6]*P[i+1]+e[10]*P[i+2]+e[14];
-      if(z>=box.min[2]&&z<=box.max[2])return true;}}
+  for(const b of RB.group[g])if(bodyHitsBox(b,box))return true;
   return false;}
-/* smallest distance from any sampled point of a group to a box */
+/* smallest distance from any sampled point of a group to a box (reporting only) */
 function groupBoxDist(g,box){let best=1e9;
   for(const b of RB.group[g]){const e=b.world.elements,P=b.pts;
     for(let i=0;i<P.length;i+=3){
@@ -1932,13 +2148,24 @@ function demo(name){
 function swingClear(anchor,freeClamp,qFrom,qTo,s,boxes=RIG.boxes){
   const save={q:{...R.q,roll:R.q.roll},anchor:R.anchor,s:R.s};
   R.anchor=anchor;R.s=s;R.q.clampUpper=R.q.clampLower=0;R.q[freeClamp]=1;
-  let hit=null;const n=Math.max(2,Math.ceil(Math.abs(qTo-qFrom)/0.5));
+  let hit=null;const n=Math.max(2,Math.ceil(Math.abs(qTo-qFrom)/1));
   for(let k=0;k<=n&&!hit;k++){R.q.lowerHinge=R.q.upperHinge=lerp(qFrom,qTo,k/n);applyArm();poseState(R);
     for(const box of boxes)for(const g of['lower','upper','link','arm'])if(!hit&&groupHit(g,box))hit=g;}
   Object.assign(R.q,save.q);R.anchor=save.anchor;R.s=save.s;applyArm();poseState(R);
   return!hit;
 }
+const WIN_CACHE=new Map();
 function crossingWindow(boxes=RIG.boxes,jH=RIG.jH){
+  /* the window depends only on the member's shape relative to its height, so cache it that way */
+  const key=boxes.filter(b=>b.max[2]>jH-200&&b.min[2]<jH+200)
+    .map(b=>[...b.min.map((v,a)=>a===2?v-jH:v),...b.max.map((v,a)=>a===2?v-jH:v)].map(v=>v.toFixed(1)).join(',')+
+      (b.obb?':'+b.obb.u.flat().map(v=>v.toFixed(2)).join(','):'')).join('|');
+  if(WIN_CACHE.has(key)){const w=WIN_CACHE.get(key);return w&&{lo:w.lo+jH,hi:w.hi+jH,s:w.s+jH,width:w.width};}
+  const w=crossingWindowSearch(boxes,jH);
+  WIN_CACHE.set(key,w&&{lo:w.lo-jH,hi:w.hi-jH,s:w.s-jH,width:w.width});
+  return w;
+}
+function crossingWindowSearch(boxes,jH){
   const h=H(),s0=jH-h.gapMid,ok=[];
   for(let d=-14;d<=14;d+=0.5){const s=s0+d;
     if(swingClear('lower','clampUpper',RB.detach.up,0,s,boxes)&&swingClear('upper','clampLower',0,RB.detach.down,s,boxes))ok.push(s);}
@@ -2147,7 +2374,7 @@ function rebuildStructureMeshes(){
   SG.mem.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(n*3),3);
   SG.deb=new THREE.InstancedMesh(unitGeo(),memMat,n);SG.deb.castShadow=true;SG.deb.count=0;
   SG.deb.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(n*3),3);
-  const jg=new THREE.BoxGeometry(D*1.18,D*1.18,D*1.18);
+  const jg=new THREE.BoxGeometry(D*1.02,D*1.02,D*1.02);
   SG.joints=new THREE.InstancedMesh(jg,STEEL_PLATE,md.nodes.length);SG.joints.castShadow=true;
   const sup=md.nodes.filter(p=>p.support);
   SG.feet=new THREE.InstancedMesh(new THREE.BoxGeometry(D*3,24,D*3),CONCRETE,Math.max(1,sup.length));
@@ -2179,6 +2406,7 @@ function syncStructure(){
     SG.mem.setMatrixAt(i,barMatrix(P(m.a),P(m.b),D,_m4));
     let rgb=mat.rgb;
     if(state.checks&&sim.mode!=='building'){const c=state.checks[i];rgb=utilColor(c.worst,c.F);}
+    if(UI.sel&&UI.sel.type==='member'&&UI.sel.i===i)rgb=[255,165,58];
     SG.mem.setColorAt(i,_col.setRGB(rgb[0]/255,rgb[1]/255,rgb[2]/255,THREE.SRGBColorSpace));});
   SG.mem.instanceMatrix.needsUpdate=true;SG.mem.instanceColor.needsUpdate=true;
   const used=new Set();md.members.forEach((m,i)=>{if(sim.visible.has(i)){used.add(m.a);used.add(m.b);}});
@@ -2358,7 +2586,7 @@ function startBuild(){
   if(!sim.order.length)return;
   if(sim.mode==='collapsing')resetSim();
   Object.assign(sim,{mode:'building',paused:false,k:0,t:0,visible:new Set(),ghost:RB.ready?-1:sim.order[0],gu:0});
-  if(RB.ready){if(!BOT.rail)buildBotScene();botStart();botStatus('taking a member from the stock pile');}
+  if(RB.ready)botStart();
   syncTransport();
 }
 function buildTick(dt){
@@ -2384,189 +2612,440 @@ function showStep(k){
   syncStructure();syncTransport();
 }
 /* ======================================================================= BUILD: the robot builds the frame
-   It starts on a raised rail beside a stock pile, takes one member in its claw, climbs the members
-   already built along the shortest route, swings the member into place with the arm, then goes back
-   for the next. Changing member at a joint needs a yaw joint the CAD robot does not have, and the
-   rail is not part of the design, so both are CONCEPT. */
-const BOT_V=560,BOT_XFER=0.6,BOT_LOAD=1.5,BOT_PLACE=2.2,BOT_REACH=330,RAIL_Y=90,BOT_CARRY=-10;
-const BOT={legs:[],leg:0,t:0,phase:'park',after:null,mi:-1,go:null,stance:null,noted:false,
-  st:{q:{lowerHinge:0,upperHinge:0,armBase:0,clampLower:0,clampUpper:0,grip:0,roll:{lower:0,upper:0}},anchor:'lower',s:0},
-  group:new THREE.Group(),carry:null,pile:[],rail:null,park:new THREE.Matrix4(),frame:new THREE.Matrix4()};
+   The robot works from the vertical posts of the front plane, one post at a time. Whatever it carries
+   stays rigidly in its claw. It drives and crosses junctions with the same commands, gait and exact
+   collision checks as the demos. CONCEPT additions, all labelled on screen: a material hoist that lifts
+   each member into the claw, a slew and a wrist on the arm (the submission's multi-axis arm), a hand
+   move between posts, and a crane for members the robot cannot place. */
+const BOT_PWM=210,BOT_CARRY=-10,BOT_PICK_PSI=60,BOT_GRIPS=[50,65,80,100,125,150],SLEW_RATE=45,WRIST_T=1.3;
+const BOT={chains:[],chain:null,home:null,group:new THREE.Group(),held:null,moveFrame:null,
+  hoist:null,crane:null,stats:{robot:0,hand:0},clear:new Map(),noted:false,phase:''};
 scene.add(BOT.group);BOT.group.visible=false;
-const carryMat=new THREE.MeshStandardMaterial({roughness:0.78,metalness:0});
-const nodeW=i=>{const n=model.nodes[i];return new THREE.Vector3(n.x+SG.off.x,n.y,n.z+SG.off.z);};
-function memberFrame(dir){
-  const Z=dir.clone().normalize();if(Z.y<-1e-6||(Math.abs(Z.y)<1e-6&&Z.x<0))Z.negate();
-  const Y=new THREE.Vector3(0,0,-1);Y.addScaledVector(Z,-Y.dot(Z));
-  if(Y.lengthSq()<0.09){Y.set(-1,0,0);Y.addScaledVector(Z,-Y.dot(Z));}
-  Y.normalize();return{X:new THREE.Vector3().crossVectors(Y,Z).normalize(),Y,Z};
+const V3=(x,y,z)=>new THREE.Vector3(x,y,z);
+const nodeW=i=>{const n=model.nodes[i];return V3(n.x+SG.off.x,n.y,n.z+SG.off.z);};
+const CHAIN_BASIS=[V3(1,0,0),V3(0,0,-1),V3(0,1,0)];            // chain x, y (toward the viewer), z (up)
+const frameAt=origin=>new THREE.Matrix4().makeBasis(...CHAIN_BASIS).setPosition(origin);
+const toChain=(w,ch)=>V3(w.x-ch.origin.x,-(w.z-ch.origin.z),w.y-ch.origin.y);
+
+/* vertical chains of members standing on a support, front plane only */
+function findChains(){
+  const md=model,out=[];if(!md.nodes.length)return out;
+  const zf=Math.min(...md.nodes.map(n=>n.z)),up=new Map();
+  md.members.forEach((m,i)=>{const a=md.nodes[m.a],b=md.nodes[m.b];
+    if(Math.abs(a.x-b.x)<1e-6&&Math.abs(a.z-b.z)<1e-6&&Math.abs(a.z-zf)<1e-6&&a.y!==b.y){
+      const lo=a.y<b.y?m.a:m.b;up.set(lo,{mi:i,hi:lo===m.a?m.b:m.a});}});
+  md.nodes.forEach((n,i)=>{if(!n.support||Math.abs(n.z-zf)>1e-6||!up.has(i))return;
+    const nodes=[i],members=[];let c=i;
+    while(up.has(c)){const u=up.get(c);members.push(u.mi);nodes.push(u.hi);c=u.hi;}
+    const origin=nodeW(i);
+    out.push({base:i,nodes,members,origin,F:frameAt(origin),x:origin.x,
+      h:nodes.map(k=>nodeW(k).y-origin.y)});});
+  return out;
 }
-const RAIL_F={X:new THREE.Vector3(0,0,-1),Y:new THREE.Vector3(0,1,0),Z:new THREE.Vector3(1,0,0)};
-const frameAt=(F,p,out=new THREE.Matrix4())=>out.makeBasis(F.X,F.Y,F.Z).setPosition(p);
-const railPt=x=>new THREE.Vector3(x,RAIL_Y,BOT.rail.z);
-function buildBotScene(){
-  disposeTree(BOT.group);BOT.group.clear();clearLabels('build-bot');BOT.pile=[];
-  const md=model;if(!md.nodes.length)return;
-  let x0=1e9,x1=-1e9,z0=1e9;
-  md.nodes.forEach((n,i)=>{const w=nodeW(i);x0=Math.min(x0,w.x);x1=Math.max(x1,w.x);z0=Math.min(z0,w.z);});
-  const L=md.step,rail={x0:x0-Math.max(900,L*1.6),x1:x1+450,z:z0-SG.D/2-240};
-  BOT.rail=rail;BOT.parkX=rail.x0+90;
-  const len=rail.x1-rail.x0;
-  BOT.group.add(timber(len,'x',new THREE.Vector3((rail.x0+rail.x1)/2,RAIL_Y,rail.z),31));
-  for(let x=rail.x0+120;x<=rail.x1-60;x+=Math.max(500,len/6))
-    BOT.group.add(plate(90,RAIL_Y-30,120,new THREE.Vector3(x,(RAIL_Y-30)/2,rail.z),CONCRETE));
-  frameAt(RAIL_F,railPt(BOT.parkX),BOT.park);
-  /* the pile sits where the claw can reach it from the parked pose */
-  const claw=clawMatrix(BOT.park,BOT_CARRY).elements;
-  BOT.pileX=claw[12];
-  const Ls=Math.min(L,1100),D=SG.D;
-  for(let k=0;k<4;k++){const m=new THREE.Mesh(unitGeo(),memMat.clone());
-    m.material.color.setRGB(mat.rgb[0]/255,mat.rgb[1]/255,mat.rgb[2]/255,THREE.SRGBColorSpace);
-    m.scale.set(D,Ls,D);m.rotation.x=Math.PI/2;m.position.set(BOT.pileX+(k%2?D*1.05:0)-D*0.5,D/2+Math.floor(k/2)*D,rail.z-Ls/2-150);
-    m.castShadow=m.receiveShadow=true;BOT.group.add(m);BOT.pile.push(m);}
-  BOT.carry=new THREE.Mesh(unitGeo(),carryMat);BOT.carry.matrixAutoUpdate=false;BOT.carry.castShadow=true;BOT.carry.visible=false;
-  carryMat.color.setRGB(mat.rgb[0]/255,mat.rgb[1]/255,mat.rgb[2]/255,THREE.SRGBColorSpace);
-  BOT.group.add(BOT.carry);
-  addLabel('STOCK','',()=>BOT.pile[0]?BOT.pile[0].position.clone().add(new THREE.Vector3(0,D*2.2,0)):null,'build-bot');
-  addLabel('CONCEPT rail','acc',()=>railPt(rail.x0+60).add(new THREE.Vector3(0,70,0)),'build-bot');
-  /* frame the rail and pile too */
-  const cx=(rail.x0+x1)/2;SG.center.set(cx,SG.center.y,(rail.z+0)/2);
-  SG.radius=Math.max(SG.radius,Math.hypot(x1-rail.x0,SG.center.y*2,Math.abs(rail.z)*2+Ls)/2+200);
-  BOT.phase='park';BOT.legs=[];BOT.mi=-1;
+function chainTop(ch){let top=0;
+  for(let k=0;k<ch.members.length&&sim.visible.has(ch.members[k]);k++)top=ch.h[k+1];
+  return top;}
+/* a member as an oriented box in chain coordinates */
+function memberBox(mi,ch,shrink=0){
+  const m=model.members[mi],a=toChain(nodeW(m.a),ch),b=toChain(nodeW(m.b),ch);
+  const d=b.clone().sub(a),L=d.length();d.normalize();
+  const p1=Math.abs(d.y)>0.9?V3(1,0,0):V3(0,1,0);p1.addScaledVector(d,-p1.dot(d)).normalize();
+  const p2=d.clone().cross(p1),c=a.clone().add(b).multiplyScalar(0.5),hr=SG.D/2,hl=Math.max(2,L/2-shrink);
+  const u=[p1,d,p2],h=[hr,hl,hr],min=[1e9,1e9,1e9],max=[-1e9,-1e9,-1e9];
+  for(const sx of[-1,1])for(const sy of[-1,1])for(const sz of[-1,1]){
+    const p=c.clone().addScaledVector(u[0],sx*h[0]).addScaledVector(u[1],sy*h[1]).addScaledVector(u[2],sz*h[2]);
+    for(let k=0;k<3;k++){min[k]=Math.min(min[k],p.getComponent(k));max[k]=Math.max(max[k],p.getComponent(k));}}
+  return{name:'frame member',mi,obb:{c:c.toArray(),u:u.map(v=>v.toArray()),h},min,max};
 }
-/* where a member held in the claw sits, for a robot frame and arm angle */
-const _cm=new THREE.Matrix4(),_cq=new THREE.Quaternion();
-function clawMatrix(frame,armDeg,out=new THREE.Matrix4()){
-  const st=BOT.st;st.q.armBase=armDeg;st.q.lowerHinge=st.q.upperHinge=0;poseState(st);
+function obstaclesFor(ch){
+  const out=[];
+  model.members.forEach((m,i)=>{if(!sim.visible.has(i)||ch.members.includes(i))return;
+    const bx=memberBox(i,ch);
+    if(bx.min[0]<400&&bx.max[0]>-400&&bx.min[1]<400&&bx.max[1]>-400)out.push(bx);});
+  model.nodes.forEach((n,i)=>{if(!n.support)return;const w=toChain(nodeW(i),ch),r=SG.D*1.5;
+    if(Math.abs(w.x)<500&&Math.abs(w.y)<500)out.push({name:'footing',min:[w.x-r,w.y-r,-5],max:[w.x+r,w.y+r,24]});});
+  return out;
+}
+/* make a chain the robot's world: collisions, the top of the post, the frame it is drawn in */
+function useChain(ch){
+  BOT.chain=ch;BOT.clear.clear();
+  if(!ch){RIG.boxes=[];RIG.postTop=1e6;return;}
+  RIG.boxes=obstaclesFor(ch);RIG.postTop=chainTop(ch);
+}
+const S_MIN=24+62;                                              // lower module above the footing
+const sMax=ch=>chainTop(ch)-H().upTop-4;
+/* is this pose clear of the frame? cached per chain and 1 mm step until something is built */
+function poseClear(s,free=null){
+  const key=`${free||'p'}${Math.round(s)}`;if(BOT.clear.has(key))return BOT.clear.get(key);
+  const sv={s:R.s,q:{...R.q,roll:R.q.roll},anchor:R.anchor,mu:R.mod.upper.state,ml:R.mod.lower.state};
+  R.s=Math.round(s);R.q.clampLower=R.q.clampUpper=0;R.q.lowerHinge=R.q.upperHinge=0;
+  R.mod.upper.state=R.mod.lower.state='attached';R.anchor='lower';
+  if(free==='upper'){R.q.lowerHinge=R.q.upperHinge=RB.detach.up;R.q.clampUpper=1;R.mod.upper.state='detached';}
+  if(free==='lower'){R.q.lowerHinge=R.q.upperHinge=RB.detach.down;R.q.clampLower=1;R.mod.lower.state='detached';R.anchor='upper';}
+  applyArm();poseState(R);
+  const ok=!findCollision();
+  Object.assign(R.q,sv.q);R.s=sv.s;R.anchor=sv.anchor;R.mod.upper.state=sv.mu;R.mod.lower.state=sv.ml;
+  applyArm();poseState(R);
+  BOT.clear.set(key,ok);return ok;
+}
+/* the chain node nearest the place where a drive was blocked */
+function nodeNear(ch,z){let best=null,bd=1e9;for(const h of ch.h)if(Math.abs(h-z)<bd){bd=Math.abs(h-z);best=h;}return best;}
+/* the drive from one height to another, with a full crossing at every junction in the way */
+function planTravel(ch,from,to){
+  const steps=[],hh=H();let s=from,crossings=0;
+  if(Math.abs(to-from)<0.5)return{ok:true,steps,crossings,cost:0};
+  if(!poseClear(to))return{ok:false,why:'the stance collides'};
+  const dir=Math.sign(to-from);
+  for(let guard=0;guard<12;guard++){
+    let blocked=null;
+    for(let t=s+dir*6;dir>0?t<to:t>to;t+=dir*6)if(!poseClear(t)){blocked=t;break;}
+    if(blocked===null){steps.push(D(to,BOT_PWM));
+      return{ok:true,steps,crossings,cost:Math.abs(to-from)/(BOT_PWM/255*VMAX)+crossings*9};}
+    let a=blocked-dir*6,b=blocked;
+    for(let i=0;i<8;i++){const m=(a+b)/2;if(poseClear(m))a=m;else b=m;}
+    const sA=Math.round(a-dir*2);
+    const jh=nodeNear(ch,dir>0?b+hh.upTop+30:b+hh.loBot-30);
+    const near=RIG.boxes.filter(x=>x.max[2]>jh-260&&x.min[2]<jh+260);
+    const w=crossingWindow(near,jh);
+    if(!w)return{ok:false,why:`no crossing window at the joint ${Math.round(jh)} mm up`};
+    const ws=Math.round(w.s),freeA=dir>0?'upper':'lower',freeB=dir>0?'lower':'upper';
+    if(!swingClear(dir>0?'lower':'upper',dir>0?'clampUpper':'clampLower',0,dir>0?RB.detach.up:RB.detach.down,sA))
+      return{ok:false,why:'the module cannot swing clear before the joint'};
+    for(let t=sA;dir>0?t<=ws:t>=ws;t+=dir*6)if(!poseClear(t,freeA))return{ok:false,why:'the open module hits the joint'};
+    let sB=null;
+    for(let t=ws+dir*6;Math.abs(t-ws)<700;t+=dir*6){
+      if(!poseClear(t,freeB))return{ok:false,why:'the open module hits the next joint'};
+      if(poseClear(t)){sB=Math.round(t+dir*3);break;}}
+    if(sB===null||(dir>0?sB>to+500:sB<to-500))return{ok:false,why:'no clear place after the joint'};
+    if(dir>0)steps.push(D(sA,BOT_PWM),C('up_detach'),D(ws,120),C('up_attach'),C('down_detach'),D(sB,120),C('down_attach'));
+    else steps.push(D(sA,BOT_PWM),C('down_detach'),D(ws,120),C('down_attach'),C('up_detach'),D(sB,120),C('up_attach'));
+    if(!swingClear(dir>0?'upper':'lower',dir>0?'clampLower':'clampUpper',dir>0?RB.detach.down:RB.detach.up,0,sB))
+      return{ok:false,why:'the module cannot swing back after the joint'};
+    crossings++;s=sB;
+  }
+  return{ok:false,why:'too many joints'};
+}
+
+/* ---- the concept arm: CAD pitch hinge, plus a slew about the arm base and a wrist at the claw */
+function armIK(t){
+  const Hp=RB.armJoint.point,gx=GRIP.x-Hp[0],vy=GRIP.y-Hp[1],vz=GRIP.z-Hp[2];
+  const Wy=t.y+RB.post.y-Hp[1],A=vy,B=-vz,Rr=Math.hypot(A,B);
+  if(Math.abs(Wy)>Rr*0.999)return null;
+  const base=Math.atan2(B,A),dl=Math.acos(Wy/Rr);
+  const wrap=x=>{x=x/DEG;while(x>180)x-=360;while(x<-180)x+=360;return x;};
+  const phis=[wrap(base+dl),wrap(base-dl)].filter(p=>p>=-60&&p<=85);
+  if(!phis.length)return null;
+  const phi=phis.sort((p,q)=>Math.abs(p-20)-Math.abs(q-20))[0],pr=phi*DEG;
+  const wz=vy*Math.sin(pr)+vz*Math.cos(pr),R2=Math.hypot(gx,wz),al=Math.atan2(gx,wz);
+  const sx=(t.x+RB.post.x-Hp[0])/R2;if(Math.abs(sx)>Math.sin(75*DEG))return null;
+  const psi=(Math.asin(sx)-al)/DEG;
+  const s=t.z-(Hp[2]-gx*Math.sin(psi*DEG)+wz*Math.cos(psi*DEG));
+  return{phi,psi,s};
+}
+/* the claw's frame in the world, for the current robot pose */
+const _claw=new THREE.Matrix4();
+function clawWorld(out=_claw){
   const arm=RB.bodies.find(b=>b.role==='arm');
-  _cm.multiplyMatrices(frame,arm.world);
-  const hold=new THREE.Matrix4().compose(new THREE.Vector3(GRIP.x,GRIP.y,GRIP.z),
-    _cq.setFromAxisAngle(new THREE.Vector3(0,0,1),-Math.PI/2),new THREE.Vector3(1,1,1));
-  return out.multiplyMatrices(_cm,hold);
+  RB.root.updateMatrixWorld(true);
+  return out.multiplyMatrices(arm.obj.matrixWorld,new THREE.Matrix4().makeTranslation(GRIP.x,GRIP.y,GRIP.z));
 }
-function memberMatrix(mi,out=new THREE.Matrix4()){const m=model.members[mi];
-  return barMatrix(model.nodes[m.a],model.nodes[m.b],SG.D,out);}
-function withLength(M,L,D,out=new THREE.Matrix4()){
-  const p=new THREE.Vector3(),q=new THREE.Quaternion(),sc=new THREE.Vector3();M.decompose(p,q,sc);
-  return out.compose(p,q,new THREE.Vector3(D,L,D));}
-function blendM(A,B,u,lift=0,out=new THREE.Matrix4()){
-  const pa=new THREE.Vector3(),qa=new THREE.Quaternion(),sa=new THREE.Vector3(),pb=new THREE.Vector3(),qb=new THREE.Quaternion(),sb=new THREE.Vector3();
-  A.decompose(pa,qa,sa);B.decompose(pb,qb,sb);
-  pa.lerp(pb,u);pa.y+=Math.sin(Math.PI*u)*lift;
-  return out.compose(pa,qa.slerp(qb,u),sa.lerp(sb,u));}
-/* shortest climb from the rail to a node, over members already built */
-function routeTo(target){
-  const md=model,n=md.nodes.length,dist=new Array(n).fill(Infinity),prev=new Array(n).fill(-1),done=new Array(n).fill(false);
-  const adj=Array.from({length:n},()=>[]);
-  md.members.forEach((m,i)=>{if(!sim.visible.has(i))return;
-    const L=nodeW(m.a).distanceTo(nodeW(m.b));adj[m.a].push([m.b,L]);adj[m.b].push([m.a,L]);});
-  md.nodes.forEach((nd,i)=>{if(nd.support&&adj[i].length){dist[i]=Math.abs(nodeW(i).x-BOT.parkX)+400;prev[i]=-2;}});
-  for(;;){let u=-1,best=Infinity;for(let i=0;i<n;i++)if(!done[i]&&dist[i]<best){best=dist[i];u=i;}
-    if(u<0)break;done[u]=true;for(const[v,L]of adj[u])if(dist[u]+L<dist[v]){dist[v]=dist[u]+L;prev[v]=u;}}
-  if(!isFinite(dist[target]))return null;
-  const path=[];for(let v=target;v>=0;v=prev[v])path.unshift(v);
-  return{path,cost:dist[target]};
+function robotFrame(){return BOT.moveFrame||(BOT.chain?BOT.chain.F:BOT.home.F);}
+function syncRoot(){RB.root.matrixAutoUpdate=false;RB.root.matrix.copy(robotFrame());RB.root.matrixWorldNeedsUpdate=true;
+  poseState(R);syncRobotObjects();}
+/* world transform of member mi with no scale, and its grip point in member coordinates */
+function memberRigid(mi){
+  const m=model.members[mi],a=nodeW(m.a),b=nodeW(m.b),d=b.clone().sub(a),L=d.length();
+  return{M:new THREE.Matrix4().compose(a.clone().add(b).multiplyScalar(0.5),new THREE.Quaternion().setFromUnitVectors(V3(0,1,0),d.normalize()),V3(1,1,1)),L,a,b};}
+function heldTransforms(mi,plan){
+  const{M,L}=memberRigid(mi),yg=plan.end==='a'?-L/2+plan.g:L/2-plan.g;
+  const flip=plan.end==='a'?new THREE.Quaternion():new THREE.Quaternion().setFromAxisAngle(V3(0,0,1),Math.PI);
+  return{L,yg,qCarry:flip,M};
 }
-function planTrip(mi){
-  const m=model.members[mi],ra=routeTo(m.a),rb=routeTo(m.b);
-  let r=ra&&rb?(ra.cost<=rb.cost?ra:rb):(ra||rb),T;
-  const legs=[];let cur=railPt(BOT.parkX),curM=BOT.park.clone();
-  const move=(F,A,B)=>{legs.push({type:'move',F,A:A.clone(),B:B.clone(),dur:A.distanceTo(B)/BOT_V});curM=frameAt(F,B);};
-  const xfer=M1=>{legs.push({type:'xfer',M0:curM.clone(),M1:M1.clone(),dur:BOT_XFER});curM=M1.clone();};
-  if(!r){ /* nothing built to climb: work from the rail */
-    const lo=model.nodes[m.a].y<=model.nodes[m.b].y?m.a:m.b;T=nodeW(lo);
-    const x=clamp(T.x-BOT_REACH,BOT.rail.x0+70,BOT.rail.x1-260);move(RAIL_F,cur,railPt(x));
-  }else{
-    const p=r.path;T=nodeW(p[p.length-1]);
-    move(RAIL_F,cur,railPt(nodeW(p[0]).x));cur=railPt(nodeW(p[0]).x);
-    if(p.length===1){ /* the target is a support: reach it from the rail */
-      const x=clamp(T.x-BOT_REACH,BOT.rail.x0+70,BOT.rail.x1-260);legs.pop();curM=BOT.park.clone();move(RAIL_F,railPt(BOT.parkX),railPt(x));
+/* member pose while held: claw frame times wrist rotation, grip point on the claw */
+function heldMatrix(held,q,out=new THREE.Matrix4()){
+  const t=V3(0,-held.yg,0).applyQuaternion(q);
+  const rel=new THREE.Matrix4().compose(t,q,V3(1,1,1));
+  return out.multiplyMatrices(clawWorld(new THREE.Matrix4()),rel);
+}
+/* oriented box of the held member, in chain coordinates, for collision checks */
+function heldBox(held,q,ch,shrink=SG.D*0.6){
+  const W=heldMatrix(held,q),inv=new THREE.Matrix4().copy(ch?ch.F:robotFrame()).invert(),C=inv.multiply(W);
+  const c=V3(0,0,0).applyMatrix4(C),u=[V3(1,0,0),V3(0,1,0),V3(0,0,1)].map(v=>v.transformDirection(C).toArray());
+  const h=[SG.D/2-1,Math.max(2,held.L/2-shrink),SG.D/2-1],min=[],max=[];
+  for(let k=0;k<3;k++){const e=Math.abs(u[0][k])*h[0]+Math.abs(u[1][k])*h[1]+Math.abs(u[2][k])*h[2];
+    min.push(c.getComponent(k)-e);max.push(c.getComponent(k)+e);}
+  return{obb:{c:c.toArray(),u,h},min,max};
+}
+function obbOverlap(A,B){
+  const a=A.obb,b=B.obb,T=[0,1,2].map(k=>b.c[k]-a.c[k]),axes=[...a.u,...b.u];
+  for(const u of a.u)for(const v of b.u){const c=[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]];
+    const l=Math.hypot(...c);if(l>1e-6)axes.push(c.map(x=>x/l));}
+  for(const ax of axes){const pr=o=>o.u.reduce((s,u,k)=>s+Math.abs(u[0]*ax[0]+u[1]*ax[1]+u[2]*ax[2])*o.h[k],0);
+    if(Math.abs(T[0]*ax[0]+T[1]*ax[1]+T[2]*ax[2])>pr(a)+pr(b))return false;}
+  return true;
+}
+/* does the held member touch the frame or the robot (claw and arm excepted, they hold it)? */
+function heldClear(held,q){
+  const bx=heldBox(held,q,BOT.chain,SG.D*0.9);
+  for(const o of RIG.boxes){if(o.mi===held.mi)continue;if(obbOverlap(bx,o.obb?o:{obb:obbFromAabb(o)}))return false;}
+  if(BOT.chain)for(const ci of BOT.chain.members)if(sim.visible.has(ci)&&obbOverlap(bx,memberBox(ci,BOT.chain)))return false;
+  for(const g of['lower','upper','link'])for(const b of RB.group[g])if(bodyHitsBox(b,bx))return false;
+  return true;
+}
+/* try a pose: set arm, slew and stance, run fn, put everything back */
+function withPose(s,phi,psi,fn){
+  const sv={s:R.s,a:R.armCmd,p:R.q.slew||0,q:{...R.q,roll:R.q.roll}};
+  R.s=s;R.armCmd=phi;R.q.slew=psi;R.q.lowerHinge=R.q.upperHinge=0;applyArm();syncRoot();
+  const r=fn();
+  R.s=sv.s;R.armCmd=sv.a;Object.assign(R.q,sv.q);R.q.slew=sv.p;applyArm();syncRoot();
+  return r;
+}
+/* every way the robot could place member mi from this chain, best first. The claw first reaches a
+   point straight in front of the grip point with the member clear of the frame, then pushes straight in. */
+const HAND_REACH=2300,INSERT_T=1.0;                           // a person on a stepladder
+function lowestClear(ch){for(let t=S_MIN;t<=sMax(ch);t+=6)if(poseClear(t))return Math.round(t);return null;}
+function placementsFrom(ch,mi,startS,mounting){
+  const out=[],m=model.members[mi],{L}=memberRigid(mi);out.why=new Set();
+  if(chainTop(ch)<=0)return out;
+  const prevChain=BOT.chain;useChain(ch);
+  for(const end of['a','b'])for(const g of BOT_GRIPS){
+    if(g>L/2)continue;
+    const E=nodeW(end==='a'?m.a:m.b),O=nodeW(end==='a'?m.b:m.a),P=E.clone().add(O.clone().sub(E).normalize().multiplyScalar(g));
+    const t=toChain(P,ch);if(Math.abs(t.y)>1)continue;
+    const y0=g+36,ikF=armIK(t);if(!ikF)continue;
+    let plan=null;
+    for(const fixed of[true,false]){
+      /* fixed: the robot stays put and the arm alone brings the member in; otherwise it also drives */
+      const path=[];for(let k=0;k<=6;k++){const ik=armIK({x:t.x,y:lerp(y0,0,k/6),z:t.z});if(!ik)break;if(fixed)ik.s=ikF.s;path.push(ik);}
+      if(path.length<7||path.some(p=>p.s<S_MIN||p.s>sMax(ch))||!poseClear(path[0].s))continue;
+      const cand={chain:ch,mi,end,g,tx:t.x,tz:t.z,y0,fixed,phi0:path[0].phi,psi0:path[0].psi,s0:path[0].s,phi:ikF.phi,psi:ikF.psi,s:ikF.s};
+      const held={...heldTransforms(mi,cand),mi};
+      const hitsFrame=()=>RIG.boxes.some(o=>groupHit('arm',o)||groupHit('upper',o)||groupHit('lower',o)||groupHit('link',o));
+      const ok=withPose(cand.s0,BOT_CARRY,0,()=>{
+        for(let k=1;k<=10;k++){const u=k/10;R.armCmd=lerp(BOT_CARRY,cand.phi0,u);R.q.slew=lerp(0,cand.psi0,u);applyArm();syncRoot();
+          if(RIG.boxes.some(o=>groupHit('arm',o))||!heldClear(held,held.qCarry))return false;}
+        for(const p of path){R.s=p.s;R.armCmd=p.phi;R.q.slew=p.psi;applyArm();syncRoot();
+          if(hitsFrame()||!heldClear(held,held.qCarry))return false;}
+        const qf=finalWristQ(held);
+        for(let k=1;k<=8;k++){const q=held.qCarry.clone().slerp(qf,k/8);if(k<7&&!heldClear(held,q))return false;}
+        return true;});
+      if(ok){plan=cand;break;}
     }
-    for(let i=0;i+1<p.length;i++){
-      const a=nodeW(p[i]),b=nodeW(p[i+1]),dir=b.clone().sub(a),len=dir.length();dir.normalize();
-      const F=memberFrame(dir),A=a.clone().addScaledVector(dir,i===0&&model.nodes[p[i]].support?Math.min(120,len*0.3):0);
-      let B=b.clone();
-      if(i+2===p.length){const want=T.clone().addScaledVector(F.Z,-BOT_REACH);
-        const t=clamp(want.clone().sub(a).dot(dir)/len,A.distanceTo(a)/len,1);B=a.clone().addScaledVector(dir,t*len);}
-      xfer(frameAt(F,A));move(F,A,B);
+    if(!plan){out.why.add('the arm cannot bring it in without hitting the frame');continue;}
+    const held={...heldTransforms(mi,plan),mi},ok=true;
+    if(!ok)continue;
+    let pickS=startS,travel;
+    if(mounting){
+      pickS=plan.s0<=HAND_REACH?plan.s0:lowestClear(ch);
+      if(pickS===null){out.why.add('there is no clear place on the post to mount the robot');continue;}
+      travel=planTravel(ch,pickS,plan.s0);
+    }else travel=planTravel(ch,startS,plan.s0);
+    if(!travel.ok){out.why.add(travel.why);continue;}
+    if(!pickClear(held,pickS)){out.why.add('the hoist cannot hand it over there');continue;}
+    out.push({...plan,pickS,travel,cost:travel.cost+Math.abs(plan.psi)/40});
+  }
+  useChain(prevChain);
+  return out.sort((a,b)=>a.cost-b.cost);
+}
+/* the wrist rotation that lays the held member exactly on its final pose */
+function finalWristQ(held){
+  const cw=clawWorld(new THREE.Matrix4()).invert().multiply(held.M);
+  const p=V3(),q=new THREE.Quaternion(),sc=V3();cw.decompose(p,q,sc);return q;
+}
+/* check the pick: the member rising on the hoist into the claw, then the slew back to carry */
+function pickClear(held,s){
+  return withPose(s,BOT_CARRY,BOT_PICK_PSI,()=>{
+    for(let k=0;k<=10;k++){const u=k/10;R.q.slew=lerp(BOT_PICK_PSI,0,u);applyArm();syncRoot();
+      if(!heldClear(held,held.qCarry))return false;}
+    return true;});
+}
+
+/* ---- scene props: hoist, crane, stand, concept markers */
+const conceptMat=CONCEPT_MAT,steel=STEEL_PLATE;
+function buildBotScene(){
+  disposeTree(BOT.group);BOT.group.clear();clearLabels('build-bot');
+  BOT.chains=findChains();BOT.held=null;BOT.moveFrame=null;BOT.chain=null;
+  if(!model.nodes.length)return;
+  let x0=1e9,z0=1e9;model.nodes.forEach((n,i)=>{const w=nodeW(i);x0=Math.min(x0,w.x);z0=Math.min(z0,w.z);});
+  const origin=V3(x0-600,0,z0-120);
+  BOT.home={origin,F:frameAt(origin)};
+  const stand=timber(470,'y',V3(origin.x,235,origin.z),51);BOT.group.add(stand,plate(180,24,180,V3(origin.x,12,origin.z),CONCRETE));
+  addLabel('ROBOT STAND','',()=>V3(origin.x,520,origin.z),'build-bot');
+  /* hoist: a mast and a cradle that carries the member */
+  const hz=new THREE.Group();
+  const mast=new THREE.Mesh(new THREE.BoxGeometry(40,1,40),steel);mast.castShadow=true;
+  const cradle=new THREE.Group();
+  const fork=new THREE.Mesh(new THREE.BoxGeometry(SG.D*1.4,8,SG.D*1.2),conceptMat);fork.castShadow=true;
+  cradle.add(fork);hz.add(mast,cradle);BOT.group.add(hz);
+  BOT.hoist={group:hz,mast,cradle,fork,y:0,visible:false};hz.visible=false;
+  addLabel('CONCEPT hoist','acc',()=>BOT.hoist.visible?BOT.hoist.cradle.position.clone().add(V3(0,70,0)):null,'build-bot');
+  /* crane hook for members placed by hand */
+  const cg=new THREE.Group(),hook=new THREE.Mesh(new THREE.BoxGeometry(24,40,24),steel);
+  const cable=new THREE.Line(new THREE.BufferGeometry().setFromPoints([V3(),V3(0,1,0)]),new THREE.LineBasicMaterial({color:0x222222}));
+  cg.add(hook,cable);cg.visible=false;BOT.group.add(cg);BOT.crane={group:cg,hook,cable};
+  addLabel('placed by hand','',()=>BOT.crane.group.visible?BOT.crane.hook.position.clone().add(V3(0,60,0)):null,'build-bot');
+  addLabel('MOVED BY HAND','acc',()=>BOT.moveFrame?V3(0,0,0).applyMatrix4(BOT.moveFrame).add(V3(0,R.s+560,-120)):null,'build-bot');
+  /* the held member */
+  BOT.heldMesh=new THREE.Mesh(unitGeo(),carryMat);BOT.heldMesh.matrixAutoUpdate=false;BOT.heldMesh.castShadow=true;BOT.heldMesh.visible=false;
+  carryMat.color.setRGB(mat.rgb[0]/255,mat.rgb[1]/255,mat.rgb[2]/255,THREE.SRGBColorSpace);
+  BOT.group.add(BOT.heldMesh);
+  addConceptMarkers();
+}
+const carryMat=new THREE.MeshStandardMaterial({roughness:0.78,metalness:0});
+function addConceptMarkers(){
+  if(!RB.ready||RB.markers)return;
+  const link=RB.bodies.find(b=>b.role==='clink'),arm=RB.bodies.find(b=>b.role==='arm'),Hp=RB.armJoint.point;
+  const ring=new THREE.Mesh(new THREE.CylinderGeometry(24,24,8,32),CONCEPT_MAT);
+  ring.position.set(Hp[0],Hp[1]+40,Hp[2]);link.obj.add(ring);
+  const wrist=new THREE.Mesh(new THREE.BoxGeometry(22,22,22),CONCEPT_MAT);
+  wrist.position.set(GRIP.x,GRIP.y+14,GRIP.z+22);arm.obj.add(wrist);
+  RB.markers=[ring,wrist];RB.markers.forEach(m=>m.visible=false);
+}
+function botRelease(){
+  RB.root.matrixAutoUpdate=true;RB.root.position.set(0,0,0);RB.root.rotation.set(-Math.PI/2,0,0);RB.root.updateMatrix();
+  RB.root.visible=true;if(RB.markers)RB.markers.forEach(m=>m.visible=false);R.q.slew=0;
+}
+function botFocus(){return V3(0,0,0).applyMatrix4(robotFrame()).add(V3(0,R.s+200,0));}
+
+/* ---- custom script steps */
+const Timed=(dur,fn,done)=>({start(){this.t=0;fn(0);return true;},update(){this.t=Math.min(dur,this.t+DT.last);fn(this.t/dur);
+  if(this.t>=dur){done&&done();return true;}return false;}});
+const DT={last:0};
+const ArmTo=(phi,psi)=>({start(){R.armTarget=phi;R.slewTarget=psi;return true;},
+  update:()=>Math.abs(R.armTarget-R.armCmd)<1e-3&&Math.abs((R.slewTarget||0)-(R.q.slew||0))<1e-3});
+const Say=t=>Do(()=>{BOT.phase=t;setStatus('warn',`member ${sim.k+1} of ${sim.order.length}, ${t}`);});
+function hoistSteps(mi,plan){
+  const held={...heldTransforms(mi,plan),mi};let top=null,bottom=null;
+  const place=u=>{const M=top.clone();M.elements[13]=lerp(bottom,top.elements[13],u);
+    BOT.held={...held,world:M};hoistAt(M,held);};
+  return[Say('the hoist brings the next member'),ArmTo(BOT_CARRY,BOT_PICK_PSI),Grip(GRIP.open),
+    Do(()=>{top=heldMatrix(held,held.qCarry);bottom=SG.D;BOT.hoist.visible=true;BOT.hoist.group.visible=true;}),
+    Timed(1.8,u=>place(ease(u))),
+    Grip(GRIP.hold),Do(()=>{BOT.held={...held,q:held.qCarry.clone()};}),
+    Timed(1.2,u=>{const M=top.clone();M.elements[13]-=ease(u)*(top.elements[13]-bottom);hoistAt(M,held,true);}),
+    Do(()=>{BOT.hoist.visible=false;BOT.hoist.group.visible=false;}),
+    ArmTo(BOT_CARRY,0)];
+}
+/* draw the hoist so its cradle sits under the far half of the member */
+function hoistAt(M,held,empty){
+  const c=V3(0,0,0).applyMatrix4(M),dir=V3(0,1,0).transformDirection(M);
+  const far=c.clone().addScaledVector(dir,held.L/2*0.55),hz=BOT.hoist;
+  hz.cradle.position.set(far.x,far.y-SG.D/2-4,far.z);
+  hz.mast.scale.set(1,Math.max(1,far.y+60),1);hz.mast.position.set(far.x+SG.D*1.2,(far.y+60)/2,far.z);
+  if(!empty)BOT.held={...held,world:M};
+}
+const Insert=(plan,outward)=>Timed(INSERT_T,u=>{
+  const y=outward?lerp(0,plan.y0,ease(u)):lerp(plan.y0,0,ease(u)),ik=armIK({x:plan.tx,y,z:plan.tz});
+  if(!ik)return;if(plan.fixed)ik.s=plan.s;const ds=ik.s-R.s;R.s=ik.s;R.q.roll.lower+=ds/(WHEEL_D/2)/DEG;R.q.roll.upper=R.q.roll.lower;
+  R.armCmd=R.armTarget=ik.phi;R.q.slew=R.slewTarget=ik.psi;applyArm();});
+function placeSteps(mi,plan){
+  let qf=null,q0=null;
+  return[Say('climbing to its joint'),...plan.travel.steps,
+    Say('bringing the member in front of its place'),ArmTo(plan.phi0,plan.psi0),
+    Say('pushing it straight in'),Insert(plan,false),
+    Do(()=>{qf=finalWristQ(BOT.held);q0=BOT.held.q.clone();}),
+    Say('turning the wrist to lay it in place'),Timed(WRIST_T,u=>{BOT.held.q=q0.clone().slerp(qf,ease(u));}),
+    Grip(GRIP.open),Do(()=>commit(mi,'robot')),Insert(plan,true),ArmTo(BOT_CARRY,0),Grip(GRIP.closed)];
+}
+function commit(mi,by){
+  sim.visible.add(mi);BOT.held=null;BOT.stats[by]++;
+  if(BOT.chain){RIG.boxes=obstaclesFor(BOT.chain);RIG.postTop=chainTop(BOT.chain);}BOT.clear.clear();
+  const st=state.steps[sim.k];$('step').value=sim.k;
+  log(by==='robot'?'ok':'info',`member ${sim.k+1} of ${sim.order.length} ${by==='robot'?'placed by the robot':'placed by hand, '+(BOT.handWhy||'')}`);
+  if(st&&st.issues.length)log(st.worst==='bad'?'bad':'warn',st.issues[0].t);
+}
+function craneSteps(mi){
+  let M=null,L=0;
+  return[Say('placed by hand, the robot cannot reach it'),
+    Do(()=>{const r=memberRigid(mi);M=r.M;L=r.L;BOT.crane.group.visible=true;}),
+    Timed(2.2,u=>{const drop=(1-ease(u))*700,W=M.clone();W.elements[13]+=drop;
+      BOT.held={L,yg:0,world:W,mi,crane:true};
+      const c=V3(0,0,0).applyMatrix4(W);BOT.crane.hook.position.set(c.x,c.y+SG.D/2+20,c.z);
+      BOT.crane.cable.geometry.setFromPoints([V3(c.x,c.y+SG.D/2+40,c.z),V3(c.x,c.y+2200,c.z)]);}),
+    Do(()=>{BOT.crane.group.visible=false;commit(mi,'hand');})];
+}
+/* a person takes the robot off one post and clamps it onto another at a height they can reach */
+function handMoveSteps(fromF,toCh,sFrom,sTo){
+  let A=null,Bm=null;
+  return[Say('moved to another post by hand'),
+    Do(()=>{A=fromF.clone();Bm=toCh.F.clone();R.mod.upper.state=R.mod.lower.state='detached';}),
+    Timed(0.5,u=>{R.q.clampUpper=R.q.clampLower=u;}),
+    Timed(3.2,u=>{
+      const pa=V3().setFromMatrixPosition(A),pb=V3().setFromMatrixPosition(Bm),out=-220;
+      const k1=clamp(u/0.22,0,1),k2=clamp((u-0.22)/0.56,0,1),k3=clamp((u-0.78)/0.22,0,1);
+      const p=pa.clone().lerp(pb,ease(k2));p.z+=out*(ease(k1)-ease(k3));
+      p.y+=lerp(sFrom,sTo,ease(k2))-sFrom;
+      BOT.moveFrame=frameAt(p);}),
+    Do(()=>{BOT.moveFrame=null;useChain(toCh);R.s=sTo;}),
+    Timed(0.5,u=>{R.q.clampUpper=R.q.clampLower=1-u;}),
+    Do(()=>{R.mod.upper.state=R.mod.lower.state='attached';R.q.clampUpper=R.q.clampLower=0;})];
+}
+/* ---- the director: plans one member at a time from the robot's actual state */
+function planNext(){
+  if(sim.k>=sim.order.length){
+    const back=BOT.chain?planTravel(BOT.chain,R.s,Math.min(R.s,lowestClearCur()??R.s)):{ok:true,steps:[]};
+    if(back.ok&&back.steps.length)SCRIPT.steps.push(Say('climbing back down'),...back.steps);
+    return;}
+  const mi=sim.order[sim.k];
+  let best=null,leave=null;const why=new Set();
+  if(RB.ready){
+    const here=BOT.chain?placementsFrom(BOT.chain,mi,R.s,false):[];if(here.why)here.why.forEach(w=>why.add(w));
+    if(here.length)best={...here[0],move:false};
+    else{
+      /* to change post, a person must be able to reach the robot */
+      let offS=R.s;
+      if(BOT.chain&&R.s>HAND_REACH){const low=lowestClearCur();const d=low!==null?planTravel(BOT.chain,R.s,low):null;
+        if(d&&d.ok){leave=d;offS=low;}else offS=null;}
+      if(offS!==null)for(const ch of BOT.chains){if(ch===BOT.chain)continue;
+        const c=placementsFrom(ch,mi,0,true);c.why&&c.why.forEach(w=>why.add(w));if(!c.length)continue;
+        const cost=c[0].cost+15;if(!best||cost<best.cost)best={...c[0],cost,move:true,offS};}
     }
   }
-  return{legs,stance:curM.clone()};
+  const steps=[];
+  if(best){
+    if(best.move){
+      if(leave)steps.push(Say('climbing down to change post'),...leave.steps);
+      steps.push(...handMoveSteps(BOT.chain?BOT.chain.F:BOT.home.F,best.chain,BOT.chain?best.offS:180,best.pickS));
+    }
+    steps.push(...hoistSteps(mi,best),...placeSteps(mi,best));
+  }else{
+    const reason=!RB.ready?'the robot model is not loaded':why.size?[...why][0]:'no post of the frame is within reach of it';
+    steps.push(Do(()=>{BOT.handWhy=reason;}),...craneSteps(mi));}
+  steps.push(Do(()=>{sim.k++;planNext();}));
+  SCRIPT.steps.push(...steps);
 }
-function reverseLegs(legs){return legs.slice().reverse().map(L=>L.type==='move'?{...L,A:L.B,B:L.A}:{...L,M0:L.M1,M1:L.M0});}
+function lowestClearCur(){return BOT.chain?lowestClear(BOT.chain):null;}
 function botStart(){
-  BOT.noted||log('info','The robot changes member at joints in this animation. The CAD robot has no yaw joint, so that step is CONCEPT, like the rail.');
-  BOT.noted=true;
-  Object.assign(BOT,{phase:'load',t:0,legs:[],leg:0,mi:sim.order[0]});
+  if(!BOT.noted)log('info','The robot builds from the posts. The hoist, the arm slew and wrist, moves between posts and the crane are CONCEPT.');
+  BOT.noted=true;BOT.stats={robot:0,hand:0};
+  buildBotScene();useChain(null);R.s=180;resetRobotBuild();
+  if(RB.markers)RB.markers.forEach(m=>m.visible=true);
+  Object.assign(SCRIPT,{name:'Build',steps:[],i:0,cur:null,t:0,expectLatch:false,done:()=>{sim.mode='idle';
+    setStatus('ok',`built: ${BOT.stats.robot} members by the robot, ${BOT.stats.hand} by hand`);syncTransport();}});
+  planNext();
+}
+function resetRobotBuild(){
+  Object.assign(R,freshState(180));R.q.slew=0;R.slewTarget=0;R.armCmd=R.armTarget=BOT_CARRY;
+  GAIT.q.length=0;GAIT.cur=null;applyArm();syncRoot();
 }
 function botTick(dt){
-  let rem=dt;
-  for(let guard=0;guard<40&&rem>1e-9&&sim.mode==='building';guard++){
-    if(BOT.phase==='legs'){
-      const L=BOT.legs[BOT.leg];
-      if(!L){BOT.phase=BOT.after;BOT.t=0;continue;}
-      const h=Math.min(rem,Math.max(0,L.dur-BOT.t));BOT.t+=h;rem-=h;
-      if(L.type==='move'){BOT.st.q.roll.lower+=h*BOT_V/(WHEEL_D/2)/DEG;BOT.st.q.roll.upper=BOT.st.q.roll.lower;}
-      if(BOT.t>=L.dur-1e-9){BOT.leg++;BOT.t=0;}
-      continue;}
-    if(BOT.phase==='load'||BOT.phase==='place'){
-      const dur=BOT.phase==='load'?BOT_LOAD:BOT_PLACE,h=Math.min(rem,dur-BOT.t);BOT.t+=h;rem-=h;
-      if(BOT.t<dur-1e-9)break;
-      if(BOT.phase==='load'){
-        const trip=planTrip(BOT.mi);BOT.go=trip.legs;BOT.stance=trip.stance;
-        Object.assign(BOT,{phase:'legs',legs:trip.legs,leg:0,t:0,after:'place'});
-        botStatus('climbing to its joint');
-      }else{
-        sim.visible.add(BOT.mi);const st=state.steps[sim.k];$('step').value=sim.k;
-        if(st)setStatus(st.worst,`member ${sim.k+1} of ${sim.order.length} placed`+(st.issues.length?', '+st.issues[0].t:''));
-        sim.k++;
-        const last=sim.k>=sim.order.length;
-        Object.assign(BOT,{phase:'legs',legs:reverseLegs(BOT.go),leg:0,t:0,after:last?'done':'load'});
-        if(!last)BOT.mi=sim.order[sim.k];
-      }
-      continue;}
-    if(BOT.phase==='done'){sim.mode='idle';BOT.phase='park';setStatus('ok',`built, ${sim.order.length} members`);syncTransport();break;}
-    break;
-  }
+  DT.last=dt;robotStep(dt);
+  const ds=(R.slewTarget||0)-(R.q.slew||0);
+  if(Math.abs(ds)>1e-6)R.q.slew=(R.q.slew||0)+Math.sign(ds)*Math.min(Math.abs(ds),SLEW_RATE*dt);
+  if(SCRIPT.name===null&&sim.mode==='building'){sim.mode='idle';setStatus('bad','build stopped: '+(BOT.phase||'a command was refused'));syncTransport();}
 }
-function botStatus(what){if(sim.k<sim.order.length)setStatus('warn',`member ${sim.k+1} of ${sim.order.length}, ${what}`);}
 function syncBot(){
-  const show=RB.ready&&MODE==='build'&&sim.mode!=='collapsing'&&!!BOT.rail;
-  BOT.group.visible=!!BOT.rail&&MODE==='build';RB.root.visible=show;
-  if(!show){if(BOT.carry)BOT.carry.visible=false;return;}
-  const q=BOT.st.q;let arm=BOT_CARRY,frame=BOT.park,carry=null;
-  q.clampUpper=q.clampLower=0;q.grip=GRIP.closed;
-  const ph=sim.mode==='building'?BOT.phase:'park',u=BOT.t;
-  const L=member=>{const m=model.members[member],a=model.nodes[m.a],b=model.nodes[m.b];return Math.hypot(b.x-a.x,b.y-a.y,b.z-a.z);};
-  if(ph==='legs'){const Lg=BOT.legs[BOT.leg];
-    if(Lg){const v=Lg.dur>0?clamp(BOT.t/Lg.dur,0,1):1;
-      if(Lg.type==='move')frame=frameAt(Lg.F,Lg.A.clone().lerp(Lg.B,v));
-      else{frame=blendM(Lg.M0,Lg.M1,ease(v));q.clampUpper=0.8*Math.sin(Math.PI*v);}}
-    else frame=BOT.after==='place'?BOT.stance:BOT.park;
-    if(BOT.after==='place'){q.grip=GRIP.hold;carry=withLength(clawMatrix(frame,arm),L(BOT.mi),SG.D);}}
-  if(ph==='load'){const v=u/BOT_LOAD;arm=BOT_CARRY+32*Math.sin(Math.PI*clamp(v/0.9,0,1));
-    q.grip=v<0.45?GRIP.open:GRIP.hold;
-    const pile=withLength(BOT.pile[Math.min(3,Math.max(0,sim.order.length-sim.k-1))].matrixWorld,L(BOT.mi),SG.D);
-    const c=withLength(clawMatrix(frame,arm),L(BOT.mi),SG.D);
-    carry=blendM(pile,c,ease(clamp((v-0.25)/0.55,0,1)),160);}
-  if(ph==='place'){frame=BOT.stance;const v=u/BOT_PLACE;
-    arm=v<0.55?lerp(BOT_CARRY,28,ease(v/0.55)):v<0.8?28:lerp(28,BOT_CARRY,ease((v-0.8)/0.2));
-    q.grip=v<0.78?GRIP.hold:GRIP.open;
-    if(v<0.8){const c=withLength(clawMatrix(frame,arm),L(BOT.mi),SG.D);
-      carry=blendM(c,memberMatrix(BOT.mi),ease(clamp((v-0.2)/0.58,0,1)),60);}
-    if(v<0.02)botStatus('placing it');}
-  const left=sim.mode==='building'?sim.order.length-sim.k-(ph==='load'&&u/BOT_LOAD>0.25?1:0)-(ph==='legs'&&BOT.after==='place'||ph==='place'?1:0):4;
-  BOT.pile.forEach((m,k)=>m.visible=k<Math.min(4,left));
-  q.armBase=arm;poseState(BOT.st);syncRobotObjects();
-  RB.root.matrixAutoUpdate=false;RB.root.matrix.copy(frame);RB.root.matrixWorldNeedsUpdate=true;
-  BOT.frame.copy(frame);
-  if(carry){BOT.carry.matrix.copy(carry);BOT.carry.matrixWorldNeedsUpdate=true;BOT.carry.visible=true;}
-  else BOT.carry.visible=false;
+  const show=RB.ready&&MODE==='build'&&sim.mode!=='collapsing'&&!!BOT.home;
+  BOT.group.visible=MODE==='build'&&!!BOT.home&&!UI.hidden.has('props');RB.root.visible=show&&!UI.hidden.has('robot');
+  if(!show){if(BOT.heldMesh)BOT.heldMesh.visible=false;return;}
+  if(RB.markers)RB.markers.forEach(m=>m.visible=true);
+  syncRoot();
+  const h=BOT.held;
+  if(h){const W=h.world&&(!h.q)?h.world:heldMatrix(h,h.q||h.qCarry);
+    BOT.heldMesh.matrix.copy(W).multiply(new THREE.Matrix4().makeScale(SG.D,h.L,SG.D));
+    BOT.heldMesh.matrixWorldNeedsUpdate=true;BOT.heldMesh.visible=true;}
+  else BOT.heldMesh.visible=false;
 }
-function botRelease(){RB.root.matrixAutoUpdate=true;RB.root.position.set(0,0,0);RB.root.rotation.set(-Math.PI/2,0,0);
-  RB.root.updateMatrix();RB.root.visible=true;}
-function botFocus(){const p=new THREE.Vector3().setFromMatrixPosition(BOT.frame);
-  return p.addScaledVector(new THREE.Vector3().setFromMatrixColumn(BOT.frame,2),200);}
 
 function setMat(w){mat=MATS[w];
   $('mPine').setAttribute('aria-pressed',String(w==='pine'));$('mBamboo').setAttribute('aria-pressed',String(w==='bamboo'));
@@ -2653,6 +3132,235 @@ function driveUI(force){
 $('courseReset').onclick=()=>{courseReset();canvas.focus();};
 $('dPwm').oninput=()=>{$('dPwmV').textContent=$('dPwm').value;};
 
+
+/* ======================================================================= UI: a Blender-style shell */
+const ICON={
+  scene:'<path d="M3 13h10M8 3l5 10H3z"/>',
+  demo:'<path d="M5 3l8 5-8 5z" fill="currentColor" stroke="none"/>',
+  teleop:'<rect x="1.5" y="5" width="13" height="7" rx="3.5"/><path d="M5 7v3M3.5 8.5h3M11 7.5h.01M12.5 9h.01"/>',
+  course:'<path d="M4 14V2M4 3h8l-2 3 2 3H4"/>',
+  keys:'<rect x="1.5" y="4" width="13" height="8" rx="1.5"/><path d="M4 7h1M7 7h1M10 7h1M5 9.5h6"/>',
+  cmd:'<rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><path d="M4 6l2 2-2 2M8 10h4"/>',
+  tele:'<path d="M1 9h3l2-5 3 9 2-6 1 2h3"/>',
+  frame:'<path d="M2 14V2h12v12zM2 14L14 2M2 8h12"/>',
+  dims:'<path d="M2 11l9-9 3 3-9 9zM5 8l1.5 1.5M7 6l1.5 1.5M9 4l1.5 1.5"/>',
+  struct:'<path d="M2 14h12M4 12V8M8 12V4M12 12V6"/>',
+  order:'<path d="M5 4h9M5 8h9M5 12h9M2 4h.5M2 8h.5M2 12h.5"/>',
+  case:'<rect x="3" y="2.5" width="10" height="12" rx="1.5"/><path d="M6 8l1.5 1.5L10.5 6"/>',
+  object:'<path d="M8 1.5l6 3.2v6.6L8 14.5 2 11.3V4.7zM2 4.7l6 3.3 6-3.3M8 8v6.5"/>',
+  coll:'<rect x="2.5" y="3.5" width="11" height="9" rx="1"/><path d="M2.5 6h11"/>',
+  mesh:'<path d="M8 2l6 11H2z"/>',
+  eye:'<path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/>',
+  scn:'<circle cx="8" cy="8" r="5.5"/><path d="M2.5 8h11M8 2.5v11"/>',
+};
+const svg=(k,extra='')=>`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" ${extra}>${ICON[k]||''}</svg>`;
+const TABS=[
+  {id:'scene',label:'Rig',icon:'scene'},{id:'demo',label:'Demonstrations',icon:'demo'},
+  {id:'teleop',label:'Teleop and joints',icon:'teleop'},{id:'course',label:'Practice course',icon:'course'},
+  {id:'keys',label:'Controls',icon:'keys'},{id:'cmd',label:'Commands',icon:'cmd'},{id:'tele',label:'Telemetry',icon:'tele'},
+  {id:'frame',label:'Frame',icon:'frame'},{id:'dims',label:'Dimensions',icon:'dims'},{id:'struct',label:'Structure',icon:'struct'},
+  {id:'order',label:'Build order and cut list',icon:'order'},{id:'case',label:'Case',icon:'case'},{id:'object',label:'Selected object',icon:'object'}];
+const TAB_SEL={robot:'demo',drive:'course',build:'frame',checks:'case'};
+const UI={sliders:[],events:[],fps:60,fpsT:0,fpsN:0,uiT:0,shade:'material',xray:false,sel:null,hidden:new Set()};
+function tabsForMode(){
+  return TABS.filter(t=>[...document.querySelectorAll('#pcontent .sec')].some(s=>s.dataset.tab===t.id&&s.dataset.for.split(' ').includes(MODE)));}
+function renderTabs(){
+  const tabs=tabsForMode();if(!tabs.some(t=>t.id===TAB_SEL[MODE]))TAB_SEL[MODE]=tabs[0]?.id;
+  $('ptabs').innerHTML=tabs.map(t=>`<button data-ptab="${t.id}" title="${t.label}" aria-selected="${t.id===TAB_SEL[MODE]}">${svg(t.icon)}</button>`).join('');
+  $('ptabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{TAB_SEL[MODE]=b.dataset.ptab;renderTabs();});
+  const cur=TABS.find(t=>t.id===TAB_SEL[MODE]);
+  $('ptitle').innerHTML=cur?`${svg(cur.icon)}${cur.label}`:'';
+  document.querySelectorAll('#pcontent .sec').forEach(s=>s.classList.toggle('hide-tab',s.dataset.tab!==TAB_SEL[MODE]));
+}
+document.querySelectorAll('#pcontent .sh').forEach(h=>h.addEventListener('click',e=>{
+  if(e.target.closest('button,input,select'))return;h.parentElement.classList.toggle('closed');}));
+
+/* number sliders drawn like Blender: label and value inside a dark field with a blue fill */
+function blenderSliders(){
+  document.querySelectorAll('.ctl').forEach(ctl=>{
+    const inp=ctl.querySelector('input[type=range]'),lab=ctl.querySelector(':scope>label');if(!inp||!lab)return;
+    const b=lab.querySelector('b'),text=lab.childNodes[0].textContent.trim();
+    const box=document.createElement('div');box.className='bnum';
+    box.innerHTML='<div class="fill"></div><span class="nl"></span><span class="val"></span>';
+    box.querySelector('.nl').textContent=text;if(b)box.querySelector('.val').appendChild(b);
+    ctl.insertBefore(box,lab);lab.remove();box.appendChild(inp);inp.setAttribute('aria-label',text);
+    const fill=box.querySelector('.fill'),upd=()=>{fill.style.width=clamp((inp.value-inp.min)/(inp.max-inp.min),0,1)*100+'%';};
+    inp.addEventListener('input',upd);upd();UI.sliders.push(upd);});
+}
+
+/* menus */
+document.querySelectorAll('.menu>button').forEach(b=>b.addEventListener('click',e=>{
+  const m=b.parentElement,open=m.classList.contains('open');
+  document.querySelectorAll('.menu.open').forEach(x=>x.classList.remove('open'));if(!open)m.classList.add('open');e.stopPropagation();}));
+document.addEventListener('click',e=>{if(!e.target.closest('.overlays'))document.querySelectorAll('.menu.open').forEach(x=>x.classList.remove('open'));});
+document.querySelectorAll('.mdrop button').forEach(b=>b.addEventListener('click',()=>document.querySelectorAll('.menu.open').forEach(x=>x.classList.remove('open'))));
+$('mShare').onclick=()=>$('shareBtn').click();
+$('mCsv').onclick=()=>$('cutCsv').click();
+document.querySelectorAll('[data-mview]').forEach(b=>b.onclick=()=>goView(b.dataset.mview));
+$('mFit').onclick=()=>fit();
+$('mFollow').onclick=()=>$('followBtn').click();
+$('mTest').onclick=()=>{setStatus('warn','running the self-test');setTimeout(()=>{const r=selfTest();
+  setStatus(r.passed===r.total?'ok':'bad',`self-test: ${r.passed} of ${r.total} passed`);},30);};
+window.addEventListener('keydown',e=>{if(e.code==='Home'&&!e.target.closest?.('input,select,textarea')){fit();e.preventDefault();}});
+
+/* shading: wireframe, solid, material, and X-ray, like the viewport header in Blender */
+const SOLID_MAT=new THREE.MeshStandardMaterial({color:0xbdbdbd,roughness:0.62,metalness:0,polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1});
+const XRAY=new Map();
+function xrayOf(m){if(!XRAY.has(m)){const c=m.clone();c.transparent=true;c.opacity=0.28;c.depthWrite=false;XRAY.set(m,c);}return XRAY.get(m);}
+function applyShading(){
+  if(!RB.ready)return;
+  for(const b of RB.bodies)for(const mesh of b.meshes){
+    mesh.userData.mat=mesh.userData.mat||mesh.material;
+    const base=UI.shade==='solid'?SOLID_MAT:mesh.userData.mat;
+    mesh.material=UI.xray?xrayOf(base):base;mesh.visible=UI.shade!=='wire';}
+  document.querySelectorAll('[data-shade]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.shade===UI.shade)));
+  $('xrayBtn').setAttribute('aria-pressed',String(UI.xray));
+  EDGE_MAT.opacity=UI.shade==='wire'?0.95:(THEME.dark?0.7:0.5);
+}
+document.querySelectorAll('[data-shade]').forEach(b=>b.onclick=()=>{UI.shade=b.dataset.shade;applyShading();});
+$('xrayBtn').onclick=()=>{UI.xray=!UI.xray;applyShading();};
+$('ovEdges').onchange=()=>{EDGE_MAT.visible=$('ovEdges').checked;};
+$('ovGrid').onchange=()=>{grid.visible=AXES.visible=$('ovGrid').checked;};
+$('ovLabels').onchange=()=>{$('labels').hidden=!$('ovLabels').checked;};
+$('ovShadows').onchange=()=>{sun.castShadow=$('ovShadows').checked;ground.visible=$('ovShadows').checked;};
+/* red X and green Y axis lines on the floor, as Blender draws them */
+const AXES=new THREE.Group();
+[[0xff3352,V3(-20000,0.6,0),V3(20000,0.6,0)],[0x8bdc00,V3(0,0.6,-20000),V3(0,0.6,20000)]].forEach(([c,a,b])=>{
+  AXES.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([a,b]),new THREE.LineBasicMaterial({color:c,transparent:true,opacity:0.55})));});
+scene.add(AXES);
+
+/* the axis gizmo sits top right, as in Blender */
+{const sv=renderer.setViewport.bind(renderer),hr=helper.render.bind(helper);let inG=false;
+  renderer.setViewport=(x,y,w,h)=>{if(inG&&w===128&&h===128){const H=canvas.clientHeight;return sv(x-8,H-128-8,w,h);}return sv(x,y,w,h);};
+  helper.render=r=>{inG=true;hr(r);inG=false;};
+  const hc=helper.handleClick.bind(helper);
+  helper.handleClick=e=>hc({clientX:e.clientX+8,clientY:e.clientY+(canvas.clientHeight-128-8)});}
+
+/* outliner */
+const OUT={open:new Set(['robot','rig','frame'])};
+function outlinerRows(){
+  const rows=[{id:'scene',depth:0,name:'Scene',icon:'scn'}];
+  if(RB.ready&&MODE!=='checks'||RB.ready){
+    rows.push({id:'robot',depth:1,name:'CLASP robot',icon:'coll',count:RB.bodies.length,tw:true,eye:'robot'});
+    if(OUT.open.has('robot'))for(const[g,label]of[['lower','Lower module'],['upper','Upper module'],['link','C-link'],['arm','Arm']])
+      rows.push({id:'g:'+g,depth:2,name:label,icon:'mesh',count:RB.group[g].length,group:g,eye:'g:'+g});}
+  if(MODE!=='build')rows.push({id:'rig',depth:1,name:RIG.kind==='course'?'Practice course':RIG.kind==='junction'?'Post and junction':RIG.kind==='cap'?'Post and cap beam':'Post',icon:'coll',eye:'rig'});
+  if(MODE==='build'){
+    rows.push({id:'frame',depth:1,name:'Frame',icon:'coll',count:model.members.length,tw:true,eye:'frame'});
+    if(OUT.open.has('frame'))model.members.slice(0,60).forEach((m,i)=>rows.push({id:'m:'+i,depth:2,name:`Member ${i+1}`,icon:'mesh',member:i}));
+    rows.push({id:'props',depth:1,name:'Build props (CONCEPT)',icon:'coll',eye:'props'});}
+  return rows;
+}
+function renderOutliner(){
+  const selId=UI.sel?(UI.sel.type==='member'?'m:'+UI.sel.i:UI.sel.type==='group'?'g:'+UI.sel.g:'g:'+UI.sel.b.group):'';
+  $('outliner').innerHTML=outlinerRows().map(r=>`<div class="orow${r.id===selId?' sel':''}" data-id="${r.id}" style="padding-left:${4+r.depth*14}px">
+    <span class="tw">${r.tw?(OUT.open.has(r.id)?'▼':'▶'):''}</span><span class="ic">${svg(r.icon)}</span><span class="nm">${esc(r.name)}</span>
+    ${r.count!==undefined?`<span class="ct">${r.count}</span>`:''}
+    ${r.eye?`<button class="eye${UI.hidden.has(r.eye)?' off':''}" data-eye="${r.eye}" title="Show or hide">${svg('eye')}</button>`:''}</div>`).join('');
+  $('outliner').querySelectorAll('.orow').forEach(el=>el.onclick=e=>{
+    const id=el.dataset.id,eye=e.target.closest('[data-eye]');
+    if(eye){toggleHidden(eye.dataset.eye);return;}
+    if(e.target.closest('.tw')&&el.querySelector('.tw').textContent){OUT.open.has(id)?OUT.open.delete(id):OUT.open.add(id);renderOutliner();return;}
+    if(id.startsWith('g:'))select({type:'group',g:id.slice(2)});
+    else if(id.startsWith('m:'))select({type:'member',i:+id.slice(2)});});
+}
+function toggleHidden(k){UI.hidden.has(k)?UI.hidden.delete(k):UI.hidden.add(k);applyHidden();renderOutliner();}
+function applyHidden(){
+  if(RB.ready)for(const b of RB.bodies)b.obj.visible=!UI.hidden.has('robot')&&!UI.hidden.has('g:'+b.group);
+  RIG.group.visible=MODE!=='build'&&!UI.hidden.has('rig');
+  if(MODE==='build'){SG.group.visible=!UI.hidden.has('frame');}
+  BOT.group.visible=MODE==='build'&&!!BOT.home&&!UI.hidden.has('props');
+}
+
+/* selection: click a part, it turns orange and the Object panel describes it */
+const EDGE_SEL=new THREE.LineBasicMaterial({color:0xffa53a});
+const ray=new THREE.Raycaster();
+function clearSelection(){
+  if(RB.ready)for(const b of RB.bodies)b.obj.children.forEach(c=>{if(c.isLineSegments)c.material=EDGE_MAT;});}
+function select(sel){
+  UI.sel=sel;clearSelection();
+  if(sel&&(sel.type==='body'||sel.type==='group')&&RB.ready){
+    const list=sel.type==='body'?[sel.b]:RB.group[sel.g];
+    list.forEach(b=>b.obj.children.forEach(c=>{if(c.isLineSegments)c.material=EDGE_SEL;}));}
+  renderObject();renderOutliner();updateTitle();
+  if(sel){TAB_SEL[MODE]='object';renderTabs();}
+}
+function bodyName(b){
+  const G={lower:'Lower module',upper:'Upper module',link:'C-link',arm:'Arm'}[b.group];
+  const j=b.joint;let part=b.role==='module'?'frame':b.role==='clink'?'link plate':b.role==='arm'?'arm':b.role==='gripper'?'claw part':'part';
+  if(j.type==='spin')part='wheel or axle';if(j.type==='screw'&&j.param&&j.param.startsWith('clamp'))part='clamp linkage';
+  return`${G} · ${part}`;
+}
+function renderObject(){
+  const el=$('objInfo'),s=UI.sel;
+  if(!s){el.innerHTML='<p class="note">Nothing selected. Click a robot part or a frame member, or pick an item in the Outliner.</p>';return;}
+  const row=(k,v)=>`<dt>${k}</dt><dd>${v}</dd>`;
+  if(s.type==='body'){const b=s.b,j=b.joint,mats=[...new Set(b.meshes.map(m=>(m.userData.mat||m.material).color?Object.keys(RMAT).find(k=>RMAT[k]===(m.userData.mat||m.material)):''))].filter(Boolean);
+    const val=j.type==='hinge'?fx(R.q[j.name]||0)+'°':j.type==='screw'?`${fx((R.q[j.param]||0)*100,0)}% of travel`:j.type==='spin'?'free':'fixed';
+    const c=b.centroid.clone().applyMatrix4(b.world);
+    el.innerHTML=`<div class="ptitle" style="padding:0 0 4px">${esc(bodyName(b))}</div><dl class="kv">${
+      row('Body',b.id)+row('Joint',j.type==='hinge'?`${j.type} ${j.name}`:j.type==='screw'?`linkage, ${j.param}`:j.type)+row('Now',val)+
+      row('Material',mats.join(', ')||'pla')+row('Mass',fx(b.mass*1000,0)+' g')+row('Triangles',b.tri.reduce((a,m)=>a+m.I.length/3,0).toLocaleString())+
+      row('Centre',`${fx(c.x,0)}, ${fx(c.y,0)}, ${fx(c.z,0)} mm`)}</dl>
+      <p class="note">Mass is the ${b.group==='arm'?'submission arm mass':'BOM group mass'} shared out by volume.</p>`;return;}
+  if(s.type==='group'){const g=s.g,list=RB.group[g];
+    el.innerHTML=`<div class="ptitle" style="padding:0 0 4px">${{lower:'Lower module',upper:'Upper module',link:'C-link',arm:'Arm'}[g]}</div><dl class="kv">${
+      row('Bodies',list.length)+row('Mass',fx(GROUP_MASS[g],3)+' kg')+row('Triangles',list.reduce((a,b)=>a+b.tri.reduce((x,m)=>x+m.I.length/3,0),0).toLocaleString())}</dl>`;return;}
+  if(s.type==='member'){const i=s.i,m=model.members[i];if(!m){el.innerHTML='';return;}
+    const a=model.nodes[m.a],b=model.nodes[m.b],L=Math.hypot(b.x-a.x,b.y-a.y,b.z-a.z),c=state.checks&&state.checks[i];
+    const k=sim.order.indexOf(i);
+    el.innerHTML=`<div class="ptitle" style="padding:0 0 4px">Frame member ${i+1}</div><dl class="kv">${
+      row('Length',fx(L,0)+' mm')+row('Mass',fx(memberMass(mat,L)*1000,0)+' g')+(c?row('Axial force',fx(c.F,0)+' N')+row('Utilisation',fx(c.worst*100,0)+'%')+row('Governed by',c.govMode):'')+
+      row('Build step',k>=0?`${k+1} of ${sim.order.length}`:'n/a')}</dl>`;}
+}
+canvas.addEventListener('pointerup',e=>{
+  if(!downXY||Math.hypot(e.clientX-downXY[0],e.clientY-downXY[1])>=4)return;
+  const r=canvas.getBoundingClientRect(),H=canvas.clientHeight,W=canvas.clientWidth;
+  if(e.clientX-r.left>W-150&&e.clientY-r.top<150)return;
+  ray.setFromCamera(new THREE.Vector2((e.clientX-r.left)/W*2-1,-((e.clientY-r.top)/H)*2+1),camera);
+  const targets=[];
+  if(RB.ready&&RB.root.visible)for(const b of RB.bodies)if(b.obj.visible)targets.push(...b.meshes.filter(m=>m.visible));
+  if(MODE==='build'&&SG.mem)targets.push(SG.mem);
+  const hit=ray.intersectObjects(targets,false)[0];
+  if(!hit){select(null);return;}
+  if(hit.object===SG.mem)select({type:'member',i:hit.instanceId});
+  else select({type:'body',b:hit.object.userData.body});
+},true);
+
+/* timeline: the last minute of events on a ruler, newest at the playhead */
+function tlDraw(){
+  const c=$('tlCanvas');if(!c||MODE==='checks')return;
+  const W=c.clientWidth,H=c.clientHeight;if(!W||!H)return;
+  const pr=Math.min(devicePixelRatio||1,2);if(c.width!==Math.round(W*pr)){c.width=Math.round(W*pr);c.height=Math.round(H*pr);}
+  const g=c.getContext('2d');g.setTransform(pr,0,0,pr,0,0);g.clearRect(0,0,W,H);
+  const span=60,x0=W*0.9,t=simT,px=s=>x0-(t-s)/span*(W*0.9-8);
+  g.fillStyle=css('--sunk');g.fillRect(0,0,W,20);
+  g.strokeStyle=css('--line-2');g.fillStyle=css('--faint');g.font='10px '+css('--mono');g.lineWidth=1;
+  for(let s=Math.floor((t-span)/5)*5;s<=t+6;s+=5){const x=Math.round(px(s))+0.5;if(x<0||x>W)continue;
+    g.beginPath();g.moveTo(x,14);g.lineTo(x,H);g.globalAlpha=0.35;g.stroke();g.globalAlpha=1;
+    if(s>=0)g.fillText(stamp(s).slice(0,5),x+3,12);}
+  const col={cmd:css('--accent-ink'),ok:css('--ok'),warn:css('--warn'),bad:css('--bad'),info:css('--faint'),rx:css('--muted')};
+  const lanes={cmd:0,rx:0,ok:1,info:1,warn:2,bad:2},lh=(H-28)/3;
+  g.fillStyle=css('--muted');g.font='10px '+css('--sans');
+  ['commands','progress','warnings'].forEach((n,i)=>g.fillText(n,4,28+i*lh+lh/2+3));
+  for(const ev of EVENTS){if(ev.t<t-span)continue;const x=px(ev.t),y=28+lanes[ev.kind]*lh+lh/2;
+    g.fillStyle=col[ev.kind]||'#888';g.beginPath();g.moveTo(x,y-5);g.lineTo(x+4,y);g.lineTo(x,y+5);g.lineTo(x-4,y);g.closePath();g.fill();}
+  g.strokeStyle=css('--accent');g.lineWidth=2;g.beginPath();g.moveTo(x0,0);g.lineTo(x0,H);g.stroke();
+  g.fillStyle=css('--accent');g.fillRect(x0-22,2,44,15);g.fillStyle='#fff';g.font='500 10px '+css('--mono');
+  g.fillText(stamp(t).slice(0,7),x0-19,13);
+}
+const HINTS={robot:'<kbd>LMB</kbd> orbit  <kbd>RMB</kbd> pan  <kbd>Wheel</kbd> zoom  <kbd>Click</kbd> select a part  <kbd>Home</kbd> frame all',
+  drive:'<kbd>W</kbd><kbd>S</kbd> drive  <kbd>Shift</kbd> creep  <kbd>Q</kbd><kbd>E</kbd> clamps  <kbd>R</kbd> both_attach  <kbd>Space</kbd> estop',
+  build:'Drag between dots to draw  <kbd>Build it</kbd> in the Timeline runs the robot  <kbd>Click</kbd> select a member',
+  checks:'Change the case in Properties. The checks update at once.'};
+function uiTick(dt){
+  UI.fpsN++;UI.fpsT+=dt;if(UI.fpsT>=0.5){UI.fps=UI.fpsN/UI.fpsT;UI.fpsN=0;UI.fpsT=0;}
+  UI.uiT+=dt;if(UI.uiT<0.1)return;UI.uiT=0;
+  tlDraw();UI.sliders.forEach(f=>f());
+  $('sbStats').textContent=`CLASP · ${RB.ready?RB.bodies.length+' bodies · '+RB.tris.toLocaleString()+' tris':'loading'}${MODE==='build'?' · '+model.members.length+' members':''} · ${Math.round(UI.fps)} fps`;
+}
+function uiMode(){$('sbHints').innerHTML=HINTS[MODE]||'';renderTabs();renderOutliner();applyHidden();}
+
 /* ======================================================================= MODES */
 function focusBox(){
   if(MODE==='build')return{center:SG.center.clone(),radius:SG.radius};
@@ -2666,15 +3374,12 @@ function fitNow(k='iso'){
   VIEW.anim=null;controls.update();
 }
 function updateTitle(){
-  const t=$('vpTitle');
-  if(MODE==='robot')t.innerHTML=RB.ready
-    ?`<b>CLASP · Onshape assembly</b><span>${RB.bodies.length} bodies · ${Math.round(RB.tris/1000)}k triangles · joints measured from two exports</span>`
-    :RB.error?'<b>Robot model missing</b><span>Build mode still works</span>':'<b>Loading robot…</b><span>reading the CAD export</span>';
-  if(MODE==='build')t.innerHTML=`<b>Frame · ${mat.key==='pine'?'pine 60 × 60':'bamboo Ø60'}</b>
-    <span>${model.members.length} members · direct stiffness solve · colour shows utilisation</span>`;
-  if(MODE==='drive')t.innerHTML=`<b>Drive · practice course</b><span>keyboard teleop · WASD, Q E R, Space</span>`;
-  if(MODE==='checks')t.innerHTML=`<b>Checks · ${$('cPose').selectedOptions[0].text.split(',')[0]}</b>
-    <span>red: centre of mass the hinge carries · blue: whole robot</span>`;
+  const t=$('vpTitle'),ws={robot:'Robot',drive:'Drive',build:'Build',checks:'Checks'}[MODE];
+  const sel=typeof UI!=='undefined'&&UI.sel?(UI.sel.type==='member'?`Member ${UI.sel.i+1}`:UI.sel.type==='group'?
+    {lower:'Lower module',upper:'Upper module',link:'C-link',arm:'Arm'}[UI.sel.g]:bodyName(UI.sel.b)):'';
+  const what=MODE==='build'?`${mat.key==='pine'?'Pine 60 × 60':'Bamboo Ø60'} frame, ${model.members.length} members`:
+    MODE==='checks'?$('cPose').selectedOptions[0].text.split(',')[0]+' pose':RB.ready?`${RB.bodies.length} bodies`:RB.error?'robot model missing':'loading the CAD model';
+  t.innerHTML=`<b>User Perspective</b><span>(${ws}) CLASP | ${esc(what)}${sel?' | '+esc(sel):''}</span>`;
 }
 function syncTransport(){
   const b=MODE==='build';
@@ -2689,7 +3394,10 @@ function setMode(m){
   MODE=m;$('app').dataset.mode=m;
   document.querySelectorAll('.modes [data-mode]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.mode===m)));
   RIG.group.visible=m!=='build';SG.group.visible=m==='build';CK.group.visible=m==='checks';
-  if(m==='build'){if(RB.ready&&!BOT.rail)buildBotScene();syncBot();}else{botRelease();BOT.group.visible=false;}
+  if(prev==='build'&&m!=='build'&&RB.ready){if(sim.mode==='building'){sim.mode='idle';sim.paused=false;}
+    SCRIPT.name=null;GAIT.q.length=0;GAIT.cur=null;botRelease();buildRig();resetRobot(START_S);}
+  if(m==='build'){if(RB.ready&&prev!=='build'){if(!BOT.home)buildBotScene();useChain(null);resetRobotBuild();}syncBot();}
+  else{BOT.group.visible=false;}
   if(RIG.beam)RIG.beam.visible=m!=='build';
   $('vpMsg').classList.toggle('on',m!=='build'&&!!RB.error);
   if(m!==prev){if(SCRIPT.name)abortScript('mode changed');if(RB.ready&&R.pwm)setDrive(0,0,'auto');}
@@ -2698,7 +3406,7 @@ function setMode(m){
   if(m==='checks')runChecks();
   if((m==='robot'||m==='drive')&&RB.ready){poseState(R);syncRobotObjects();}
   if(prev!==m)fitNow();
-  updateTitle();syncTransport();refreshRobotUI(true);
+  updateTitle();syncTransport();refreshRobotUI(true);uiMode();
 }
 document.querySelectorAll('.modes [data-mode]').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
 
@@ -2833,15 +3541,16 @@ function selfTest(){
     ok('practice course completed by following the coach',DRIVE.done&&DRIVE.faults===0,
       DRIVE.done?`${mmss(DRIVE.t)}, ${DRIVE.faults} faults`:'did not finish: '+coach()[0]);
     /* the robot builds the current frame, one member at a time */
-    const was=MODE;MODE='build';startBuild();
-    for(let i=0;i<40000&&sim.mode==='building';i++)botTick(0.05);
-    const built=sim.visible.size===model.members.length&&sim.mode==='idle';
-    ok('robot places every member of the frame',built,`${sim.visible.size} of ${model.members.length} members`);
-    MODE=was;resetSim();
+    const was=MODE;MODE='build';startBuild();let faults=0,prevL=false;
+    for(let i=0;i<60000&&sim.mode==='building';i++){botTick(0.1);if(R.latch&&!prevL)faults++;prevL=R.latch;}
+    const built=sim.visible.size===model.members.length&&sim.mode==='idle'&&faults===0;
+    ok('the robot builds the frame without a collision',built,
+      `${sim.visible.size} of ${model.members.length} members, ${BOT.stats.robot} by the robot, ${BOT.stats.hand} by hand, ${faults} faults`);
+    MODE=was;botRelease();resetSim();
   }catch(err){ok('self-test ran without error',false,err.message);console.error(err);}
   finally{
     LOG.quiet--;
-    Object.assign(RIG,{kind:saved.kind,jH:saved.jH,jDir:saved.jDir});syncRigUI();buildRig();resetRobot(START_S);
+    botRelease();Object.assign(RIG,{kind:saved.kind,jH:saved.jH,jDir:saved.jDir});syncRigUI();buildRig();resetRobot(START_S);
     Object.assign(DRIVE,{t:0,running:false,done:false,faults:0,crossed:0,prevLatch:false,touched:false,passed:new Set()});
     if(saved.mode==='drive')setPip(true);
     simT=saved.t;setMode(saved.mode);setStatus('ok','ready');
@@ -2857,9 +3566,13 @@ function selfTest(){
 let lastT=performance.now();
 function frame(dtReal,render=true){
   const dt=Math.min(dtReal,0.05)*(+$('speed').value);
-  if((MODE==='robot'||MODE==='drive')&&RB.ready){teleopTick(dt);robotStep(dt);courseTick(dt);syncRobotObjects();}
-  if(MODE==='build')buildTick(dt);
-  if(render)renderAll(dtReal);
+  /* fast playback runs in 0.1 s substeps so collision checks never skip past a member */
+  const n=Math.max(1,Math.ceil(dt/0.1)),h=dt/n;
+  for(let i=0;i<n;i++){
+    if((MODE==='robot'||MODE==='drive')&&RB.ready){teleopTick(h);robotStep(h);courseTick(h);}
+    if(MODE==='build')buildTick(h);}
+  if((MODE==='robot'||MODE==='drive')&&RB.ready)syncRobotObjects();
+  if(render){renderAll(dtReal);uiTick(dtReal);}
 }
 function loop(now){
   const dt=(now-lastT)/1000;lastT=now;
@@ -2869,7 +3582,8 @@ function loop(now){
 
 /* ======================================================================= start */
 applyTheme();
-THEME.listeners.push(()=>{drawGrid();});
+THEME.listeners.push(()=>{drawGrid();if(RB.ready)applyShading();});
+blenderSliders();
 const fromHash=applyState(location.hash);
 if(!fromHash)edges=PRESETS.tower();
 if(FRAMED){$('cutCsv').textContent='Copy CSV';$('shareBtn').textContent='Copy design code';}
@@ -2884,13 +3598,16 @@ fitNow();
 requestAnimationFrame(loop);
 loadRobot().then(ok=>{
   if(!ok){setStatus('bad','robot model missing');updateTitle();return;}
-  solvePlacement();buildRig();resetRobot(START_S);setMode(MODE);if(MODE==='robot')fitNow();
+  solvePlacement();buildRig();resetRobot(START_S);applyShading();setMode(MODE);if(MODE==='robot')fitNow();
   log('ok',`Robot loaded: ${RB.bodies.length} bodies, ${Math.round(RB.tris/1000)}k triangles, hinge spacing ${fx(RB.spacing,1)} mm`);
   log('info',`Detach swing from CAD: ${fx(RB.detach.up)}° up, ${fx(RB.detach.down)}° down`);
   setStatus('ok','ready');
 });
 window.CLASP={frame,R,RB,RIG,send,setDrive,demo,runChecks,selfTest,setMode,camera,controls,fitNow,goView,coach,DRIVE};
 window.CLASP_TEST=selfTest;
+window.CLASP.dbg={findChains,placementsFrom,armIK,toChain,nodeW,memberRigid,useChain,poseClear,chainTop,BOT,sim,model:()=>model,
+  planTravel,heldTransforms,heldClear,withPose,finalWristQ,sMax,S_MIN:()=>S_MIN,groupHit,RIG,clawWorld,syncRoot,
+  pickClear,lowestClear,heldBox,obbOverlap,memberBox,obstaclesFor,bodyHitsBox,R};
 
 </script>
 </body>
