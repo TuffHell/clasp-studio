@@ -332,7 +332,7 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
   </div>
   <nav class="menus">
     <div class="menu"><button class="mbtn">File</button><div class="mdrop">
-      <button id="mShare">Copy link to this frame</button><button id="mCsv">Cut list as CSV</button>
+      <button id="mShare">Copy link to this frame</button><button id="mCsv">Cut list as CSV</button><button id="mShot">Save the view as an image</button>
     </div></div>
     <div class="menu"><button class="mbtn">View</button><div class="mdrop">
       <button data-mview="iso">Isometric</button><button data-mview="front">Front</button>
@@ -2537,8 +2537,9 @@ function runChecks(){
       d:`CAD has ${WHEEL_D} mm wheels, §3.1.2 says 1.125 in and the BOM lists 2 in. Pick one before quoting speed or torque.`,
       vd:'warn',vt:'INCONSISTENT'},
     {t:'Arm axes',pv:['cad','sub'],v:'1 + gripper',s:'CAD',
-      d:`§3.1.1 calls it a multi-axis arm. The CAD arm is one hinge on the C-link plus the gripper linkage. A square
-        member only lands flat if it is gripped pre-rotated by the placement angle, which the placement demo does.`,
+      d:`§3.1.1 calls it a multi-axis arm. The CAD arm is one hinge on the C-link plus the gripper linkage. The claw
+        holds a square member across its V, so the member's axis is fixed across the robot. It can lay a beam on the
+        top of its own post, and at the CAD length it cannot reach over its own upper module to a joint lower down.`,
       vd:'warn',vt:'CHECK WORDING'},
   ];
   const n={ok:0,warn:0,bad:0,info:0};rows.forEach(r=>n[r.vd]++);
@@ -3492,7 +3493,7 @@ function bayRig(){
     if(i<BAY.POSTS.length-1){const m=dx+BAY.GAP/2;RIG.group.add(timber(BAY.GAP,'x',T3(m,0,BAY.LOW),41+i));
       RIG.boxes.push({name:'lower beam',min:[dx+30,-30,BAY.LOW-30],max:[dx+BAY.GAP-30,30,BAY.LOW+30]});}});
   BAY.placed.forEach(p=>{const dx=BAY.POSTS[p.post]-X0,b=timber(1000,'x',T3(dx,p.y,zT),23+p.post);RIG.group.add(b);
-    RIG.boxes.push({name:'top beam on '+BAY.NAMES[p.post],min:[dx-500,p.y-30,zT-30],max:[dx+500,p.y+30,zT+30]});});
+    RIG.boxes.push({name:'top beam on '+BAY.NAMES[p.post],min:[dx-500,p.y-27,zT-27],max:[dx+500,p.y+27,zT+27]});});
   BAY.TOPS.forEach((i,n)=>{if(BAY.placed.some(p=>p.post===i))return;
     const g=new THREE.Mesh(new THREE.BoxGeometry(1000,60,60),n===BAY.k?GHOST_MAT:GHOST_FAR);g.position.copy(T3(BAY.POSTS[i]-X0,0,zT));RIG.group.add(g);});
   BAY.fallen.forEach(f=>{const b=timber(1000,'x',T3(f.x-X0,f.y,30),23);b.rotation.y=f.yaw;RIG.group.add(b);});
@@ -3558,7 +3559,7 @@ function bayTick(dt){
     if(off>45){BAY.result='fell';BAY.faults++;
       RIG.boxes=RIG.boxes.filter(o=>o.name!=='cap beam');RIG.beam.updateMatrix();RIG.beam.matrixAutoUpdate=false;
       BAY.anim={t:0,v:0,phase:0};log('bad',`Top beam ${BAY.k+1} missed the posts: ${fx(off,0)} mm off the post line. It fell.`);}
-    else{BAY.result='seated';BAY.placed.push({post:bayPost(),y:p.y});
+    else{BAY.result='seated';BAY.placed.push({post:bayPost(),y:p.y});BAY.loaded=false;buildRig();   // the laid beam replaces its ghost
       if(off>BAY.TOL){BAY.faults++;log('warn',`Top beam ${BAY.k+1} sits ${fx(off,0)} mm off the post line. Within ${BAY.TOL} mm it bears fully.`);}
       else log('ok',`Top beam ${BAY.k+1} laid on post ${BAY.NAMES[bayPost()]}, ${fx(off,1)} mm off the post line.`);
       if(BAY.drop>40){BAY.faults++;log('warn',`It dropped ${fx(BAY.drop,0)} mm before it landed. Lower it closer next time.`);}
@@ -3645,6 +3646,20 @@ document.addEventListener('click',e=>{if(!e.target.closest('.overlays'))document
 document.querySelectorAll('.mdrop button').forEach(b=>b.addEventListener('click',()=>document.querySelectorAll('.menu.open').forEach(x=>x.classList.remove('open'))));
 $('mShare').onclick=()=>$('shareBtn').click();
 $('mCsv').onclick=()=>$('cutCsv').click();
+/* the 3D view alone, without the axis gizmo or labels, at twice the screen resolution, for reports */
+function snapshot(scale=2,type='image/png',quality=0.92){
+  const w=canvas.clientWidth,h=canvas.clientHeight,pr=renderer.getPixelRatio();
+  renderer.setPixelRatio(pr*scale);renderer.setSize(w,h,false);renderer.render(scene,camera);
+  /* paint the viewport's own gradient behind the render, so the image looks as it does on screen */
+  const out=document.createElement('canvas');out.width=canvas.width;out.height=canvas.height;
+  const g=out.getContext('2d'),cs=getComputedStyle(vpEl),grad=g.createLinearGradient(0,0,0,out.height);
+  grad.addColorStop(0,cs.getPropertyValue('--vp-a').trim()||'#2b3036');grad.addColorStop(1,cs.getPropertyValue('--vp-b').trim()||'#1c1f23');
+  g.fillStyle=grad;g.fillRect(0,0,out.width,out.height);g.drawImage(canvas,0,0);
+  const url=out.toDataURL(type,quality);
+  renderer.setPixelRatio(pr);renderer.setSize(w,h,false);renderer.render(scene,camera);
+  return url;
+}
+$('mShot').onclick=()=>{const a=document.createElement('a');a.href=snapshot();a.download=`clasp-studio-${MODE}.png`;a.click();};
 document.querySelectorAll('[data-mview]').forEach(b=>b.onclick=()=>goView(b.dataset.mview));
 $('mFit').onclick=()=>fit();
 $('mFollow').onclick=()=>$('followBtn').click();
@@ -4039,7 +4054,7 @@ loadRobot().then(ok=>{
   log('info',`Detach swing from CAD: ${fx(RB.detach.up)}° up, ${fx(RB.detach.down)}° down`);
   setStatus('ok','ready');
 });
-window.CLASP={frame,R,RB,RIG,send,setDrive,demo,runChecks,selfTest,setMode,camera,controls,fitNow,goView,coach,DRIVE};
+window.CLASP={frame,R,RB,RIG,send,setDrive,demo,runChecks,selfTest,setMode,snapshot,camera,controls,fitNow,goView,coach,DRIVE};
 window.CLASP_TEST=selfTest;
 window.CLASP.dbg={findChains,placementsFrom,armIK,toChain,nodeW,memberRigid,useChain,poseClear,chainTop,BOT,sim,model:()=>model,
   planTravel,graspOf,heldMatrix,heldClear,withPose,wristFor,hangQ,motionClear,BAY,bayGrip,bayTick,bayReset,bayBlocked,bayCoach,DRIVE,unjam,sMax,S_MIN:()=>S_MIN,groupHit,RIG,syncRoot,WRIST,
