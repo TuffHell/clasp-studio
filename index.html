@@ -368,6 +368,7 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
         <button class="hbtn" data-view="side">Side</button><button class="hbtn" data-view="top">Top</button>
       </div>
       <span class="sp"></span>
+      <button class="hbtn" id="unjamBtn" data-for="robot drive" title="Put the robot back at the foot of its post, both modules clamped, linkage and arm straight, latch cleared. Anything already built stays.">Reset robot</button>
       <div class="hgroup" role="group" aria-label="Shading">
         <button class="hbtn" data-shade="wire" title="Wireframe"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c-3 3-3 9 0 12M8 2c3 3 3 9 0 12"/></svg></button>
         <button class="hbtn" data-shade="solid" title="Solid"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="currentColor"/></svg></button>
@@ -1965,7 +1966,7 @@ function beamTick(dt){
   RIG.beam.position.set(st.x,st.y,st.z);RIG.beam.rotation.set(st.a,0,0);
   if(done){FALL.on=false;
     const p=beamCentreCad();
-    RIG.boxes.push({name:'cap beam',min:[p.x-500,p.y-30,p.z-30],max:[p.x+500,p.y+30,p.z+30]});
+    RIG.boxes.push({name:'cap beam',min:[p.x-500,p.y-27,p.z-27],max:[p.x+500,p.y+27,p.z+27]});
     log('ok',`Beam seated level on the cap plate, ${fx(Math.abs(p.y),1)} mm ${p.y<0?'behind':'in front of'} the post centre`);}
 }
 function beamCentreCad(){
@@ -2027,11 +2028,11 @@ function gaitTick(dt){
       for(const k in GAIT.cur.to)GAIT.cur.from[k]=getP(k);
       GAIT.cur.before&&GAIT.cur.before();}
     const c=GAIT.cur,h=Math.min(rem,c.dur-GAIT.t);GAIT.t+=h;rem-=h;
-    const u=c.dur>0?ease(clamp(GAIT.t/c.dur,0,1)):1,prev={};
+    const u=c.dur>0?ease(clamp(GAIT.t/c.dur,0,1)):1,prev={},h0=findCollision();
     for(const k in c.to){prev[k]=getP(k);setP(k,lerp(c.from[k],c.to[k],u));}
     applyArm();poseState(R);
     const hit=findCollision();
-    if(hit){for(const k in prev)setP(k,prev[k]);applyArm();poseState(R);
+    if(hit&&hit!==h0){for(const k in prev)setP(k,prev[k]);applyArm();poseState(R);
       GAIT.q.length=0;GAIT.cur=null;fault('COLLISION: '+hit);return;}
     if(GAIT.t>=c.dur-1e-9){GAIT.cur=null;c.after&&c.after();}
   }
@@ -2040,13 +2041,13 @@ function gaitTick(dt){
 function armTick(dt){
   const da=R.armTarget-R.armCmd,dg=R.gripTarget-R.q.grip;
   if(Math.abs(da)<1e-6&&Math.abs(dg)<1e-6)return;
-  const a0=R.armCmd,g0=R.q.grip;
+  const a0=R.armCmd,g0=R.q.grip,h0=RIG.boxes.length?findCollision():null;
   if(Math.abs(da)>1e-6)R.armCmd+=Math.sign(da)*Math.min(Math.abs(da),ARM_RATE*dt);
   if(Math.abs(dg)>1e-6)R.q.grip+=Math.sign(dg)*Math.min(Math.abs(dg),GRIP_RATE*dt);
   if(!RIG.boxes.length)return;
   applyArm();poseState(R);
   const hit=findCollision();
-  if(hit){R.armCmd=R.armTarget=a0;R.q.grip=R.gripTarget=g0;applyArm();poseState(R);blocked(hit);}
+  if(hit&&hit!==h0){R.armCmd=R.armTarget=a0;R.q.grip=R.gripTarget=g0;applyArm();poseState(R);blocked(hit);}
 }
 const armIdle=()=>Math.abs(R.armTarget-R.armCmd)<1e-3&&Math.abs(R.gripTarget-R.q.grip)<1e-3;
 
@@ -2058,12 +2059,14 @@ function findCollision(){
   return null;
 }
 /* would a linkage move from the current pose to hinge angle q hit anything? */
+/* A move is refused only for a new contact. A contact the robot already has (say, after a reset or a
+   demo left it touching something) must not trap it: it can always move to get free. */
 function pathCollision(q,clampParam,clampTo){
-  const save={...R.q,roll:R.q.roll},q0=R.q.lowerHinge;let hit=null;
+  const save={...R.q,roll:R.q.roll},q0=R.q.lowerHinge,h0=findCollision();let hit=null;
   for(let k=1;k<=12&&!hit;k++){const u=k/12;
     R.q.lowerHinge=R.q.upperHinge=lerp(q0,q,u);
     if(clampParam)R.q[clampParam]=clampTo;
-    applyArm();poseState(R);hit=findCollision();}
+    applyArm();poseState(R);hit=findCollision();if(hit===h0)hit=null;}
   Object.assign(R.q,save);applyArm();poseState(R);
   return hit;
 }
@@ -2165,9 +2168,9 @@ function driveTick(dt){
   let ds=R.pwm/255*VMAX*R.dir*dt,arrive=false;
   if(R.driveTarget!==null){const rem=R.driveTarget-R.s;
     if(Math.abs(rem)<=Math.abs(ds)||Math.sign(rem)!==Math.sign(ds)){ds=rem;arrive=true;}}
-  const s0=R.s;R.s+=ds;poseState(R);
+  const s0=R.s,h0=findCollision();R.s+=ds;poseState(R);
   const hit=findCollision();
-  if(hit){R.s=s0;poseState(R);blocked(hit);return;}
+  if(hit&&hit!==h0){R.s=s0;poseState(R);blocked(hit);return;}
   for(const m of MODS)if(holding(m))R.q.roll[m]+=ds/(WHEEL_D/2)/DEG;
   if(arrive){R.driveTarget=null;setDrive(0,0,'auto');}
 }
@@ -3437,6 +3440,19 @@ function driveUI(force){
     .map(([k,v,c])=>`<dt>${k}</dt><dd class="${c||''}">${v}</dd>`).join('');
 }
 $('courseReset').onclick=()=>{driveReset();canvas.focus();};
+/* Reset robot: back at the foot of its post, both modules clamped, linkage and arm straight, latch clear.
+   Whatever the task has built stays, so a jam never costs the run. */
+function unjam(){
+  if(!RB.ready)return;
+  abortScript('reset by the operator');GAIT.q.length=0;GAIT.cur=null;KEYS.clear();
+  if(bayOn()){Object.assign(BAY,{releasing:false,passed:false,lastWhy:null});buildRig();resetRobot(START_S);
+    if(!BAY.loaded)R.q.grip=R.gripTarget=GRIP.open;}
+  else if(MODE==='drive'){resetRobot(START_S);DRIVE.passed=new Set();}
+  else{buildRig();resetRobot(START_S);}
+  log('ok','Robot reset: at the foot of its post, both modules clamped, linkage and arm straight.');setStatus('ok','ready');
+  driveUI(true);
+}
+$('unjamBtn').onclick=()=>{unjam();canvas.focus();};
 $('hudMove').onclick=()=>{bayMove();canvas.focus();};
 document.querySelectorAll('[data-task]').forEach(b=>b.onclick=()=>{DRIVE.task=b.dataset.task;if(MODE==='drive')driveReset();else syncTaskUI();canvas.focus();});
 function syncTaskUI(){
@@ -3558,8 +3574,8 @@ function bayTick(dt){
       if(an.t>=0.3){BAY.anim=null;BAY.fallen.push({x:p.x+bayX0(),y:-p.z,yaw:0});}}
     b.matrix.compose(p,q,V3(1,1,1));b.matrixWorldNeedsUpdate=true;}
   /* nothing may pass into anything: undo the move */
-  if(BAY.pre){const why=bayBlocked();
-    if(why){const v=BAY.pre,inGait=!!GAIT.cur||GAIT.q.length>0;R.s=v.s;R.armCmd=v.a;R.armTarget=v.a;R.q.lowerHinge=v.lh;R.q.upperHinge=v.uh;
+  if(BAY.pre){const why=bayBlocked(),had=BAY.lastWhy;BAY.lastWhy=why;
+    if(why&&why!==had){BAY.lastWhy=null;const v=BAY.pre,inGait=!!GAIT.cur||GAIT.q.length>0;R.s=v.s;R.armCmd=v.a;R.armTarget=v.a;R.q.lowerHinge=v.lh;R.q.upperHinge=v.uh;
       R.q.clampLower=v.cl;R.q.clampUpper=v.cu;R.q.grip=v.g;R.anchor=v.anchor;
       GAIT.q.length=0;GAIT.cur=null;applyArm();poseState(R);if(inGait)fault('COLLISION: '+why);else blocked(why);}}
   $('hudMove').hidden=!(BAY.result&&!BAY.done);
@@ -4026,7 +4042,7 @@ loadRobot().then(ok=>{
 window.CLASP={frame,R,RB,RIG,send,setDrive,demo,runChecks,selfTest,setMode,camera,controls,fitNow,goView,coach,DRIVE};
 window.CLASP_TEST=selfTest;
 window.CLASP.dbg={findChains,placementsFrom,armIK,toChain,nodeW,memberRigid,useChain,poseClear,chainTop,BOT,sim,model:()=>model,
-  planTravel,graspOf,heldMatrix,heldClear,withPose,wristFor,hangQ,motionClear,BAY,bayGrip,bayTick,bayReset,bayBlocked,bayCoach,DRIVE,sMax,S_MIN:()=>S_MIN,groupHit,RIG,syncRoot,WRIST,
+  planTravel,graspOf,heldMatrix,heldClear,withPose,wristFor,hangQ,motionClear,BAY,bayGrip,bayTick,bayReset,bayBlocked,bayCoach,DRIVE,unjam,sMax,S_MIN:()=>S_MIN,groupHit,RIG,syncRoot,WRIST,
   pickClear,lowestClear,heldBox,obbOverlap,memberBox,obstaclesFor,bodyHitsBox,R};
 
 </script>
